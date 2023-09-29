@@ -1,6 +1,8 @@
+use std::fmt::Debug;
+
 use super::{MutableValue, RegisterList, Value};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum DataType {
 	Score(ScoreType),
 }
@@ -15,7 +17,15 @@ impl DataType {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+impl Debug for DataType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Score(score) => score.fmt(f),
+		}
+	}
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ScoreType {
 	Score,
 	UScore,
@@ -34,7 +44,18 @@ impl ScoreType {
 	}
 }
 
-#[derive(Debug, Clone)]
+impl Debug for ScoreType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Score => "score",
+			Self::UScore => "uscore",
+			Self::Bool => "bool",
+		};
+		write!(f, "{text}")
+	}
+}
+
+#[derive(Clone)]
 pub enum DataTypeContents {
 	Score(ScoreTypeContents),
 }
@@ -47,7 +68,15 @@ impl DataTypeContents {
 	}
 }
 
-#[derive(Debug, Clone)]
+impl Debug for DataTypeContents {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Score(score) => score.fmt(f),
+		}
+	}
+}
+
+#[derive(Clone)]
 pub enum ScoreTypeContents {
 	Score(i32),
 	UScore(u16),
@@ -73,6 +102,17 @@ impl ScoreTypeContents {
 
 	pub fn get_literal_str(&self) -> String {
 		self.get_i32().to_string()
+	}
+}
+
+impl Debug for ScoreTypeContents {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Score(val) => format!("{val}.s"),
+			Self::UScore(val) => format!("{val}.u"),
+			Self::Bool(val) => format!("{val}"),
+		};
+		write!(f, "{text}")
 	}
 }
 

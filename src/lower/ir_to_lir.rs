@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::common::ty::{get_op_tys, DataType};
+use crate::common::ty::{get_op_tys, DataType, DataTypeContents, ScoreTypeContents};
 use crate::common::{DeclareBinding, Identifier, MutableValue, Register, Value};
 use crate::ir::{InstrKind, IR};
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
@@ -58,11 +58,24 @@ pub fn lower_ir(ir: IR) -> anyhow::Result<LIR> {
 						.contents
 						.push(LIRInstruction::new(lower_mod(left, right, &lbcx)?));
 				}
+				InstrKind::Min { left, right } => {
+					lir_block
+						.contents
+						.push(LIRInstruction::new(lower_min(left, right, &lbcx)?));
+				}
+				InstrKind::Max { left, right } => {
+					lir_block
+						.contents
+						.push(LIRInstruction::new(lower_max(left, right, &lbcx)?));
+				}
 				InstrKind::Swap { left, right } => {
 					lir_block
 						.contents
 						.push(LIRInstruction::new(lower_swap(left, right, &lbcx)?));
 				}
+				InstrKind::Abs { val } => lir_block
+					.contents
+					.push(LIRInstruction::new(lower_abs(val, &lbcx)?)),
 			}
 		}
 
@@ -208,6 +221,32 @@ fn lower_mod(
 	Ok(kind)
 }
 
+fn lower_min(
+	left: MutableValue,
+	right: Value,
+	lbcx: &LowerBlockCx,
+) -> anyhow::Result<LIRInstrKind> {
+	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let kind = match tys {
+		(DataType::Score(..), DataType::Score(..)) => LIRInstrKind::MinScore(left, right),
+	};
+
+	Ok(kind)
+}
+
+fn lower_max(
+	left: MutableValue,
+	right: Value,
+	lbcx: &LowerBlockCx,
+) -> anyhow::Result<LIRInstrKind> {
+	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let kind = match tys {
+		(DataType::Score(..), DataType::Score(..)) => LIRInstrKind::MaxScore(left, right),
+	};
+
+	Ok(kind)
+}
+
 fn lower_swap(
 	left: MutableValue,
 	right: MutableValue,
@@ -218,6 +257,17 @@ fn lower_swap(
 		right.get_ty(&lbcx.registers)?,
 	) {
 		(DataType::Score(..), DataType::Score(..)) => LIRInstrKind::SwapScore(left, right),
+	};
+
+	Ok(kind)
+}
+
+fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {
+	let kind = match val.get_ty(&lbcx.registers)? {
+		DataType::Score(..) => LIRInstrKind::ModScore(
+			val,
+			Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(i32::MAX))),
+		),
 	};
 
 	Ok(kind)

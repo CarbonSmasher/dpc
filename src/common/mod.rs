@@ -1,12 +1,12 @@
 pub mod ty;
 
-use std::{collections::HashMap, hash::Hash, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
 
 use anyhow::Context;
 
 use self::ty::{DataType, DataTypeContents};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Value {
 	Mutable(MutableValue),
 	Constant(DataTypeContents),
@@ -30,7 +30,17 @@ impl Value {
 	}
 }
 
-#[derive(Debug, Clone)]
+impl Debug for Value {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Constant(val) => format!("const {val:?}"),
+			Self::Mutable(val) => format!("mut {val:?}"),
+		};
+		write!(f, "{text}")
+	}
+}
+
+#[derive(Clone)]
 pub enum MutableValue {
 	Register(Identifier),
 }
@@ -52,10 +62,22 @@ impl MutableValue {
 			Self::Register(reg) => vec![&reg],
 		}
 	}
+
+	pub fn is_same_val(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Register(left), Self::Register(right)) if left == right)
+	}
 }
 
+impl Debug for MutableValue {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Register(reg) => format!("reg {reg}"),
+		};
+		write!(f, "{text}")
+	}
+}
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum DeclareBinding {
 	Value(Value),
 	Cast(DataType, MutableValue),
@@ -69,6 +91,16 @@ impl DeclareBinding {
 		};
 
 		Ok(out)
+	}
+}
+
+impl Debug for DeclareBinding {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Value(val) => format!("val {val:?}"),
+			Self::Cast(ty, val) => format!("cast {ty:?} {val:?}"),
+		};
+		write!(f, "{text}")
 	}
 }
 

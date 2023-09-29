@@ -16,12 +16,12 @@ impl TargetSelector {
 #[derive(Debug, Clone)]
 pub struct Score {
 	pub holder: TargetSelector,
-	pub score: Identifier,
+	pub objective: Identifier,
 }
 
 impl Score {
-	pub fn new(holder: TargetSelector, score: Identifier) -> Self {
-		Self { holder, score }
+	pub fn new(holder: TargetSelector, objective: Identifier) -> Self {
+		Self { holder, objective }
 	}
 }
 

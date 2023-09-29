@@ -5,6 +5,8 @@ use crate::{
 	lir::{LIRBlock, LIRInstrKind},
 };
 
+use super::text::format_reg_fake_player;
+
 #[derive(Debug)]
 pub struct RegAllocCx {
 	count: u32,
@@ -18,7 +20,11 @@ impl RegAllocCx {
 	pub fn new_reg(&mut self) -> String {
 		let old_count = self.count;
 		self.count += 1;
-		format!("$__dpc_reg{old_count}")
+		format_reg_fake_player(old_count)
+	}
+
+	pub fn get_count(&self) -> u32 {
+		self.count
 	}
 }
 
@@ -27,10 +33,7 @@ pub struct RegAllocResult {
 	pub regs: HashMap<Identifier, String>,
 }
 
-pub fn alloc_block_registers(
-	block: &LIRBlock,
-	racx: &mut RegAllocCx,
-) -> RegAllocResult {
+pub fn alloc_block_registers(block: &LIRBlock, racx: &mut RegAllocCx) -> RegAllocResult {
 	let mut out = RegAllocResult {
 		regs: HashMap::new(),
 	};
@@ -54,7 +57,9 @@ fn get_used_regs(kind: &LIRInstrKind) -> Vec<&Identifier> {
 		| LIRInstrKind::SubScore(left, right)
 		| LIRInstrKind::MulScore(left, right)
 		| LIRInstrKind::DivScore(left, right)
-		| LIRInstrKind::ModScore(left, right) => [left.get_used_regs(), right.get_used_regs()].concat(),
+		| LIRInstrKind::ModScore(left, right)
+		| LIRInstrKind::MinScore(left, right)
+		| LIRInstrKind::MaxScore(left, right) => [left.get_used_regs(), right.get_used_regs()].concat(),
 		LIRInstrKind::SwapScore(left, right) => {
 			[left.get_used_regs(), right.get_used_regs()].concat()
 		}

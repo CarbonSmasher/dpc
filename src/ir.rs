@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::{
 	ty::DataType, DeclareBinding, FunctionInterface, Identifier, MutableValue, Value,
@@ -30,7 +30,7 @@ impl Block {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Instruction {
 	pub kind: InstrKind,
 }
@@ -41,7 +41,13 @@ impl Instruction {
 	}
 }
 
-#[derive(Debug, Clone)]
+impl Debug for Instruction {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.kind.fmt(f)
+	}
+}
+
+#[derive(Clone)]
 pub enum InstrKind {
 	Declare {
 		left: Identifier,
@@ -72,8 +78,38 @@ pub enum InstrKind {
 		left: MutableValue,
 		right: Value,
 	},
+	Min {
+		left: MutableValue,
+		right: Value,
+	},
+	Max {
+		left: MutableValue,
+		right: Value,
+	},
 	Swap {
 		left: MutableValue,
 		right: MutableValue,
 	},
+	Abs {
+		val: MutableValue,
+	},
+}
+
+impl Debug for InstrKind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Declare { left, ty, right } => format!("let {left}: {ty:?} = {right:?}"),
+			Self::Assign { left, right } => format!("{left:?} = {right:?}"),
+			Self::Add { left, right } => format!("add {left:?}, {right:?}"),
+			Self::Sub { left, right } => format!("sub {left:?}, {right:?}"),
+			Self::Mul { left, right } => format!("mul {left:?}, {right:?}"),
+			Self::Div { left, right } => format!("div {left:?}, {right:?}"),
+			Self::Mod { left, right } => format!("mod {left:?}, {right:?}"),
+			Self::Min { left, right } => format!("min {left:?}, {right:?}"),
+			Self::Max { left, right } => format!("max {left:?}, {right:?}"),
+			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
+			Self::Abs { val } => format!("abs {val:?}"),
+		};
+		write!(f, "{text}")
+	}
 }

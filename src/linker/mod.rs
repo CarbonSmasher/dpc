@@ -1,6 +1,8 @@
 pub mod codegen;
 pub mod datapack;
+mod gen_fns;
 pub mod ra;
+pub mod text;
 
 use crate::lir::LIR;
 
@@ -17,6 +19,9 @@ pub fn link(lir: LIR) -> anyhow::Result<Datapack> {
 		fun.contents = code;
 		out.functions.insert(interface.id, fun);
 	}
+
+	let extra_fns = gen_fns::gen_fns(&ccx)?;
+	out.functions.extend(extra_fns);
 
 	Ok(out)
 }

@@ -10,7 +10,7 @@ use crate::passes::IRPass;
 pub struct ValidatePass;
 
 impl IRPass for ValidatePass {
-	fn run_pass(ir: &mut IR) -> anyhow::Result<()> {
+	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()> {
 		for (_, block) in &ir.functions {
 			let mut regs = HashMap::new();
 			for instr in &block.contents {
@@ -34,7 +34,9 @@ impl IRPass for ValidatePass {
 					| InstrKind::Sub { left, right }
 					| InstrKind::Mul { left, right }
 					| InstrKind::Div { left, right }
-					| InstrKind::Mod { left, right } => {
+					| InstrKind::Mod { left, right }
+					| InstrKind::Min { left, right }
+					| InstrKind::Max { left, right } => {
 						let (left_ty, right_ty) = get_op_tys(left, right, &regs)?;
 						if !right_ty.is_trivially_castable(&left_ty) {
 							bail!("Incompatible types in instruction");
@@ -48,6 +50,7 @@ impl IRPass for ValidatePass {
 							bail!("Incompatible types in instruction");
 						}
 					}
+					InstrKind::Abs { .. } => {}
 				}
 			}
 		}

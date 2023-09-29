@@ -6,6 +6,8 @@ use crate::common::{ty::DataTypeContents, MutableValue, Value};
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 use crate::mc::{Score, TargetSelector};
 
+use super::text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE};
+
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 
 pub struct CodegenCx {
@@ -49,11 +51,11 @@ pub fn codegen_instr(
 					let lit = match data {
 						DataTypeContents::Score(score) => score.get_literal_str(),
 					};
-					format!("scoreboard players set {left_scoreholder} reg {lit}")
+					format!("scoreboard players set {left_scoreholder} {REG_OBJECTIVE} {lit}")
 				}
 				Value::Mutable(val) => {
 					let right_scoreholder = get_mut_val_reg(&val, regs)?;
-					format!("scoreboard players operation {left_scoreholder} reg = {right_scoreholder} reg")
+					format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} = {right_scoreholder} {REG_OBJECTIVE}")
 				}
 			};
 			out.push(cmd);
@@ -63,13 +65,21 @@ pub fn codegen_instr(
 			let cmd = match right {
 				Value::Constant(data) => {
 					let lit = match data {
-						DataTypeContents::Score(score) => score.get_literal_str(),
+						DataTypeContents::Score(score) => score.get_i32(),
 					};
-					format!("scoreboard players add {left_scoreholder} reg {lit}")
+					// Negative signs in add/remove commands are illegal
+					if lit.is_negative() {
+						format!(
+							"scoreboard players remove {left_scoreholder} {REG_OBJECTIVE} {}",
+							lit.abs()
+						)
+					} else {
+						format!("scoreboard players add {left_scoreholder} {REG_OBJECTIVE} {lit}")
+					}
 				}
 				Value::Mutable(val) => {
 					let right_scoreholder = get_mut_val_reg(&val, regs)?;
-					format!("scoreboard players operation {left_scoreholder} reg += {right_scoreholder} reg")
+					format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} += {right_scoreholder} {REG_OBJECTIVE}")
 				}
 			};
 			out.push(cmd);
@@ -79,13 +89,23 @@ pub fn codegen_instr(
 			let cmd = match right {
 				Value::Constant(data) => {
 					let lit = match data {
-						DataTypeContents::Score(score) => score.get_literal_str(),
+						DataTypeContents::Score(score) => score.get_i32(),
 					};
-					format!("scoreboard players remove {left_scoreholder} reg {lit}")
+					// Negative signs in add/remove commands are illegal
+					if lit.is_negative() {
+						format!(
+							"scoreboard players add {left_scoreholder} {REG_OBJECTIVE} {}",
+							lit.abs()
+						)
+					} else {
+						format!(
+							"scoreboard players remove {left_scoreholder} {REG_OBJECTIVE} {lit}"
+						)
+					}
 				}
 				Value::Mutable(val) => {
 					let right_scoreholder = get_mut_val_reg(&val, regs)?;
-					format!("scoreboard players operation {left_scoreholder} reg -= {right_scoreholder} reg")
+					format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} -= {right_scoreholder} {REG_OBJECTIVE}")
 				}
 			};
 			out.push(cmd);
@@ -96,9 +116,9 @@ pub fn codegen_instr(
 			ccx.score_literals.extend(to_add);
 
 			let cmd = format!(
-				"scoreboard players operation {left_scoreholder} reg *= {} {}",
+				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} *= {} {}",
 				right_score.holder.codegen_str(),
-				right_score.score
+				right_score.objective
 			);
 
 			out.push(cmd);
@@ -109,9 +129,9 @@ pub fn codegen_instr(
 			ccx.score_literals.extend(to_add);
 
 			let cmd = format!(
-				"scoreboard players operation {left_scoreholder} reg /= {} {}",
+				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} /= {} {}",
 				right_score.holder.codegen_str(),
-				right_score.score
+				right_score.objective
 			);
 
 			out.push(cmd);
@@ -122,9 +142,35 @@ pub fn codegen_instr(
 			ccx.score_literals.extend(to_add);
 
 			let cmd = format!(
-				"scoreboard players operation {left_scoreholder} reg %= {} {}",
+				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} %= {} {}",
 				right_score.holder.codegen_str(),
-				right_score.score
+				right_score.objective
+			);
+
+			out.push(cmd);
+		}
+		LIRInstrKind::MinScore(left, right) => {
+			let left_scoreholder = get_mut_val_reg(&left, regs)?;
+			let (right_score, to_add) = get_val_score(&right, regs)?;
+			ccx.score_literals.extend(to_add);
+
+			let cmd = format!(
+				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} < {} {}",
+				right_score.holder.codegen_str(),
+				right_score.objective
+			);
+
+			out.push(cmd);
+		}
+		LIRInstrKind::MaxScore(left, right) => {
+			let left_scoreholder = get_mut_val_reg(&left, regs)?;
+			let (right_score, to_add) = get_val_score(&right, regs)?;
+			ccx.score_literals.extend(to_add);
+
+			let cmd = format!(
+				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} > {} {}",
+				right_score.holder.codegen_str(),
+				right_score.objective
 			);
 
 			out.push(cmd);
@@ -134,7 +180,7 @@ pub fn codegen_instr(
 			let right_scoreholder = get_mut_val_reg(&right, regs)?;
 
 			let cmd = format!(
-				"scoreboard players operation {left_scoreholder} reg >< {right_scoreholder} reg"
+				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} >< {right_scoreholder} {REG_OBJECTIVE}"
 			);
 
 			out.push(cmd);
@@ -152,8 +198,8 @@ fn get_val_score(val: &Value, regs: &RegAllocResult) -> anyhow::Result<(Score, O
 				let num = score.get_i32();
 				(
 					Score::new(
-						TargetSelector::Player(format!("#__dpc_lit{num}")),
-						num.to_string().into(),
+						TargetSelector::Player(format_lit_fake_player(num)),
+						LIT_OBJECTIVE.into(),
 					),
 					Some(num),
 				)
@@ -162,7 +208,7 @@ fn get_val_score(val: &Value, regs: &RegAllocResult) -> anyhow::Result<(Score, O
 		Value::Mutable(val) => {
 			let score = Score::new(
 				TargetSelector::Player(get_mut_val_reg(val, regs)?.clone()),
-				"reg".into(),
+				REG_OBJECTIVE.into(),
 			);
 			(score, None)
 		}
