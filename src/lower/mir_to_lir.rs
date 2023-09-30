@@ -51,7 +51,7 @@ pub fn lower_mir(mir: MIR) -> anyhow::Result<LIR> {
 					lir_instrs.push(LIRInstruction::new(lower_max(left, right, &lbcx)?));
 				}
 				MIRInstrKind::Swap { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_swap(left, right, &lbcx)?));
+					lir_instrs.extend(lower_swap(left, right, &mut lbcx)?);
 				}
 				MIRInstrKind::Abs { val } => {
 					lir_instrs.push(LIRInstruction::new(lower_abs(val, &lbcx)?))
@@ -245,17 +245,44 @@ fn lower_max(
 fn lower_swap(
 	left: MutableValue,
 	right: MutableValue,
-	lbcx: &LowerBlockCx,
-) -> anyhow::Result<LIRInstrKind> {
-	let kind = match (
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<Vec<LIRInstruction>> {
+	let mut out = Vec::new();
+
+	match (
 		left.get_ty(&lbcx.registers)?,
 		right.get_ty(&lbcx.registers)?,
 	) {
-		(DataType::Score(..), DataType::Score(..)) => LIRInstrKind::SwapScore(left, right),
+		(DataType::Score(..), DataType::Score(..)) => {
+			out.push(LIRInstruction::new(LIRInstrKind::SwapScore(left, right)))
+		}
+		(DataType::NBT(left_ty), DataType::NBT(..)) => {
+			// Create a temporary register to store into
+			let temp_reg = lbcx.new_additional_reg();
+			let reg = Register {
+				id: temp_reg.clone(),
+				ty: DataType::NBT(left_ty),
+			};
+			lbcx.registers.insert(temp_reg.clone(), reg);
+			// Create the three assignments that represent the swap.
+			// This is equal to: temp = a; a = b; b = temp;
+			out.push(LIRInstruction::new(LIRInstrKind::SetData(
+				MutableValue::Register(temp_reg.clone()),
+				Value::Mutable(left.clone()),
+			)));
+			out.push(LIRInstruction::new(LIRInstrKind::SetData(
+				left.clone(),
+				Value::Mutable(right.clone()),
+			)));
+			out.push(LIRInstruction::new(LIRInstrKind::SetData(
+				right.clone(),
+				Value::Mutable(MutableValue::Register(temp_reg.clone())),
+			)));
+		}
 		_ => bail!("Instruction does not allow this type"),
 	};
 
-	Ok(kind)
+	Ok(out)
 }
 
 fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {

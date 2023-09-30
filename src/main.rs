@@ -17,6 +17,8 @@ fn main() {
 	let reg3_id = Identifier::from("baz");
 	let reg4_id = Identifier::from("hello");
 	let reg5_id = Identifier::from("there");
+	let reg6_id = Identifier::from("swapl");
+	let reg7_id = Identifier::from("swapr");
 	block.contents.push(Instruction::new(InstrKind::Declare {
 		left: reg_id.clone(),
 		ty: DataType::Score(ScoreType::Score),
@@ -80,6 +82,25 @@ fn main() {
 		left: MutableValue::Register(reg5_id.clone()),
 		right: MutableValue::Register(reg2_id.clone()),
 	}));
+	block.contents.push(Instruction::new(InstrKind::Declare {
+		left: reg6_id.clone(),
+		ty: DataType::NBT(NBTType::Int),
+		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+			NBTTypeContents::Int(-9046),
+		))),
+	}));
+	block.contents.push(Instruction::new(InstrKind::Declare {
+		left: reg7_id.clone(),
+		ty: DataType::NBT(NBTType::Int),
+		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+			NBTTypeContents::Int(1),
+		))),
+	}));
+	block.contents.push(Instruction::new(InstrKind::Swap {
+		left: MutableValue::Register(reg6_id.clone()),
+		right: MutableValue::Register(reg7_id.clone()),
+	}));
+
 	ir.functions
 		.insert(FunctionInterface::new("foo::main".into()), block);
 
