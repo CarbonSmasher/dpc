@@ -49,7 +49,9 @@ impl MutableValue {
 	pub fn get_ty(&self, regs: &RegisterList) -> anyhow::Result<DataType> {
 		let out = match self {
 			Self::Register(id) => {
-				let reg = regs.get(id).context("Failed to get register")?;
+				let reg = regs
+					.get(id)
+					.with_context(|| format!("Failed to get register ${id}"))?;
 				reg.ty
 			}
 		};
@@ -71,7 +73,7 @@ impl MutableValue {
 impl Debug for MutableValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
-			Self::Register(reg) => format!("reg {reg}"),
+			Self::Register(reg) => format!("${reg}"),
 		};
 		write!(f, "{text}")
 	}
@@ -91,6 +93,13 @@ impl DeclareBinding {
 		};
 
 		Ok(out)
+	}
+
+	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+		match self {
+			Self::Value(val) => val.get_used_regs(),
+			Self::Cast(_, val) => val.get_used_regs(),
+		}
 	}
 }
 

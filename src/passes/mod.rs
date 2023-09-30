@@ -1,6 +1,7 @@
-use crate::{ir::IR, lir::LIR};
+use crate::{ir::IR, lir::LIR, mir::MIR};
 
-use self::{analysis::ir::ValidatePass, opt::lir::SimplifyLIRMathPass};
+use self::analysis::ir::ValidatePass;
+use self::opt::{lir::SimplifyLIRMathPass, mir::DSEPass};
 
 pub mod analysis;
 pub mod opt;
@@ -17,6 +18,20 @@ pub fn run_ir_passes(ir: &mut IR) -> anyhow::Result<()> {
 
 	for mut pass in passes {
 		pass.run_pass(ir)?;
+	}
+
+	Ok(())
+}
+
+pub trait MIRPass {
+	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()>;
+}
+
+pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
+	let passes = [Box::new(NullPass) as Box<dyn MIRPass>, Box::new(DSEPass)];
+
+	for mut pass in passes {
+		pass.run_pass(mir)?;
 	}
 
 	Ok(())
@@ -44,6 +59,13 @@ struct NullPass;
 impl IRPass for NullPass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()> {
 		let _ = ir;
+		Ok(())
+	}
+}
+
+impl MIRPass for NullPass {
+	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
+		let _ = mir;
 		Ok(())
 	}
 }

@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use anyhow::anyhow;
 
+use crate::common::ty::DataType;
+use crate::common::RegisterList;
 use crate::common::{ty::DataTypeContents, MutableValue, Value};
+use crate::linker::text::{format_local_storage_path, REG_STORAGE_LOCATION};
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 use crate::mc::{Score, TargetSelector};
 
@@ -25,11 +28,11 @@ impl CodegenCx {
 }
 
 pub fn codegen_block(block: &LIRBlock, ccx: &mut CodegenCx) -> anyhow::Result<Vec<String>> {
-	let regs = alloc_block_registers(block, &mut ccx.racx);
+	let ra = alloc_block_registers(block, &mut ccx.racx)?;
 
 	let mut out = Vec::new();
 	for instr in &block.contents {
-		let commands = codegen_instr(instr, &regs, ccx)?;
+		let commands = codegen_instr(instr, &ra, &block.regs, ccx)?;
 		out.extend(commands);
 	}
 
@@ -38,34 +41,43 @@ pub fn codegen_block(block: &LIRBlock, ccx: &mut CodegenCx) -> anyhow::Result<Ve
 
 pub fn codegen_instr(
 	instr: &LIRInstruction,
-	regs: &RegAllocResult,
+	ra: &RegAllocResult,
+	regs: &RegisterList,
 	ccx: &mut CodegenCx,
 ) -> anyhow::Result<Vec<String>> {
 	let mut out = Vec::new();
 
 	match &instr.kind {
 		LIRInstrKind::SetScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
 			let cmd = match right {
 				Value::Constant(data) => {
 					let lit = match data {
 						DataTypeContents::Score(score) => score.get_literal_str(),
+						_ => panic!("LIR instruction given wrong type"),
 					};
 					format!("scoreboard players set {left_scoreholder} {REG_OBJECTIVE} {lit}")
 				}
-				Value::Mutable(val) => {
-					let right_scoreholder = get_mut_val_reg(&val, regs)?;
-					format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} = {right_scoreholder} {REG_OBJECTIVE}")
-				}
+				Value::Mutable(val) => match val.get_ty(regs)? {
+					DataType::Score(..) => {
+						let right_scoreholder = get_mut_val_reg(&val, ra, regs)?;
+						format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} = {right_scoreholder} {REG_OBJECTIVE}")
+					}
+					DataType::NBT(..) => {
+						let right_loc = get_mut_val_reg(&val, ra, regs)?;
+						format!("execute store result score {left_scoreholder} {REG_OBJECTIVE} run data get storage {REG_STORAGE_LOCATION} {} 1.0", format_local_storage_path(right_loc))
+					}
+				},
 			};
 			out.push(cmd);
 		}
 		LIRInstrKind::AddScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
 			let cmd = match right {
 				Value::Constant(data) => {
 					let lit = match data {
 						DataTypeContents::Score(score) => score.get_i32(),
+						_ => panic!("LIR instruction given wrong type"),
 					};
 					// Negative signs in add/remove commands are illegal
 					if lit.is_negative() {
@@ -78,18 +90,19 @@ pub fn codegen_instr(
 					}
 				}
 				Value::Mutable(val) => {
-					let right_scoreholder = get_mut_val_reg(&val, regs)?;
+					let right_scoreholder = get_mut_val_reg(&val, ra, regs)?;
 					format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} += {right_scoreholder} {REG_OBJECTIVE}")
 				}
 			};
 			out.push(cmd);
 		}
 		LIRInstrKind::SubScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
 			let cmd = match right {
 				Value::Constant(data) => {
 					let lit = match data {
 						DataTypeContents::Score(score) => score.get_i32(),
+						_ => panic!("LIR instruction given wrong type"),
 					};
 					// Negative signs in add/remove commands are illegal
 					if lit.is_negative() {
@@ -104,15 +117,15 @@ pub fn codegen_instr(
 					}
 				}
 				Value::Mutable(val) => {
-					let right_scoreholder = get_mut_val_reg(&val, regs)?;
+					let right_scoreholder = get_mut_val_reg(&val, ra, regs)?;
 					format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} -= {right_scoreholder} {REG_OBJECTIVE}")
 				}
 			};
 			out.push(cmd);
 		}
 		LIRInstrKind::MulScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
-			let (right_score, to_add) = get_val_score(&right, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
+			let (right_score, to_add) = get_val_score(&right, ra, regs)?;
 			ccx.score_literals.extend(to_add);
 
 			let cmd = format!(
@@ -124,8 +137,8 @@ pub fn codegen_instr(
 			out.push(cmd);
 		}
 		LIRInstrKind::DivScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
-			let (right_score, to_add) = get_val_score(&right, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
+			let (right_score, to_add) = get_val_score(&right, ra, regs)?;
 			ccx.score_literals.extend(to_add);
 
 			let cmd = format!(
@@ -137,8 +150,8 @@ pub fn codegen_instr(
 			out.push(cmd);
 		}
 		LIRInstrKind::ModScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
-			let (right_score, to_add) = get_val_score(&right, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
+			let (right_score, to_add) = get_val_score(&right, ra, regs)?;
 			ccx.score_literals.extend(to_add);
 
 			let cmd = format!(
@@ -150,8 +163,8 @@ pub fn codegen_instr(
 			out.push(cmd);
 		}
 		LIRInstrKind::MinScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
-			let (right_score, to_add) = get_val_score(&right, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
+			let (right_score, to_add) = get_val_score(&right, ra, regs)?;
 			ccx.score_literals.extend(to_add);
 
 			let cmd = format!(
@@ -163,8 +176,8 @@ pub fn codegen_instr(
 			out.push(cmd);
 		}
 		LIRInstrKind::MaxScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
-			let (right_score, to_add) = get_val_score(&right, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
+			let (right_score, to_add) = get_val_score(&right, ra, regs)?;
 			ccx.score_literals.extend(to_add);
 
 			let cmd = format!(
@@ -176,12 +189,36 @@ pub fn codegen_instr(
 			out.push(cmd);
 		}
 		LIRInstrKind::SwapScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, regs)?;
-			let right_scoreholder = get_mut_val_reg(&right, regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, ra, regs)?;
+			let right_scoreholder = get_mut_val_reg(&right, ra, regs)?;
 
 			let cmd = format!(
 				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} >< {right_scoreholder} {REG_OBJECTIVE}"
 			);
+
+			out.push(cmd);
+		}
+		LIRInstrKind::SetData(left, right) => {
+			let left_loc = get_mut_val_reg(left, ra, regs)?;
+			let cmd = match right {
+				Value::Constant(data) => {
+					let lit = match data {
+						DataTypeContents::NBT(nbt) => nbt.get_literal_str(),
+						_ => panic!("LIR instruction given wrong type"),
+					};
+					format!("data merge storage {REG_STORAGE_LOCATION} {{{left_loc}:{lit}}}")
+				}
+				Value::Mutable(val) => match val.get_ty(regs)? {
+					DataType::Score(..) => {
+						let right_scoreholder = get_mut_val_reg(&val, ra, regs)?;
+						format!("execute store result storage {REG_STORAGE_LOCATION} {left_loc} run scoreboard players get {right_scoreholder} {REG_OBJECTIVE}")
+					}
+					DataType::NBT(..) => {
+						let right_loc = get_mut_val_reg(val, ra, regs)?;
+						format!("data modify storage {REG_STORAGE_LOCATION} {left_loc} set from storage {REG_STORAGE_LOCATION} {right_loc}")
+					}
+				},
+			};
 
 			out.push(cmd);
 		}
@@ -191,7 +228,11 @@ pub fn codegen_instr(
 }
 
 /// Returns a score and an optional score literal to add
-fn get_val_score(val: &Value, regs: &RegAllocResult) -> anyhow::Result<(Score, Option<i32>)> {
+fn get_val_score(
+	val: &Value,
+	ra: &RegAllocResult,
+	regs: &RegisterList,
+) -> anyhow::Result<(Score, Option<i32>)> {
 	let out = match val {
 		Value::Constant(val) => match val {
 			DataTypeContents::Score(score) => {
@@ -204,10 +245,11 @@ fn get_val_score(val: &Value, regs: &RegAllocResult) -> anyhow::Result<(Score, O
 					Some(num),
 				)
 			}
+			_ => panic!("LIR instruction given wrong type"),
 		},
 		Value::Mutable(val) => {
 			let score = Score::new(
-				TargetSelector::Player(get_mut_val_reg(val, regs)?.clone()),
+				TargetSelector::Player(get_mut_val_reg(val, ra, regs)?.clone()),
 				REG_OBJECTIVE.into(),
 			);
 			(score, None)
@@ -217,14 +259,21 @@ fn get_val_score(val: &Value, regs: &RegAllocResult) -> anyhow::Result<(Score, O
 	Ok(out)
 }
 
-fn get_mut_val_reg<'regs>(
+fn get_mut_val_reg<'ra>(
 	val: &MutableValue,
-	regs: &'regs RegAllocResult,
-) -> anyhow::Result<&'regs String> {
+	ra: &'ra RegAllocResult,
+	regs: &RegisterList,
+) -> anyhow::Result<&'ra String> {
 	match val {
-		MutableValue::Register(reg) => regs
-			.regs
-			.get(reg)
-			.ok_or(anyhow!("Register {reg} not allocated")),
+		MutableValue::Register(reg) => match val.get_ty(regs)? {
+			DataType::Score(..) => ra
+				.regs
+				.get(reg)
+				.ok_or(anyhow!("Register {reg} not allocated")),
+			DataType::NBT(..) => ra
+				.locals
+				.get(reg)
+				.ok_or(anyhow!("Register {reg} not allocated")),
+		},
 	}
 }

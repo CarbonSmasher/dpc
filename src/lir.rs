@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::common::{FunctionInterface, MutableValue, Value};
+use crate::common::{FunctionInterface, MutableValue, RegisterList, Value};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
@@ -18,12 +18,14 @@ impl LIR {
 #[derive(Debug, Clone)]
 pub struct LIRBlock {
 	pub contents: Vec<LIRInstruction>,
+	pub regs: RegisterList,
 }
 
 impl LIRBlock {
-	pub fn new() -> Self {
+	pub fn new(regs: RegisterList) -> Self {
 		Self {
 			contents: Vec::new(),
+			regs,
 		}
 	}
 }
@@ -56,6 +58,7 @@ pub enum LIRInstrKind {
 	MinScore(MutableValue, Value),
 	MaxScore(MutableValue, Value),
 	SwapScore(MutableValue, MutableValue),
+	SetData(MutableValue, Value),
 }
 
 impl Debug for LIRInstrKind {
@@ -70,6 +73,7 @@ impl Debug for LIRInstrKind {
 			Self::MinScore(left, right) => format!("mins {left:?} {right:?}"),
 			Self::MaxScore(left, right) => format!("maxs {left:?} {right:?}"),
 			Self::SwapScore(left, right) => format!("swps {left:?} {right:?}"),
+			Self::SetData(left, right) => format!("setd {left:?} {right:?}"),
 		};
 		write!(f, "{text}")
 	}

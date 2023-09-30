@@ -25,9 +25,8 @@ impl Score {
 	}
 }
 
-/// Value that a score can be operated on with
 #[derive(Debug, Clone)]
-pub enum ScoreOperand {
-	Constant(i32),
-	Score(Score),
+pub enum DataLocation {
+	Entity(String),
+	Storage(String),
 }

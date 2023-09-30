@@ -5,7 +5,7 @@ use crate::common::ResourceLocation;
 use super::{
 	codegen::CodegenCx,
 	datapack::Function,
-	text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE},
+	text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE, REG_STORAGE_LOCATION},
 };
 
 pub fn gen_fns(ccx: &CodegenCx) -> anyhow::Result<HashMap<ResourceLocation, Function>> {
@@ -20,12 +20,16 @@ pub fn gen_fns(ccx: &CodegenCx) -> anyhow::Result<HashMap<ResourceLocation, Func
 fn gen_init(ccx: &CodegenCx) -> Function {
 	let mut out = Function::new();
 
-	if ccx.racx.get_count() > 0 {
-		let cmd = format!("scoreboard objectives add {} dummy", REG_OBJECTIVE);
+	if ccx.racx.get_reg_count() > 0 {
+		let cmd = format!("scoreboard objectives add {REG_OBJECTIVE} dummy");
+		out.contents.push(cmd);
+	}
+	if ccx.racx.get_local_count() > 0 {
+		let cmd = format!("data merge storage {REG_STORAGE_LOCATION} {{}}");
 		out.contents.push(cmd);
 	}
 	if ccx.score_literals.len() > 0 {
-		let cmd = format!("scoreboard objectives add {} dummy", LIT_OBJECTIVE);
+		let cmd = format!("scoreboard objectives add {LIT_OBJECTIVE} dummy");
 		out.contents.push(cmd);
 	}
 
