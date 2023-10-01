@@ -5,7 +5,8 @@ use dpc::lower::ir_to_mir::lower_ir;
 use dpc::lower::mir_to_lir::lower_mir;
 
 use dpc::common::ty::{
-	DataType, DataTypeContents, NBTType, NBTTypeContents, ScoreType, ScoreTypeContents,
+	create_nbyte_array, DataType, DataTypeContents, NBTArrayType, NBTType, NBTTypeContents,
+	ScoreType, ScoreTypeContents,
 };
 use dpc::passes::{run_ir_passes, run_lir_passes, run_mir_passes};
 
@@ -19,6 +20,8 @@ fn main() {
 	let reg5_id = Identifier::from("there");
 	let reg6_id = Identifier::from("swapl");
 	let reg7_id = Identifier::from("swapr");
+	let reg8_id = Identifier::from("arr");
+	let reg9_id = Identifier::from("arridx");
 	block.contents.push(Instruction::new(InstrKind::Declare {
 		left: reg_id.clone(),
 		ty: DataType::Score(ScoreType::Score),
@@ -99,6 +102,22 @@ fn main() {
 	block.contents.push(Instruction::new(InstrKind::Swap {
 		left: MutableValue::Register(reg6_id.clone()),
 		right: MutableValue::Register(reg7_id.clone()),
+	}));
+	block.contents.push(Instruction::new(InstrKind::Declare {
+		left: reg8_id.clone(),
+		ty: DataType::NBT(NBTType::Arr(NBTArrayType::Byte(6))),
+		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+			NBTTypeContents::Arr(create_nbyte_array(vec![5, 9, -2, 8, -121, 86])),
+		))),
+	}));
+	block.contents.push(Instruction::new(InstrKind::Declare {
+		left: reg9_id.clone(),
+		ty: DataType::NBT(NBTType::Byte),
+		right: DeclareBinding::Index {
+			ty: DataType::NBT(NBTType::Byte),
+			val: Value::Mutable(MutableValue::Register(reg8_id.clone())),
+			index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::UScore(3))),
+		},
 	}));
 
 	ir.functions

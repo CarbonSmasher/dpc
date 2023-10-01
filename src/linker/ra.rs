@@ -97,5 +97,8 @@ fn get_used_regs(kind: &LIRInstrKind) -> Vec<&Identifier> {
 		LIRInstrKind::SwapScore(left, right) => {
 			[left.get_used_regs(), right.get_used_regs()].concat()
 		}
+		LIRInstrKind::ConstIndexToScore { score, value, .. } => {
+			[score.get_used_regs(), value.get_used_regs()].concat()
+		}
 	}
 }

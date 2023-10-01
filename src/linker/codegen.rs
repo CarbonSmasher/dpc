@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 
-use crate::common::ty::DataType;
+use crate::common::ty::{DataType, NBTTypeContents};
 use crate::common::RegisterList;
 use crate::common::{ty::DataTypeContents, MutableValue, Value};
 use crate::linker::text::{format_local_storage_path, REG_STORAGE_LOCATION};
@@ -54,7 +54,7 @@ pub fn codegen_instr(
 				Value::Constant(data) => {
 					let lit = match data {
 						DataTypeContents::Score(score) => score.get_literal_str(),
-						_ => panic!("LIR instruction given wrong type"),
+						_ => bail!("LIR instruction given wrong type"),
 					};
 					format!("scoreboard players set {left_scoreholder} {REG_OBJECTIVE} {lit}")
 				}
@@ -77,7 +77,7 @@ pub fn codegen_instr(
 				Value::Constant(data) => {
 					let lit = match data {
 						DataTypeContents::Score(score) => score.get_i32(),
-						_ => panic!("LIR instruction given wrong type"),
+						_ => bail!("LIR instruction given wrong type"),
 					};
 					// Negative signs in add/remove commands are illegal
 					if lit.is_negative() {
@@ -102,7 +102,7 @@ pub fn codegen_instr(
 				Value::Constant(data) => {
 					let lit = match data {
 						DataTypeContents::Score(score) => score.get_i32(),
-						_ => panic!("LIR instruction given wrong type"),
+						_ => bail!("LIR instruction given wrong type"),
 					};
 					// Negative signs in add/remove commands are illegal
 					if lit.is_negative() {
@@ -204,7 +204,7 @@ pub fn codegen_instr(
 				Value::Constant(data) => {
 					let lit = match data {
 						DataTypeContents::NBT(nbt) => nbt.get_literal_str(),
-						_ => panic!("LIR instruction given wrong type"),
+						_ => bail!("LIR instruction given wrong type"),
 					};
 					format!("data merge storage {REG_STORAGE_LOCATION} {{{left_loc}:{lit}}}")
 				}
@@ -218,6 +218,30 @@ pub fn codegen_instr(
 						format!("data modify storage {REG_STORAGE_LOCATION} {left_loc} set from storage {REG_STORAGE_LOCATION} {right_loc}")
 					}
 				},
+			};
+
+			out.push(cmd);
+		}
+		LIRInstrKind::ConstIndexToScore {
+			score,
+			value,
+			index,
+		} => {
+			let scoreholder = get_mut_val_reg(&score, ra, regs)?;
+			let cmd = match value {
+				Value::Constant(val) => match val {
+					DataTypeContents::NBT(NBTTypeContents::Arr(arr)) => {
+						let lit = arr
+							.const_index(*index)
+							.ok_or(anyhow!("Const index out of range"))?;
+						format!("scoreboard players set {scoreholder} {REG_OBJECTIVE} {lit}")
+					}
+					_ => bail!("Cannot index non-array type"),
+				},
+				Value::Mutable(val) => {
+					let loc = get_mut_val_reg(val, ra, regs)?;
+					format!("execute store result score {scoreholder} {REG_OBJECTIVE} run data get storage {REG_STORAGE_LOCATION} {loc}")
+				}
 			};
 
 			out.push(cmd);
@@ -245,7 +269,7 @@ fn get_val_score(
 					Some(num),
 				)
 			}
-			_ => panic!("LIR instruction given wrong type"),
+			_ => bail!("LIR instruction given wrong type"),
 		},
 		Value::Mutable(val) => {
 			let score = Score::new(

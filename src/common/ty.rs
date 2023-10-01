@@ -69,6 +69,7 @@ pub enum NBTType {
 	Short,
 	Int,
 	Long,
+	Arr(NBTArrayType),
 }
 
 impl NBTType {
@@ -82,6 +83,9 @@ impl NBTType {
 				self,
 				Self::Byte | Self::Bool | Self::Short | Self::Int | Self::Long
 			),
+			Self::Arr(other_arr) => {
+				matches!(self, Self::Arr(this_arr) if this_arr.is_trivially_castable(other_arr))
+			}
 		}
 	}
 
@@ -97,11 +101,46 @@ impl NBTType {
 impl Debug for NBTType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
-			Self::Byte => "nbyte",
-			Self::Bool => "nbool",
-			Self::Short => "nshort",
-			Self::Int => "nint",
-			Self::Long => "nlong",
+			Self::Byte => "nbyte".to_string(),
+			Self::Bool => "nbool".to_string(),
+			Self::Short => "nshort".to_string(),
+			Self::Int => "nint".to_string(),
+			Self::Long => "nlong".to_string(),
+			Self::Arr(arr) => format!("{arr:?}"),
+		};
+		write!(f, "{text}")
+	}
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum NBTArrayType {
+	Byte(ArraySize),
+	Int(ArraySize),
+	Long(ArraySize),
+}
+
+impl NBTArrayType {
+	pub fn is_trivially_castable(&self, other: &NBTArrayType) -> bool {
+		match other {
+			Self::Byte(other_size) => {
+				matches!(self, Self::Byte(this_size) if this_size == other_size)
+			}
+			Self::Int(other_size) => {
+				matches!(self, Self::Byte(this_size) | Self::Int(this_size) if this_size == other_size)
+			}
+			Self::Long(other_size) => {
+				matches!(self, Self::Byte(this_size) | Self::Int(this_size) | Self::Long(this_size) if this_size == other_size)
+			}
+		}
+	}
+}
+
+impl Debug for NBTArrayType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Byte(size) => format!("nbyte[{size}]"),
+			Self::Int(size) => format!("nint[{size}]"),
+			Self::Long(size) => format!("nlong[{size}]"),
 		};
 		write!(f, "{text}")
 	}
@@ -173,11 +212,12 @@ impl Debug for ScoreTypeContents {
 
 #[derive(Clone)]
 pub enum NBTTypeContents {
-	Byte(i8),
+	Byte(Byte),
 	Bool(bool),
-	Short(i16),
-	Int(i32),
-	Long(i64),
+	Short(Short),
+	Int(Int),
+	Long(Long),
+	Arr(NBTArrayTypeContents),
 }
 
 impl NBTTypeContents {
@@ -188,26 +228,18 @@ impl NBTTypeContents {
 			Self::Short(..) => DataType::NBT(NBTType::Short),
 			Self::Int(..) => DataType::NBT(NBTType::Int),
 			Self::Long(..) => DataType::NBT(NBTType::Long),
-		}
-	}
-
-	pub fn get_i64(&self) -> i64 {
-		match self {
-			Self::Byte(val) => *val as i64,
-			Self::Bool(val) => *val as i64,
-			Self::Short(val) => *val as i64,
-			Self::Int(val) => *val as i64,
-			Self::Long(val) => *val as i64,
+			Self::Arr(arr) => arr.get_ty(),
 		}
 	}
 
 	pub fn get_literal_str(&self) -> String {
 		match self {
 			Self::Byte(val) => format!("{val}b"),
-			Self::Bool(val) => format!("{}b", *val as i8),
+			Self::Bool(val) => format!("{}b", *val as Byte),
 			Self::Short(val) => format!("{val}s"),
 			Self::Int(val) => format!("{val}"),
 			Self::Long(val) => format!("{val}l"),
+			Self::Arr(arr) => arr.get_literal_str(),
 		}
 	}
 }
@@ -216,13 +248,90 @@ impl Debug for NBTTypeContents {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
 			Self::Byte(val) => format!("{val}b"),
-			Self::Bool(val) => format!("{}B", *val as i8),
+			Self::Bool(val) => format!("{}B", *val as Byte),
 			Self::Short(val) => format!("{val}s"),
 			Self::Int(val) => format!("{val}i"),
 			Self::Long(val) => format!("{val}l"),
+			Self::Arr(val) => format!("{val:?}"),
 		};
 		write!(f, "{text}")
 	}
+}
+
+#[derive(Clone)]
+pub enum NBTArrayTypeContents {
+	Byte(Vec<Byte>, ArraySize),
+	Int(Vec<Int>, ArraySize),
+	Long(Vec<Long>, ArraySize),
+}
+
+impl NBTArrayTypeContents {
+	pub fn get_ty(&self) -> DataType {
+		match self {
+			Self::Byte(_, len) => DataType::NBT(NBTType::Arr(NBTArrayType::Byte(*len))),
+			Self::Int(_, len) => DataType::NBT(NBTType::Arr(NBTArrayType::Int(*len))),
+			Self::Long(_, len) => DataType::NBT(NBTType::Arr(NBTArrayType::Long(*len))),
+		}
+	}
+
+	pub fn get_literal_str(&self) -> String {
+		match self {
+			Self::Byte(val, ..) => format!("[B;{}]", fmt_arr(val.iter().map(|x| format!("{x}b")))),
+			Self::Int(val, ..) => format!("[I;{}]", fmt_arr(val)),
+			Self::Long(val, ..) => format!("[L;{}]", fmt_arr(val.iter().map(|x| format!("{x}l")))),
+		}
+	}
+
+	pub fn const_index(&self, index: ArraySize) -> Option<String> {
+		match self {
+			Self::Byte(val, ..) => val.get(index).map(ToString::to_string),
+			Self::Int(val, ..) => val.get(index).map(ToString::to_string),
+			Self::Long(val, ..) => val.get(index).map(ToString::to_string),
+		}
+	}
+}
+
+impl Debug for NBTArrayTypeContents {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Byte(val, ..) => format!("[B;{}]", fmt_arr(val)),
+			Self::Int(val, ..) => format!("[I;{}]", fmt_arr(val)),
+			Self::Long(val, ..) => format!("[L;{}]", fmt_arr(val)),
+		};
+		write!(f, "{text}")
+	}
+}
+
+// Const type contents helpers
+
+pub fn create_nbyte_array(contents: Vec<i8>) -> NBTArrayTypeContents {
+	let len = contents.len();
+	NBTArrayTypeContents::Byte(contents, len)
+}
+
+pub fn create_nint_array(contents: Vec<i32>) -> NBTArrayTypeContents {
+	let len = contents.len();
+	NBTArrayTypeContents::Int(contents, len)
+}
+
+pub fn create_nlong_array(contents: Vec<i64>) -> NBTArrayTypeContents {
+	let len = contents.len();
+	NBTArrayTypeContents::Long(contents, len)
+}
+
+// Types
+
+pub type ArraySize = usize;
+pub type Byte = i8;
+pub type Short = i16;
+pub type Int = i32;
+pub type Long = i64;
+
+fn fmt_arr<T: ToString>(arr: impl IntoIterator<Item = T>) -> String {
+	arr.into_iter()
+		.map(|x| x.to_string())
+		.collect::<Vec<_>>()
+		.join(",")
 }
 
 pub fn get_op_tys(

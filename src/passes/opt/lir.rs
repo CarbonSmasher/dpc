@@ -2,6 +2,7 @@ use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::Value;
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::LIRPass;
+use crate::util::remove_indices;
 
 pub struct SimplifyLIRMathPass;
 
@@ -156,9 +157,7 @@ fn run_simplify_lir_math_iter(block: &mut LIRBlock) -> bool {
 		}
 	}
 
-	for i in instrs_to_remove {
-		block.contents.remove(i);
-	}
+	remove_indices(&mut block.contents, &instrs_to_remove);
 
 	run_again
 }

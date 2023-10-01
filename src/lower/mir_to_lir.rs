@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::bail;
 
-use crate::common::ty::{get_op_tys, DataType, DataTypeContents, ScoreTypeContents};
+use crate::common::ty::{get_op_tys, ArraySize, DataType, DataTypeContents, ScoreTypeContents};
 use crate::common::{DeclareBinding, Identifier, MutableValue, Register, Value};
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
 use crate::mir::{MIRInstrKind, MIR};
@@ -98,6 +98,7 @@ fn lower_assign(
 	let left_ty = left.get_ty(&lbcx.registers)?;
 
 	let right_val = match &right {
+		DeclareBinding::Value(val) => val.clone(),
 		DeclareBinding::Cast(ty, val) => {
 			let val_ty = val.get_ty(&lbcx.registers)?;
 			// If the cast is not trivial, we have to declare a new register,
@@ -132,7 +133,33 @@ fn lower_assign(
 			};
 			Value::Mutable(assign_val)
 		}
-		DeclareBinding::Value(val) => val.clone(),
+		DeclareBinding::Index { ty, val, index } => {
+			let new_reg = lbcx.new_additional_reg();
+			// Declare the new register
+			let reg = Register {
+				id: new_reg.clone(),
+				ty: *ty,
+			};
+			lbcx.registers.insert(new_reg.clone(), reg);
+
+			// Add the index instruction
+			match (val.get_ty(&lbcx.registers)?, index) {
+				(DataType::NBT(..), Value::Constant(DataTypeContents::Score(score))) => {
+					let index = match score {
+						ScoreTypeContents::Bool(val) => *val as ArraySize,
+						ScoreTypeContents::UScore(val) => *val as ArraySize,
+						_ => bail!("Non-score type cannot be used as index"),
+					};
+					out.push(LIRInstruction::new(LIRInstrKind::ConstIndexToScore {
+						score: MutableValue::Register(new_reg.clone()),
+						value: val.clone(),
+						index,
+					}));
+				}
+				_ => bail!("Cannot use index declaration with these types"),
+			}
+			Value::Mutable(MutableValue::Register(new_reg))
+		}
 	};
 
 	let kind = match left_ty {

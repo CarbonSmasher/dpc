@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::common::{FunctionInterface, MutableValue, RegisterList, Value};
+use crate::common::{ty::ArraySize, FunctionInterface, MutableValue, RegisterList, Value};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
@@ -59,6 +59,11 @@ pub enum LIRInstrKind {
 	MaxScore(MutableValue, Value),
 	SwapScore(MutableValue, MutableValue),
 	SetData(MutableValue, Value),
+	ConstIndexToScore {
+		score: MutableValue,
+		value: Value,
+		index: ArraySize,
+	},
 }
 
 impl Debug for LIRInstrKind {
@@ -74,6 +79,11 @@ impl Debug for LIRInstrKind {
 			Self::MaxScore(left, right) => format!("maxs {left:?} {right:?}"),
 			Self::SwapScore(left, right) => format!("swps {left:?} {right:?}"),
 			Self::SetData(left, right) => format!("setd {left:?} {right:?}"),
+			Self::ConstIndexToScore {
+				score,
+				value,
+				index,
+			} => format!("idxcs {score:?} {value:?} {index}"),
 		};
 		write!(f, "{text}")
 	}

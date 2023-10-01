@@ -3,7 +3,7 @@ pub const REG_OBJECTIVE: &str = "_dpc.r";
 pub const LIT_OBJECTIVE: &str = "_dpc.l";
 
 // Storage
-pub const REG_STORAGE_LOCATION: &str = "dpc::reg";
+pub const REG_STORAGE_LOCATION: &str = "dpc:reg";
 
 pub fn format_reg_fake_player(num: u32) -> String {
 	format!("$r{num}")

@@ -33,8 +33,8 @@ impl Value {
 impl Debug for Value {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
-			Self::Constant(val) => format!("const {val:?}"),
-			Self::Mutable(val) => format!("mut {val:?}"),
+			Self::Constant(val) => format!("{val:?}"),
+			Self::Mutable(val) => format!("{val:?}"),
 		};
 		write!(f, "{text}")
 	}
@@ -83,6 +83,11 @@ impl Debug for MutableValue {
 pub enum DeclareBinding {
 	Value(Value),
 	Cast(DataType, MutableValue),
+	Index {
+		ty: DataType,
+		val: Value,
+		index: Value,
+	},
 }
 
 impl DeclareBinding {
@@ -90,6 +95,7 @@ impl DeclareBinding {
 		let out = match self {
 			Self::Value(val) => val.get_ty(regs)?,
 			Self::Cast(ty, ..) => *ty,
+			Self::Index { ty, .. } => *ty,
 		};
 
 		Ok(out)
@@ -99,6 +105,7 @@ impl DeclareBinding {
 		match self {
 			Self::Value(val) => val.get_used_regs(),
 			Self::Cast(_, val) => val.get_used_regs(),
+			Self::Index { val, index, .. } => [val.get_used_regs(), index.get_used_regs()].concat(),
 		}
 	}
 }
@@ -106,8 +113,9 @@ impl DeclareBinding {
 impl Debug for DeclareBinding {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
-			Self::Value(val) => format!("val {val:?}"),
+			Self::Value(val) => format!("{val:?}"),
 			Self::Cast(ty, val) => format!("cast {ty:?} {val:?}"),
+			Self::Index { val, index, ty } => format!("idx {ty:?} {val:?} {index:?}"),
 		};
 		write!(f, "{text}")
 	}
