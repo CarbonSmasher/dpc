@@ -54,7 +54,10 @@ pub fn lower_mir(mir: MIR) -> anyhow::Result<LIR> {
 					lir_instrs.extend(lower_swap(left, right, &mut lbcx)?);
 				}
 				MIRInstrKind::Abs { val } => {
-					lir_instrs.push(LIRInstruction::new(lower_abs(val, &lbcx)?))
+					lir_instrs.push(LIRInstruction::new(lower_abs(val, &lbcx)?));
+				}
+				MIRInstrKind::Use { val } => {
+					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Use(val)));
 				}
 			}
 		}

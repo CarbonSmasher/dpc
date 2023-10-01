@@ -7,3 +7,15 @@ pub fn remove_indices<T>(v: &mut Vec<T>, indices: &[usize]) {
 		keep
 	});
 }
+
+pub fn insert_indices<T: Clone>(v: Vec<T>, values: &[(usize, T)]) -> Vec<T> {
+	let mut out = Vec::new();
+	for i in 0..=v.len() {
+		if let Some(insert) = values.iter().find(|x| x.0 == i) {
+			out.push(insert.1.clone());
+		}
+		out.extend(v.get(i).cloned());
+	}
+
+	out
+}

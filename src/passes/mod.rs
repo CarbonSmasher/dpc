@@ -1,7 +1,9 @@
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::ir::ValidatePass;
-use self::opt::{lir::SimplifyLIRMathPass, mir::DSEPass};
+use self::opt::lir::InsertRegFinishesPass;
+use self::opt::mir::{MIRSimplifyPass, ConstPropPass};
+use self::opt::{lir::LIRSimplifyPass, mir::DSEPass};
 
 pub mod analysis;
 pub mod opt;
@@ -28,7 +30,13 @@ pub trait MIRPass {
 }
 
 pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
-	let passes = [Box::new(NullPass) as Box<dyn MIRPass>, Box::new(DSEPass)];
+	let passes = [
+		Box::new(NullPass) as Box<dyn MIRPass>,
+		Box::new(MIRSimplifyPass),
+		Box::new(ConstPropPass),
+		Box::new(MIRSimplifyPass),
+		Box::new(DSEPass),
+	];
 
 	for mut pass in passes {
 		pass.run_pass(mir)?;
@@ -44,7 +52,8 @@ pub trait LIRPass {
 pub fn run_lir_passes(lir: &mut LIR) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn LIRPass>,
-		Box::new(SimplifyLIRMathPass),
+		Box::new(LIRSimplifyPass),
+		Box::new(InsertRegFinishesPass),
 	];
 
 	for mut pass in passes {

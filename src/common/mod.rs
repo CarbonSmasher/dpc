@@ -115,7 +115,7 @@ impl Debug for DeclareBinding {
 		let text = match self {
 			Self::Value(val) => format!("{val:?}"),
 			Self::Cast(ty, val) => format!("cast {ty:?} {val:?}"),
-			Self::Index { val, index, ty } => format!("idx {ty:?} {val:?} {index:?}"),
+			Self::Index { val, index , ty} => format!("idx {ty:?} {val:?} {index:?}"),
 		};
 		write!(f, "{text}")
 	}

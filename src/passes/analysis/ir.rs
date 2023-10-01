@@ -50,7 +50,7 @@ impl IRPass for ValidatePass {
 							bail!("Incompatible types in instruction");
 						}
 					}
-					InstrKind::Abs { .. } => {}
+					InstrKind::Abs { .. } | InstrKind::Use { .. } => {}
 				}
 			}
 		}

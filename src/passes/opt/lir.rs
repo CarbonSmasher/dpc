@@ -1,16 +1,20 @@
+use std::collections::HashMap;
+
+use rayon::prelude::*;
+
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::Value;
-use crate::lir::{LIRBlock, LIRInstrKind, LIR};
+use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
 use crate::passes::LIRPass;
-use crate::util::remove_indices;
+use crate::util::{insert_indices, remove_indices};
 
-pub struct SimplifyLIRMathPass;
+pub struct LIRSimplifyPass;
 
-impl LIRPass for SimplifyLIRMathPass {
+impl LIRPass for LIRSimplifyPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		for (_, block) in &mut lir.functions {
 			loop {
-				let run_again = run_simplify_lir_math_iter(block);
+				let run_again = run_lir_simplify_iter(block);
 				if !run_again {
 					break;
 				}
@@ -21,9 +25,9 @@ impl LIRPass for SimplifyLIRMathPass {
 	}
 }
 
-/// Runs an iteration of the SimplifyLIRMathPass. Returns true if another iteration
+/// Runs an iteration of the LIRSimplifyPass. Returns true if another iteration
 /// should be run
-fn run_simplify_lir_math_iter(block: &mut LIRBlock) -> bool {
+fn run_lir_simplify_iter(block: &mut LIRBlock) -> bool {
 	let mut run_again = false;
 
 	let mut instrs_to_remove = Vec::new();
@@ -53,7 +57,9 @@ fn run_simplify_lir_math_iter(block: &mut LIRBlock) -> bool {
 			// Adds and subtracts by 0 or the integer limit don't do anything
 			LIRInstrKind::AddScore(_, Value::Constant(DataTypeContents::Score(score)))
 			| LIRInstrKind::SubScore(_, Value::Constant(DataTypeContents::Score(score)))
-				if score.get_i32() == 0 || score.get_i32() == i32::MAX || score.get_i32() == -i32::MAX =>
+				if score.get_i32() == 0
+					|| score.get_i32() == i32::MAX
+					|| score.get_i32() == -i32::MAX =>
 			{
 				true
 			}
@@ -160,4 +166,32 @@ fn run_simplify_lir_math_iter(block: &mut LIRBlock) -> bool {
 	remove_indices(&mut block.contents, &instrs_to_remove);
 
 	run_again
+}
+
+pub struct InsertRegFinishesPass;
+
+impl LIRPass for InsertRegFinishesPass {
+	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
+		for (_, block) in &mut lir.functions {
+			let mut last_used_positions = HashMap::new();
+			for (i, instr) in block.contents.iter().enumerate() {
+				for reg in instr.kind.get_used_regs() {
+					last_used_positions.insert(reg.clone(), i);
+				}
+			}
+
+			let finish_instrs: Vec<_> = last_used_positions
+				.par_iter()
+				.map(|(reg, pos)| {
+					(
+						pos + 1,
+						LIRInstruction::new(LIRInstrKind::FinishUsing(reg.clone())),
+					)
+				})
+				.collect();
+			block.contents = insert_indices(block.contents.clone(), &finish_instrs);
+		}
+
+		Ok(())
+	}
 }

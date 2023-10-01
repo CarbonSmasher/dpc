@@ -46,6 +46,7 @@ pub fn lower_ir(ir: IR) -> anyhow::Result<MIR> {
 				InstrKind::Max { left, right } => lower_exact!(mir_block, Max, left, right),
 				InstrKind::Swap { left, right } => lower_exact!(mir_block, Swap, left, right),
 				InstrKind::Abs { val } => lower_exact!(mir_block, Abs, val),
+				InstrKind::Use { val } => lower_exact!(mir_block, Use, val),
 			}
 		}
 

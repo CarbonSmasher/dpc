@@ -9,8 +9,14 @@ use dpc::common::ty::{
 	ScoreType, ScoreTypeContents,
 };
 use dpc::passes::{run_ir_passes, run_lir_passes, run_mir_passes};
+use rand::Rng;
 
 fn main() {
+	fuzz();
+}
+
+#[allow(dead_code)]
+fn known() {
 	let mut ir = IR::new();
 	let mut block = Block::new();
 	let reg_id = Identifier::from("foo");
@@ -123,19 +129,133 @@ fn main() {
 	ir.functions
 		.insert(FunctionInterface::new("foo::main".into()), block);
 
-	dbg!(&ir);
+	run(ir, true);
+}
+
+#[allow(dead_code)]
+fn fuzz() {
+	let instr_count = 1000000;
+	let mut rng = rand::thread_rng();
+	let mut reg_count = 0;
+
+	let mut block = Block::new();
+
+	let new_reg = reg_count;
+	reg_count += 1;
+	let kind = InstrKind::Declare {
+		left: Identifier::from(format!("reg{new_reg}")),
+		ty: DataType::Score(ScoreType::Score),
+		right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+			ScoreTypeContents::Score(0),
+		))),
+	};
+	block.contents.push(Instruction::new(kind));
+
+	for _ in 0..instr_count {
+		let left_reg = rng.gen_range(0..reg_count);
+		let left_reg = Identifier::from(format!("reg{left_reg}"));
+		let right_val = match rng.gen_range(0..2) {
+			0 => {
+				let reg = rng.gen_range(0..reg_count);
+				let reg = Identifier::from(format!("reg{reg}"));
+				Value::Mutable(MutableValue::Register(reg))
+			}
+			1 => {
+				let val = rng.gen_range(0..128);
+				Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(val)))
+			}
+			_ => continue,
+		};
+
+		let instr = rng.gen_range(0..10);
+		let kind = match instr {
+			0 => {
+				let new_reg = reg_count;
+				reg_count += 1;
+				InstrKind::Declare {
+					left: Identifier::from(format!("reg{new_reg}")),
+					ty: DataType::Score(ScoreType::Score),
+					right: DeclareBinding::Value(right_val),
+				}
+			}
+			1 => InstrKind::Assign {
+				left: MutableValue::Register(left_reg),
+				right: right_val,
+			},
+			2 => InstrKind::Add {
+				left: MutableValue::Register(left_reg),
+				right: right_val,
+			},
+			3 => InstrKind::Sub {
+				left: MutableValue::Register(left_reg),
+				right: right_val,
+			},
+			4 => InstrKind::Mul {
+				left: MutableValue::Register(left_reg),
+				right: right_val,
+			},
+			5 => InstrKind::Div {
+				left: MutableValue::Register(left_reg),
+				right: right_val,
+			},
+			6 => InstrKind::Mod {
+				left: MutableValue::Register(left_reg),
+				right: right_val,
+			},
+			7 => InstrKind::Min {
+				left: MutableValue::Register(left_reg),
+				right: right_val,
+			},
+			8 => InstrKind::Max {
+				left: MutableValue::Register(left_reg),
+				right: right_val,
+			},
+			9 => InstrKind::Abs {
+				val: MutableValue::Register(left_reg),
+			},
+			_ => continue,
+		};
+
+		block.contents.push(Instruction::new(kind));
+	}
+
+	let mut ir = IR::new();
+	ir.functions
+		.insert(FunctionInterface::new("foo::main".into()), block);
+	run(ir, false);
+}
+
+fn run(mut ir: IR, debug: bool) {
+	if debug {
+		println!("IR:");
+		dbg!(&ir.functions);
+	}
 	run_ir_passes(&mut ir).expect("IR passes failed");
 
 	let mut mir = lower_ir(ir).expect("Failed to lower IR");
-	dbg!(&mir);
+	if debug {
+		println!("MIR:");
+		dbg!(&mir.functions);
+	}
 	run_mir_passes(&mut mir).expect("MIR passes failed");
-	dbg!(&mir);
+	if debug {
+		println!("Optimized MIR:");
+		dbg!(&mir.functions);
+	}
 
 	let mut lir = lower_mir(mir).expect("Failed to lower MIR");
-	dbg!(&lir);
+	if debug {
+		println!("LIR:");
+		dbg!(&lir.functions);
+	}
 	run_lir_passes(&mut lir).expect("LIR passes failed");
-	dbg!(&lir);
+	if debug {
+		println!("Optimized LIR:");
+		dbg!(&lir.functions);
+	}
 
 	let datapack = link(lir).expect("Failed to link datapack");
-	dbg!(datapack);
+	if debug {
+		dbg!(datapack);
+	}
 }

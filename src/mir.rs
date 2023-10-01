@@ -17,7 +17,7 @@ impl MIR {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MIRBlock {
 	pub contents: Vec<MIRInstruction>,
 }
@@ -27,6 +27,12 @@ impl MIRBlock {
 		Self {
 			contents: Vec::new(),
 		}
+	}
+}
+
+impl Debug for MIRBlock {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.contents.fmt(f)
 	}
 }
 
@@ -92,6 +98,9 @@ pub enum MIRInstrKind {
 	Abs {
 		val: MutableValue,
 	},
+	Use {
+		val: MutableValue,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -108,6 +117,7 @@ impl Debug for MIRInstrKind {
 			Self::Max { left, right } => format!("max {left:?}, {right:?}"),
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
+			Self::Use { val } => format!("use {val:?}"),
 		};
 		write!(f, "{text}")
 	}
@@ -127,6 +137,7 @@ impl MIRInstrKind {
 			| Self::Max { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Swap { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Abs { val } => val.get_used_regs(),
+			Self::Use { val } => val.get_used_regs(),
 		}
 	}
 }

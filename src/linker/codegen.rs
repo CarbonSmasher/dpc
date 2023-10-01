@@ -16,6 +16,7 @@ use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 pub struct CodegenCx {
 	pub racx: RegAllocCx,
 	pub score_literals: HashSet<i32>,
+	pub requirements: HashSet<CodegenRequirement>,
 }
 
 impl CodegenCx {
@@ -23,9 +24,18 @@ impl CodegenCx {
 		Self {
 			racx: RegAllocCx::new(),
 			score_literals: HashSet::new(),
+			requirements: HashSet::new(),
 		}
 	}
+
+	pub fn add_requirement(&mut self, req: CodegenRequirement) {
+		self.requirements.insert(req);
+	}
 }
+
+/// Different requirements that can be imposed on the linker so that it generates functions
+#[derive(Hash, PartialEq, Eq, Clone, Copy)]
+pub enum CodegenRequirement {}
 
 pub fn codegen_block(block: &LIRBlock, ccx: &mut CodegenCx) -> anyhow::Result<Vec<String>> {
 	let ra = alloc_block_registers(block, &mut ccx.racx)?;
@@ -246,6 +256,7 @@ pub fn codegen_instr(
 
 			out.push(cmd);
 		}
+		LIRInstrKind::Use(..) | LIRInstrKind::FinishUsing(..) => {}
 	}
 
 	Ok(out)

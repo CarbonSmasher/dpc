@@ -17,7 +17,7 @@ impl IR {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Block {
 	pub contents: Vec<Instruction>,
 }
@@ -27,6 +27,12 @@ impl Block {
 		Self {
 			contents: Vec::new(),
 		}
+	}
+}
+
+impl Debug for Block {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.contents.fmt(f)
 	}
 }
 
@@ -93,6 +99,9 @@ pub enum InstrKind {
 	Abs {
 		val: MutableValue,
 	},
+	Use {
+		val: MutableValue,
+	},
 }
 
 impl Debug for InstrKind {
@@ -109,6 +118,7 @@ impl Debug for InstrKind {
 			Self::Max { left, right } => format!("max {left:?}, {right:?}"),
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
+			Self::Use { val } => format!("use {val:?}"),
 		};
 		write!(f, "{text}")
 	}

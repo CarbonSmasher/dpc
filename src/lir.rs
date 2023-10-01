@@ -1,6 +1,8 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::common::{ty::ArraySize, FunctionInterface, MutableValue, RegisterList, Value};
+use crate::common::{
+	ty::ArraySize, FunctionInterface, Identifier, MutableValue, RegisterList, Value,
+};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
@@ -15,7 +17,7 @@ impl LIR {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LIRBlock {
 	pub contents: Vec<LIRInstruction>,
 	pub regs: RegisterList,
@@ -27,6 +29,12 @@ impl LIRBlock {
 			contents: Vec::new(),
 			regs,
 		}
+	}
+}
+
+impl Debug for LIRBlock {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.contents.fmt(f)
 	}
 }
 
@@ -64,6 +72,32 @@ pub enum LIRInstrKind {
 		value: Value,
 		index: ArraySize,
 	},
+	Use(MutableValue),
+	FinishUsing(Identifier),
+}
+
+impl LIRInstrKind {
+	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+		match self {
+			LIRInstrKind::SetScore(left, right)
+			| LIRInstrKind::AddScore(left, right)
+			| LIRInstrKind::SubScore(left, right)
+			| LIRInstrKind::MulScore(left, right)
+			| LIRInstrKind::DivScore(left, right)
+			| LIRInstrKind::ModScore(left, right)
+			| LIRInstrKind::MinScore(left, right)
+			| LIRInstrKind::MaxScore(left, right)
+			| LIRInstrKind::SetData(left, right) => [left.get_used_regs(), right.get_used_regs()].concat(),
+			LIRInstrKind::SwapScore(left, right) => {
+				[left.get_used_regs(), right.get_used_regs()].concat()
+			}
+			LIRInstrKind::ConstIndexToScore { score, value, .. } => {
+				[score.get_used_regs(), value.get_used_regs()].concat()
+			}
+			LIRInstrKind::Use(val) => val.get_used_regs(),
+			LIRInstrKind::FinishUsing(reg) => vec![reg],
+		}
+	}
 }
 
 impl Debug for LIRInstrKind {
@@ -84,6 +118,8 @@ impl Debug for LIRInstrKind {
 				value,
 				index,
 			} => format!("idxcs {score:?} {value:?} {index}"),
+			Self::Use(val) => format!("use {val:?}"),
+			Self::FinishUsing(reg) => format!("fin {reg}"),
 		};
 		write!(f, "{text}")
 	}
