@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use itertools::Itertools;
+
 use crate::common::ResourceLocation;
 
 use super::{
@@ -20,11 +22,11 @@ pub fn gen_fns(ccx: &CodegenCx) -> anyhow::Result<HashMap<ResourceLocation, Func
 fn gen_init(ccx: &CodegenCx) -> Function {
 	let mut out = Function::new();
 
-	if ccx.racx.get_reg_count() > 0 {
+	if ccx.racx.has_allocated_reg() {
 		let cmd = format!("scoreboard objectives add {REG_OBJECTIVE} dummy");
 		out.contents.push(cmd);
 	}
-	if ccx.racx.get_local_count() > 0 {
+	if ccx.racx.has_allocated_local() {
 		let cmd = format!("data merge storage {REG_STORAGE_LOCATION} {{}}");
 		out.contents.push(cmd);
 	}
@@ -33,7 +35,7 @@ fn gen_init(ccx: &CodegenCx) -> Function {
 		out.contents.push(cmd);
 	}
 
-	for lit in &ccx.score_literals {
+	for lit in ccx.score_literals.iter().sorted() {
 		let cmd = format!(
 			"scoreboard players set {} {} {}",
 			format_lit_fake_player(*lit),

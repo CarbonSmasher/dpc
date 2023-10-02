@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::anyhow;
 use rayon::prelude::*;
 
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
@@ -13,6 +14,10 @@ pub struct LIRSimplifyPass;
 impl LIRPass for LIRSimplifyPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		for (_, block) in &mut lir.functions {
+			let block = lir
+				.blocks
+				.get_mut(block)
+				.ok_or(anyhow!("Block does not exist"))?;
 			loop {
 				let run_again = run_lir_simplify_iter(block);
 				if !run_again {
@@ -89,6 +94,17 @@ fn run_lir_simplify_iter(block: &mut LIRBlock) -> bool {
 				if score.get_i32().is_negative() =>
 			{
 				Some(LIRInstrKind::AddScore(
+					left.clone(),
+					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
+						score.get_i32().abs(),
+					))),
+				))
+			}
+			// Mod by negative is same as mod by positive
+			LIRInstrKind::ModScore(left, Value::Constant(DataTypeContents::Score(score)))
+				if score.get_i32().is_negative() =>
+			{
+				Some(LIRInstrKind::ModScore(
 					left.clone(),
 					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
 						score.get_i32().abs(),
@@ -173,6 +189,10 @@ pub struct InsertRegFinishesPass;
 impl LIRPass for InsertRegFinishesPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		for (_, block) in &mut lir.functions {
+			let block = lir
+				.blocks
+				.get_mut(block)
+				.ok_or(anyhow!("Block does not exist"))?;
 			let mut last_used_positions = HashMap::new();
 			for (i, instr) in block.contents.iter().enumerate() {
 				for reg in instr.kind.get_used_regs() {

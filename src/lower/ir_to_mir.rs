@@ -2,6 +2,8 @@ use crate::common::{DeclareBinding, MutableValue};
 use crate::ir::{InstrKind, IR};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction, MIR};
 
+use anyhow::anyhow;
+
 macro_rules! lower_exact {
 	($mir_block:expr, $kind:ident, $($arg:ident),+) => {
 		$mir_block
@@ -11,10 +13,14 @@ macro_rules! lower_exact {
 }
 
 /// Lower IR to MIR
-pub fn lower_ir(ir: IR) -> anyhow::Result<MIR> {
+pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 	let mut mir = MIR::new();
 
 	for (interface, block) in ir.functions {
+		let block = ir
+			.blocks
+			.remove(&block)
+			.ok_or(anyhow!("Block does not exist"))?;
 		let mut mir_block = MIRBlock::new();
 
 		for ir_instr in block.contents {
@@ -50,7 +56,8 @@ pub fn lower_ir(ir: IR) -> anyhow::Result<MIR> {
 			}
 		}
 
-		mir.functions.insert(interface, mir_block);
+		let id = mir.blocks.add(mir_block);
+		mir.functions.insert(interface, id);
 	}
 
 	Ok(mir)

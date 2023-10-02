@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 
 use crate::common::ty::get_op_tys;
 use crate::common::Register;
@@ -12,6 +12,10 @@ pub struct ValidatePass;
 impl IRPass for ValidatePass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()> {
 		for (_, block) in &ir.functions {
+			let block = ir
+				.blocks
+				.get_mut(block)
+				.ok_or(anyhow!("Block does not exist"))?;
 			let mut regs = HashMap::new();
 			for instr in &block.contents {
 				match &instr.kind {
@@ -25,7 +29,7 @@ impl IRPass for ValidatePass {
 						}
 						let reg = Register {
 							id: left.clone(),
-							ty: *ty,
+							ty: ty.clone(),
 						};
 						regs.insert(left.clone(), reg);
 					}

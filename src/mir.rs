@@ -1,18 +1,20 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::common::{
-	ty::DataType, DeclareBinding, FunctionInterface, Identifier, MutableValue, Value,
-};
+use crate::common::block::{BlockAllocator, BlockID};
+use crate::common::ty::DataType;
+use crate::common::{DeclareBinding, FunctionInterface, Identifier, MutableValue, Value};
 
 #[derive(Debug, Clone)]
 pub struct MIR {
-	pub functions: HashMap<FunctionInterface, MIRBlock>,
+	pub functions: HashMap<FunctionInterface, BlockID>,
+	pub blocks: BlockAllocator<MIRBlock>,
 }
 
 impl MIR {
 	pub fn new() -> Self {
 		Self {
 			functions: HashMap::new(),
+			blocks: BlockAllocator::new(),
 		}
 	}
 }

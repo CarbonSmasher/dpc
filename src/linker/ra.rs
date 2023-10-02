@@ -13,6 +13,8 @@ use super::text::{format_local_storage_entry, format_reg_fake_player};
 pub struct RegAllocCx {
 	regs: RegAllocator,
 	locals: RegAllocator,
+	has_allocated_reg: bool,
+	has_allocated_local: bool,
 }
 
 impl RegAllocCx {
@@ -20,19 +22,19 @@ impl RegAllocCx {
 		Self {
 			regs: RegAllocator::new(),
 			locals: RegAllocator::new(),
+			has_allocated_reg: false,
+			has_allocated_local: false,
 		}
 	}
 
 	pub fn new_reg(&mut self) -> u32 {
-		let reg = self.regs.alloc();
-		// format_reg_fake_player(reg)
-		reg
+		self.has_allocated_reg = true;
+		self.regs.alloc()
 	}
 
 	pub fn new_local(&mut self) -> u32 {
-		let reg = self.locals.alloc();
-		// format_local_storage_entry(reg)
-		reg
+		self.has_allocated_local = true;
+		self.locals.alloc()
 	}
 
 	pub fn finish_using_all(&mut self) {
@@ -46,6 +48,14 @@ impl RegAllocCx {
 
 	pub fn get_local_count(&self) -> u32 {
 		self.locals.get_count()
+	}
+
+	pub fn has_allocated_reg(&self) -> bool {
+		self.has_allocated_reg
+	}
+
+	pub fn has_allocated_local(&self) -> bool {
+		self.has_allocated_local
 	}
 }
 
@@ -143,9 +153,6 @@ pub fn alloc_block_registers(
 			}
 		}
 	}
-
-	// We are finished using all registers in this block
-	racx.finish_using_all();
 
 	let out = RegAllocResult {
 		regs: out_regs

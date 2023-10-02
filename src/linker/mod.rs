@@ -6,6 +6,8 @@ pub mod text;
 
 use crate::lir::LIR;
 
+use anyhow::anyhow;
+
 use self::codegen::{codegen_block, CodegenCx};
 use self::datapack::{Datapack, Function};
 
@@ -14,6 +16,10 @@ pub fn link(lir: LIR) -> anyhow::Result<Datapack> {
 
 	let mut ccx = CodegenCx::new();
 	for (interface, block) in lir.functions {
+		let block = lir
+			.blocks
+			.get(&block)
+			.ok_or(anyhow!("Block does not exist"))?;
 		let mut fun = Function::new();
 		let code = codegen_block(&block, &mut ccx)?;
 		fun.contents = code;

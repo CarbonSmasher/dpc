@@ -1,3 +1,4 @@
+pub mod block;
 pub mod ty;
 
 use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
@@ -52,7 +53,7 @@ impl MutableValue {
 				let reg = regs
 					.get(id)
 					.with_context(|| format!("Failed to get register ${id}"))?;
-				reg.ty
+				reg.ty.clone()
 			}
 		};
 
@@ -94,8 +95,8 @@ impl DeclareBinding {
 	pub fn get_ty(&self, regs: &RegisterList) -> anyhow::Result<DataType> {
 		let out = match self {
 			Self::Value(val) => val.get_ty(regs)?,
-			Self::Cast(ty, ..) => *ty,
-			Self::Index { ty, .. } => *ty,
+			Self::Cast(ty, ..) => ty.clone(),
+			Self::Index { ty, .. } => ty.clone(),
 		};
 
 		Ok(out)
@@ -115,7 +116,7 @@ impl Debug for DeclareBinding {
 		let text = match self {
 			Self::Value(val) => format!("{val:?}"),
 			Self::Cast(ty, val) => format!("cast {ty:?} {val:?}"),
-			Self::Index { val, index , ty} => format!("idx {ty:?} {val:?} {index:?}"),
+			Self::Index { val, index, ty } => format!("idx {ty:?} {val:?} {index:?}"),
 		};
 		write!(f, "{text}")
 	}
@@ -187,7 +188,7 @@ impl FunctionSignature {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReturnType {
 	Void,
 	Standard(DataType),

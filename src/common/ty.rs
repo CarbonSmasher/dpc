@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use super::{MutableValue, RegisterList, Value};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum DataType {
 	Score(ScoreType),
 	NBT(NBTType),
@@ -62,7 +62,7 @@ impl Debug for ScoreType {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum NBTType {
 	Byte,
 	Bool,
@@ -70,6 +70,7 @@ pub enum NBTType {
 	Int,
 	Long,
 	Arr(NBTArrayType),
+	List(Box<NBTType>),
 }
 
 impl NBTType {
@@ -85,6 +86,9 @@ impl NBTType {
 			),
 			Self::Arr(other_arr) => {
 				matches!(self, Self::Arr(this_arr) if this_arr.is_trivially_castable(other_arr))
+			}
+			Self::List(other_list) => {
+				matches!(self, Self::List(this_list) if this_list.is_trivially_castable(other_list))
 			}
 		}
 	}
@@ -107,6 +111,7 @@ impl Debug for NBTType {
 			Self::Int => "nint".to_string(),
 			Self::Long => "nlong".to_string(),
 			Self::Arr(arr) => format!("{arr:?}"),
+			Self::List(ty) => format!("{ty:?}[]"),
 		};
 		write!(f, "{text}")
 	}
@@ -138,9 +143,9 @@ impl NBTArrayType {
 impl Debug for NBTArrayType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
-			Self::Byte(size) => format!("nbyte[{size}]"),
-			Self::Int(size) => format!("nint[{size}]"),
-			Self::Long(size) => format!("nlong[{size}]"),
+			Self::Byte(size) => format!("[nbyte;{size}]"),
+			Self::Int(size) => format!("[nint;{size}]"),
+			Self::Long(size) => format!("[nlong;{size}]"),
 		};
 		write!(f, "{text}")
 	}
@@ -218,6 +223,7 @@ pub enum NBTTypeContents {
 	Int(Int),
 	Long(Long),
 	Arr(NBTArrayTypeContents),
+	List(NBTType, Vec<NBTTypeContents>),
 }
 
 impl NBTTypeContents {
@@ -229,6 +235,7 @@ impl NBTTypeContents {
 			Self::Int(..) => DataType::NBT(NBTType::Int),
 			Self::Long(..) => DataType::NBT(NBTType::Long),
 			Self::Arr(arr) => arr.get_ty(),
+			Self::List(ty, ..) => DataType::NBT(NBTType::List(Box::new(ty.clone()))),
 		}
 	}
 
@@ -240,6 +247,7 @@ impl NBTTypeContents {
 			Self::Int(val) => format!("{val}"),
 			Self::Long(val) => format!("{val}l"),
 			Self::Arr(arr) => arr.get_literal_str(),
+			Self::List(_, list) => fmt_arr(list.iter().map(|x| x.get_literal_str())),
 		}
 	}
 }
@@ -253,6 +261,7 @@ impl Debug for NBTTypeContents {
 			Self::Int(val) => format!("{val}i"),
 			Self::Long(val) => format!("{val}l"),
 			Self::Arr(val) => format!("{val:?}"),
+			Self::List(_, list) => format!("{}", fmt_arr(list.iter().map(|x| format!("{x:?}")))),
 		};
 		write!(f, "{text}")
 	}

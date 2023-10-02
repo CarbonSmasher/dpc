@@ -1,18 +1,20 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::common::{
-	ty::ArraySize, FunctionInterface, Identifier, MutableValue, RegisterList, Value,
-};
+use crate::common::block::{BlockAllocator, BlockID};
+use crate::common::ty::ArraySize;
+use crate::common::{FunctionInterface, Identifier, MutableValue, RegisterList, Value};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
-	pub functions: HashMap<FunctionInterface, LIRBlock>,
+	pub functions: HashMap<FunctionInterface, BlockID>,
+	pub blocks: BlockAllocator<LIRBlock>,
 }
 
 impl LIR {
 	pub fn new() -> Self {
 		Self {
 			functions: HashMap::new(),
+			blocks: BlockAllocator::new(),
 		}
 	}
 }

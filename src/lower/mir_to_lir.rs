@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 
 use crate::common::ty::{get_op_tys, ArraySize, DataType, DataTypeContents, ScoreTypeContents};
 use crate::common::{DeclareBinding, Identifier, MutableValue, Register, Value};
@@ -8,10 +8,14 @@ use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
 use crate::mir::{MIRInstrKind, MIR};
 
 /// Lower IR to LIR
-pub fn lower_mir(mir: MIR) -> anyhow::Result<LIR> {
+pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 	let mut lir = LIR::new();
 
 	for (interface, block) in mir.functions {
+		let block = mir
+			.blocks
+			.remove(&block)
+			.ok_or(anyhow!("Block does not exist"))?;
 		let mut lir_instrs = Vec::new();
 
 		let mut lbcx = LowerBlockCx::new();
@@ -65,7 +69,8 @@ pub fn lower_mir(mir: MIR) -> anyhow::Result<LIR> {
 		let mut lir_block = LIRBlock::new(lbcx.registers);
 		lir_block.contents = lir_instrs;
 
-		lir.functions.insert(interface, lir_block);
+		let id = lir.blocks.add(lir_block);
+		lir.functions.insert(interface, id);
 	}
 
 	Ok(lir)
@@ -113,7 +118,7 @@ fn lower_assign(
 				// Declare the new register
 				let reg = Register {
 					id: new_reg.clone(),
-					ty: *ty,
+					ty: ty.clone(),
 				};
 				lbcx.registers.insert(new_reg.clone(), reg);
 
@@ -141,7 +146,7 @@ fn lower_assign(
 			// Declare the new register
 			let reg = Register {
 				id: new_reg.clone(),
-				ty: *ty,
+				ty: ty.clone(),
 			};
 			lbcx.registers.insert(new_reg.clone(), reg);
 

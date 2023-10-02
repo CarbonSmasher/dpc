@@ -2,7 +2,7 @@ use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::ir::ValidatePass;
 use self::opt::lir::InsertRegFinishesPass;
-use self::opt::mir::{MIRSimplifyPass, ConstPropPass};
+use self::opt::mir::{MIRSimplifyPass, ConstPropPass, InstCombinePass};
 use self::opt::{lir::LIRSimplifyPass, mir::DSEPass};
 
 pub mod analysis;
@@ -36,6 +36,7 @@ pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 		Box::new(ConstPropPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(DSEPass),
+		Box::new(InstCombinePass),
 	];
 
 	for mut pass in passes {

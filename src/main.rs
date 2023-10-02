@@ -50,6 +50,18 @@ fn known() {
 		left: MutableValue::Register(reg_id.clone()),
 		right: Value::Mutable(MutableValue::Register(reg2_id.clone())),
 	}));
+	block.contents.push(Instruction::new(InstrKind::Add {
+		left: MutableValue::Register(reg_id.clone()),
+		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(7))),
+	}));
+	block.contents.push(Instruction::new(InstrKind::Add {
+		left: MutableValue::Register(reg_id.clone()),
+		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-15))),
+	}));
+	block.contents.push(Instruction::new(InstrKind::Sub {
+		left: MutableValue::Register(reg_id.clone()),
+		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-1290))),
+	}));
 	block.contents.push(Instruction::new(InstrKind::Declare {
 		left: reg3_id.clone(),
 		ty: DataType::Score(ScoreType::UScore),
@@ -126,6 +138,7 @@ fn known() {
 		},
 	}));
 
+	let block = ir.blocks.add(block);
 	ir.functions
 		.insert(FunctionInterface::new("foo::main".into()), block);
 
@@ -134,7 +147,7 @@ fn known() {
 
 #[allow(dead_code)]
 fn fuzz() {
-	let instr_count = 1000000;
+	let instr_count = 100;
 	let mut rng = rand::thread_rng();
 	let mut reg_count = 0;
 
@@ -220,38 +233,39 @@ fn fuzz() {
 	}
 
 	let mut ir = IR::new();
+	let block = ir.blocks.add(block);
 	ir.functions
 		.insert(FunctionInterface::new("foo::main".into()), block);
-	run(ir, false);
+	run(ir, true);
 }
 
 fn run(mut ir: IR, debug: bool) {
 	if debug {
 		println!("IR:");
-		dbg!(&ir.functions);
+		dbg!(&ir.blocks);
 	}
 	run_ir_passes(&mut ir).expect("IR passes failed");
 
 	let mut mir = lower_ir(ir).expect("Failed to lower IR");
 	if debug {
 		println!("MIR:");
-		dbg!(&mir.functions);
+		dbg!(&mir.blocks);
 	}
 	run_mir_passes(&mut mir).expect("MIR passes failed");
 	if debug {
 		println!("Optimized MIR:");
-		dbg!(&mir.functions);
+		dbg!(&mir.blocks);
 	}
 
 	let mut lir = lower_mir(mir).expect("Failed to lower MIR");
 	if debug {
 		println!("LIR:");
-		dbg!(&lir.functions);
+		dbg!(&lir.blocks);
 	}
 	run_lir_passes(&mut lir).expect("LIR passes failed");
 	if debug {
 		println!("Optimized LIR:");
-		dbg!(&lir.functions);
+		dbg!(&lir.blocks);
 	}
 
 	let datapack = link(lir).expect("Failed to link datapack");
