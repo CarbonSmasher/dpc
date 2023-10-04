@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
 use anyhow::anyhow;
+use dashmap::{DashMap, DashSet};
 use rayon::prelude::*;
 
+use crate::common::ty::DataType;
 use crate::common::Identifier;
 use crate::lir::LIRBlock;
-use crate::{common::ty::DataType, lir::LIRInstrKind};
 
 use super::text::{format_local_storage_entry, format_reg_fake_player};
 
@@ -63,19 +64,24 @@ impl RegAllocCx {
 #[derive(Debug)]
 pub struct RegAllocator {
 	count: u32,
-	available: Vec<u32>,
+	available: DashSet<u32>,
+	available_ordered: Vec<u32>,
 }
 
 impl RegAllocator {
 	pub fn new() -> Self {
 		Self {
 			count: 0,
-			available: Vec::new(),
+			available: DashSet::new(),
+			available_ordered: Vec::new(),
 		}
 	}
 
 	pub fn alloc(&mut self) -> u32 {
-		if let Some(reg) = self.available.pop() {
+		// If an existing register number is available because it was finished,
+		// then we use that. Otherwise, increase the count.
+		if let Some(reg) = self.available_ordered.pop() {
+			self.available.remove(&reg);
 			reg
 		} else {
 			let old_count = self.count;
@@ -85,13 +91,15 @@ impl RegAllocator {
 	}
 
 	pub fn finish_using(&mut self, reg: u32) {
-		if !self.available.contains(&reg) {
-			self.available.push(reg);
+		let not_already_in = self.available.insert(reg);
+		if not_already_in {
+			self.available_ordered.push(reg);
 		}
 	}
 
 	pub fn finish_using_all(&mut self) {
-		self.available = Vec::new();
+		self.available.clear();
+		self.available_ordered.clear();
 		self.count = 0;
 	}
 
@@ -106,6 +114,15 @@ pub struct RegAllocResult {
 	pub locals: HashMap<Identifier, String>,
 }
 
+impl RegAllocResult {
+	pub fn new() -> Self {
+		Self {
+			regs: HashMap::new(),
+			locals: HashMap::new(),
+		}
+	}
+}
+
 pub fn alloc_block_registers(
 	block: &LIRBlock,
 	racx: &mut RegAllocCx,
@@ -113,26 +130,9 @@ pub fn alloc_block_registers(
 	let mut out_regs = HashMap::new();
 	let mut out_locals = HashMap::new();
 
-	for instr in &block.contents {
-		if let LIRInstrKind::FinishUsing(reg_id) = &instr.kind {
-			let reg = block
-				.regs
-				.get(reg_id)
-				.ok_or(anyhow!("Used register does not exist"))?;
-			match reg.ty {
-				DataType::Score(..) => racx.regs.finish_using(
-					*out_regs
-						.get(reg_id)
-						.ok_or(anyhow!("Register does not exist"))?,
-				),
-				DataType::NBT(..) => racx.locals.finish_using(
-					*out_locals
-						.get(reg_id)
-						.ok_or(anyhow!("Register does not exist"))?,
-				),
-			}
-			continue;
-		}
+	let last_uses = analyze_last_register_uses(block);
+
+	for (i, instr) in block.contents.iter().enumerate() {
 		let used_regs = instr.kind.get_used_regs();
 		for reg_id in used_regs {
 			let reg = block
@@ -152,6 +152,27 @@ pub fn alloc_block_registers(
 				}
 			}
 		}
+
+		if let Some(regs) = last_uses.get(&i) {
+			for reg_id in regs.iter() {
+				let reg = block
+					.regs
+					.get(reg_id)
+					.ok_or(anyhow!("Used register does not exist"))?;
+				match reg.ty {
+					DataType::Score(..) => racx.regs.finish_using(
+						*out_regs
+							.get(reg_id)
+							.ok_or(anyhow!("Used register does not exist"))?,
+					),
+					DataType::NBT(..) => racx.locals.finish_using(
+						*out_locals
+							.get(reg_id)
+							.ok_or(anyhow!("Used register does not exist"))?,
+					),
+				}
+			}
+		}
 	}
 
 	let out = RegAllocResult {
@@ -166,4 +187,21 @@ pub fn alloc_block_registers(
 	};
 
 	Ok(out)
+}
+
+fn analyze_last_register_uses(block: &LIRBlock) -> DashMap<usize, Vec<Identifier>> {
+	let last_used_positions = DashMap::new();
+	for (i, instr) in block.contents.iter().enumerate().rev() {
+		last_used_positions.insert(
+			i,
+			instr
+				.kind
+				.get_used_regs()
+				.iter()
+				.map(|x| (*x).clone())
+				.collect(),
+		);
+	}
+
+	last_used_positions
 }

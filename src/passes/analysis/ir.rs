@@ -1,13 +1,17 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, bail};
 
 use crate::common::ty::get_op_tys;
-use crate::common::Register;
+use crate::common::{Register, RegisterList};
 use crate::ir::{InstrKind, IR};
-use crate::passes::IRPass;
+use crate::passes::{IRPass, Pass};
 
 pub struct ValidatePass;
+
+impl Pass for ValidatePass {
+	fn get_name(&self) -> &'static str {
+		"validate"
+	}
+}
 
 impl IRPass for ValidatePass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()> {
@@ -16,7 +20,7 @@ impl IRPass for ValidatePass {
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;
-			let mut regs = HashMap::new();
+			let regs = RegisterList::new();
 			for instr in &block.contents {
 				match &instr.kind {
 					InstrKind::Declare { left, ty, right } => {

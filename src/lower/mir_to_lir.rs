@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, bail};
 
+use crate::common::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
 use crate::common::ty::{get_op_tys, ArraySize, DataType, DataTypeContents, ScoreTypeContents};
-use crate::common::{DeclareBinding, Identifier, MutableValue, Register, Value};
+use crate::common::{DeclareBinding, Identifier, MutableValue, Register, ScoreValue, Value, RegisterList};
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
 use crate::mir::{MIRInstrKind, MIR};
 
@@ -58,7 +57,7 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 					lir_instrs.extend(lower_swap(left, right, &mut lbcx)?);
 				}
 				MIRInstrKind::Abs { val } => {
-					lir_instrs.push(LIRInstruction::new(lower_abs(val, &lbcx)?));
+					lir_instrs.push(lower_abs(val, &lbcx)?);
 				}
 				MIRInstrKind::Use { val } => {
 					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Use(val)));
@@ -77,14 +76,14 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 }
 
 struct LowerBlockCx {
-	registers: HashMap<Identifier, Register>,
+	registers: RegisterList,
 	additional_reg_count: u32,
 }
 
 impl LowerBlockCx {
 	fn new() -> Self {
 		Self {
-			registers: HashMap::new(),
+			registers: RegisterList::new(),
 			additional_reg_count: 0,
 		}
 	}
@@ -320,14 +319,28 @@ fn lower_swap(
 	Ok(out)
 }
 
-fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {
+fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstruction> {
 	let kind = match val.get_ty(&lbcx.registers)? {
-		DataType::Score(..) => LIRInstrKind::ModScore(
-			val,
-			Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(i32::MAX))),
+		DataType::Score(..) => LIRInstrKind::MulScore(
+			val.clone(),
+			Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-1))),
 		),
 		_ => bail!("Instruction does not allow this type"),
 	};
 
-	Ok(kind)
+	let modifier = Modifier::If {
+		condition: Box::new(IfModCondition::Score(IfScoreCondition::Range {
+			score: val.to_mutable_score_value(),
+			left: IfScoreRangeEnd::Infinite,
+			right: IfScoreRangeEnd::Fixed {
+				value: ScoreValue::Constant(ScoreTypeContents::Score(-1)),
+				inclusive: true,
+			},
+		})),
+		negate: false,
+	};
+
+	let instr = LIRInstruction::with_modifiers(kind, vec![modifier]);
+
+	Ok(instr)
 }

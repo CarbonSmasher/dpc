@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{BlockAllocator, BlockID};
+use crate::common::modifier::Modifier;
 use crate::common::ty::ArraySize;
 use crate::common::{FunctionInterface, Identifier, MutableValue, RegisterList, Value};
 
@@ -43,11 +44,16 @@ impl Debug for LIRBlock {
 #[derive(Clone)]
 pub struct LIRInstruction {
 	pub kind: LIRInstrKind,
+	pub modifiers: Vec<Modifier>,
 }
 
 impl LIRInstruction {
 	pub fn new(kind: LIRInstrKind) -> Self {
-		Self { kind }
+		Self::with_modifiers(kind, Vec::new())
+	}
+
+	pub fn with_modifiers(kind: LIRInstrKind, modifiers: Vec<Modifier>) -> Self {
+		Self { kind, modifiers }
 	}
 }
 
@@ -75,7 +81,6 @@ pub enum LIRInstrKind {
 		index: ArraySize,
 	},
 	Use(MutableValue),
-	FinishUsing(Identifier),
 }
 
 impl LIRInstrKind {
@@ -97,7 +102,6 @@ impl LIRInstrKind {
 				[score.get_used_regs(), value.get_used_regs()].concat()
 			}
 			LIRInstrKind::Use(val) => val.get_used_regs(),
-			LIRInstrKind::FinishUsing(reg) => vec![reg],
 		}
 	}
 }
@@ -121,7 +125,6 @@ impl Debug for LIRInstrKind {
 				index,
 			} => format!("idxcs {score:?} {value:?} {index}"),
 			Self::Use(val) => format!("use {val:?}"),
-			Self::FinishUsing(reg) => format!("fin {reg}"),
 		};
 		write!(f, "{text}")
 	}

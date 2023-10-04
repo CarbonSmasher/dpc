@@ -1,15 +1,19 @@
-use std::collections::HashMap;
-
 use anyhow::anyhow;
-use rayon::prelude::*;
+use dashmap::DashSet;
 
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::Value;
-use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
-use crate::passes::LIRPass;
-use crate::util::{insert_indices, remove_indices};
+use crate::lir::{LIRBlock, LIRInstrKind, LIR};
+use crate::passes::{LIRPass, Pass};
+use crate::util::remove_indices;
 
 pub struct LIRSimplifyPass;
+
+impl Pass for LIRSimplifyPass {
+	fn get_name(&self) -> &'static str {
+		"simplify_lir"
+	}
+}
 
 impl LIRPass for LIRSimplifyPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
@@ -18,12 +22,17 @@ impl LIRPass for LIRSimplifyPass {
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;
+
+			// We persist the same set of removed instructions across all iterations
+			// so that we only have to run the vec retain operation once, saving a lot of copies
+			let mut instrs_to_remove = DashSet::new();
 			loop {
-				let run_again = run_lir_simplify_iter(block);
+				let run_again = run_lir_simplify_iter(block, &mut instrs_to_remove);
 				if !run_again {
 					break;
 				}
 			}
+			remove_indices(&mut block.contents, &instrs_to_remove);
 		}
 
 		Ok(())
@@ -32,11 +41,11 @@ impl LIRPass for LIRSimplifyPass {
 
 /// Runs an iteration of the LIRSimplifyPass. Returns true if another iteration
 /// should be run
-fn run_lir_simplify_iter(block: &mut LIRBlock) -> bool {
+fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<usize>) -> bool {
 	let mut run_again = false;
 
-	let mut instrs_to_remove = Vec::new();
-	for (i, instr) in block.contents.iter_mut().enumerate() {
+	// let mut instrs_to_remove: TinyVec<[usize; 10]> = TinyVec::new();
+	for (i, instr) in block.contents.iter().enumerate() {
 		let remove = match &instr.kind {
 			// Reflexive property; set to self or swap with self
 			LIRInstrKind::SetScore(left, Value::Mutable(right))
@@ -72,10 +81,14 @@ fn run_lir_simplify_iter(block: &mut LIRBlock) -> bool {
 		};
 
 		if remove {
-			instrs_to_remove.push(i);
-			run_again = true;
+			let is_new = instrs_to_remove.insert(i);
+			if is_new {
+				run_again = true;
+			}
 		}
+	}
 
+	let repl_mutated = block.contents.iter_mut().fold(false, |out, instr| {
 		// Instructions to replace
 		let kind_repl = match &instr.kind {
 			// Add by negative is sub by positive
@@ -175,43 +188,15 @@ fn run_lir_simplify_iter(block: &mut LIRBlock) -> bool {
 
 		if let Some(kind_repl) = kind_repl {
 			instr.kind = kind_repl;
-			run_again = true;
+			true
+		} else {
+			out
 		}
-	}
+	});
 
-	remove_indices(&mut block.contents, &instrs_to_remove);
+	if repl_mutated {
+		run_again = true;
+	}
 
 	run_again
-}
-
-pub struct InsertRegFinishesPass;
-
-impl LIRPass for InsertRegFinishesPass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		for (_, block) in &mut lir.functions {
-			let block = lir
-				.blocks
-				.get_mut(block)
-				.ok_or(anyhow!("Block does not exist"))?;
-			let mut last_used_positions = HashMap::new();
-			for (i, instr) in block.contents.iter().enumerate() {
-				for reg in instr.kind.get_used_regs() {
-					last_used_positions.insert(reg.clone(), i);
-				}
-			}
-
-			let finish_instrs: Vec<_> = last_used_positions
-				.par_iter()
-				.map(|(reg, pos)| {
-					(
-						pos + 1,
-						LIRInstruction::new(LIRInstrKind::FinishUsing(reg.clone())),
-					)
-				})
-				.collect();
-			block.contents = insert_indices(block.contents.clone(), &finish_instrs);
-		}
-
-		Ok(())
-	}
 }

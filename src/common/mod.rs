@@ -1,11 +1,15 @@
 pub mod block;
+pub mod modifier;
 pub mod ty;
 
-use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
+use std::{fmt::Debug, hash::Hash, sync::Arc};
 
-use anyhow::Context;
+use anyhow::{bail, Context};
+use dashmap::DashMap;
 
-use self::ty::{DataType, DataTypeContents};
+use crate::mc::Score;
+
+use self::ty::{DataType, DataTypeContents, ScoreTypeContents};
 
 #[derive(Clone)]
 pub enum Value {
@@ -28,6 +32,21 @@ impl Value {
 			Self::Mutable(val) => val.get_used_regs(),
 			_ => Vec::new(),
 		}
+	}
+
+	pub fn to_score_value(self) -> anyhow::Result<ScoreValue> {
+		let out = match self {
+			Self::Constant(val) => {
+				if let DataTypeContents::Score(score) = val {
+					ScoreValue::Constant(score)
+				} else {
+					bail!("Expected value to be a score");
+				}
+			}
+			Self::Mutable(val) => ScoreValue::Mutable(val.to_mutable_score_value()),
+		};
+
+		Ok(out)
 	}
 }
 
@@ -68,6 +87,12 @@ impl MutableValue {
 
 	pub fn is_same_val(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Register(left), Self::Register(right)) if left == right)
+	}
+
+	pub fn to_mutable_score_value(self) -> MutableScoreValue {
+		match self {
+			Self::Register(reg) => MutableScoreValue::Reg(reg),
+		}
 	}
 }
 
@@ -130,9 +155,21 @@ pub struct Register {
 	pub ty: DataType,
 }
 
-pub type RegisterList = HashMap<Identifier, Register>;
+pub type RegisterList = DashMap<Identifier, Register>;
 
 pub type ResourceLocation = Identifier;
+
+#[derive(Debug, Clone)]
+pub enum ScoreValue {
+	Constant(ScoreTypeContents),
+	Mutable(MutableScoreValue),
+}
+
+#[derive(Debug, Clone)]
+pub enum MutableScoreValue {
+	Score(Score),
+	Reg(Identifier),
+}
 
 #[derive(Debug, Clone, Eq)]
 pub struct FunctionInterface {
