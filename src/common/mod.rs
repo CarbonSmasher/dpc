@@ -1,4 +1,6 @@
 pub mod block;
+pub mod target_selector;
+pub mod mc;
 pub mod modifier;
 pub mod ty;
 
@@ -7,7 +9,7 @@ use std::{fmt::Debug, hash::Hash, sync::Arc};
 use anyhow::{bail, Context};
 use dashmap::DashMap;
 
-use crate::mc::Score;
+use self::mc::Score;
 
 use self::ty::{DataType, DataTypeContents, ScoreTypeContents};
 
@@ -165,10 +167,28 @@ pub enum ScoreValue {
 	Mutable(MutableScoreValue),
 }
 
+impl ScoreValue {
+	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+		match self {
+			Self::Constant(..) => Vec::new(),
+			ScoreValue::Mutable(val) => val.get_used_regs(),
+		}
+	}
+}
+
 #[derive(Debug, Clone)]
 pub enum MutableScoreValue {
 	Score(Score),
 	Reg(Identifier),
+}
+
+impl MutableScoreValue {
+	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+		match self {
+			Self::Score(..) => Vec::new(),
+			Self::Reg(reg) => vec![reg],
+		}
+	}
 }
 
 #[derive(Debug, Clone, Eq)]

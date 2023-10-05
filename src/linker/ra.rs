@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use anyhow::anyhow;
 use dashmap::{DashMap, DashSet};
-use rayon::prelude::*;
 
 use crate::common::ty::DataType;
 use crate::common::Identifier;
@@ -133,7 +132,7 @@ pub fn alloc_block_registers(
 	let last_uses = analyze_last_register_uses(block);
 
 	for (i, instr) in block.contents.iter().enumerate() {
-		let used_regs = instr.kind.get_used_regs();
+		let used_regs = instr.get_used_regs();
 		for reg_id in used_regs {
 			let reg = block
 				.regs
@@ -177,11 +176,11 @@ pub fn alloc_block_registers(
 
 	let out = RegAllocResult {
 		regs: out_regs
-			.par_iter()
+			.iter()
 			.map(|(x, y)| (x.clone(), format_reg_fake_player(*y)))
 			.collect(),
 		locals: out_locals
-			.par_iter()
+			.iter()
 			.map(|(x, y)| (x.clone(), format_local_storage_entry(*y)))
 			.collect(),
 	};
@@ -191,16 +190,18 @@ pub fn alloc_block_registers(
 
 fn analyze_last_register_uses(block: &LIRBlock) -> DashMap<usize, Vec<Identifier>> {
 	let last_used_positions = DashMap::new();
+	let mut already_spent = DashSet::new();
 	for (i, instr) in block.contents.iter().enumerate().rev() {
+		let used_regs = instr.get_used_regs();
 		last_used_positions.insert(
 			i,
-			instr
-				.kind
-				.get_used_regs()
+			used_regs
 				.iter()
+				.filter(|x| !already_spent.contains(*x))
 				.map(|x| (*x).clone())
 				.collect(),
 		);
+		already_spent.extend(used_regs);
 	}
 
 	last_used_positions

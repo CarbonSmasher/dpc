@@ -8,7 +8,7 @@ use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::{DeclareBinding, Identifier, MutableValue, Value};
 use crate::mir::{MIRBlock, MIRInstrKind, MIR};
 use crate::passes::{MIRPass, Pass};
-use crate::util::remove_indices;
+use crate::util::{remove_indices, DashSetEmptyTracker};
 
 pub struct DSEPass;
 
@@ -20,13 +20,14 @@ impl Pass for DSEPass {
 
 impl MIRPass for DSEPass {
 	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
+		let mut instrs_to_remove = DashSet::new();
 		for (_, block) in &mut mir.functions {
 			let block = mir
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
-			let mut instrs_to_remove = DashSet::new();
+			instrs_to_remove.clear();
 			loop {
 				let run_again = run_dse_iter(block, &mut instrs_to_remove);
 				if !run_again {
@@ -252,7 +253,7 @@ impl MIRPass for InstCombinePass {
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;
-			let mut removed_indices = DashSet::new();
+			let mut removed_indices = DashSetEmptyTracker::new();
 			loop {
 				let run_again = run_instcombine_iter(block, &mut removed_indices);
 				if !run_again {
@@ -268,7 +269,10 @@ impl MIRPass for InstCombinePass {
 
 /// Runs an iteration of instruction combining. Returns true if another iteration
 /// should be run
-fn run_instcombine_iter(block: &mut MIRBlock, removed_indices: &mut DashSet<usize>) -> bool {
+fn run_instcombine_iter(
+	block: &mut MIRBlock,
+	removed_indices: &mut DashSetEmptyTracker<usize>,
+) -> bool {
 	let mut run_again = false;
 	let add_subs = DashMap::new();
 	let muls = DashMap::new();

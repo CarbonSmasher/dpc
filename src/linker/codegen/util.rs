@@ -1,11 +1,13 @@
 use anyhow::{anyhow, bail};
 
+use crate::common::mc::{EntityTarget, Score};
 use crate::common::ty::DataTypeContents;
 use crate::common::{ty::DataType, MutableValue, RegisterList};
 use crate::common::{MutableScoreValue, ScoreValue, Value};
 use crate::linker::ra::RegAllocResult;
 use crate::linker::text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE};
-use crate::mc::{Score, TargetSelector};
+
+use super::{Codegen, CodegenBlockCx};
 
 /// Returns a score and an optional score literal to add
 pub fn get_val_score(
@@ -23,7 +25,7 @@ pub fn get_val_score(
 		},
 		Value::Mutable(val) => {
 			let score = Score::new(
-				TargetSelector::Player(get_mut_val_reg(val, ra, regs)?.clone()),
+				EntityTarget::Player(get_mut_val_reg(val, ra, regs)?.clone()),
 				REG_OBJECTIVE.into(),
 			);
 			(score, ScoreLiteral(None))
@@ -49,10 +51,10 @@ pub fn get_score_val_score(
 	Ok(out)
 }
 
-pub fn get_score_val_lit(val: &ScoreValue, ra: &RegAllocResult) -> anyhow::Result<String> {
+pub fn get_score_val_lit(val: &ScoreValue, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
 	let out = match val {
 		ScoreValue::Constant(score) => score.get_literal_str(),
-		ScoreValue::Mutable(val) => get_mut_score_val_score(val, ra)?.codegen_str(),
+		ScoreValue::Mutable(val) => get_mut_score_val_score(val, &cbcx.ra)?.gen_str(cbcx)?,
 	};
 
 	Ok(out)
@@ -69,7 +71,7 @@ pub fn get_mut_score_val_score(
 				.regs
 				.get(reg)
 				.ok_or(anyhow!("Register {reg} not allocated"))?;
-			Score::new(TargetSelector::Player(reg.clone()), REG_OBJECTIVE.into())
+			Score::new(EntityTarget::Player(reg.clone()), REG_OBJECTIVE.into())
 		}
 	};
 
@@ -97,7 +99,7 @@ pub fn get_mut_val_reg<'ra>(
 
 pub fn create_lit_score(num: i32) -> Score {
 	Score::new(
-		TargetSelector::Player(format_lit_fake_player(num)),
+		EntityTarget::Player(format_lit_fake_player(num)),
 		LIT_OBJECTIVE.into(),
 	)
 }

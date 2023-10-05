@@ -1,3 +1,4 @@
+mod entity_target;
 mod modifier;
 mod util;
 
@@ -5,6 +6,7 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, bail};
 
+use crate::common::mc::Score;
 use crate::common::ty::{DataType, NBTTypeContents};
 use crate::common::RegisterList;
 use crate::common::{ty::DataTypeContents, Value};
@@ -146,59 +148,54 @@ pub fn codegen_instr(
 			})
 		}
 		LIRInstrKind::MulScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
 			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
 			cbcx.ccx.score_literals.extend(to_add);
 
-			Some(format!(
-				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} *= {} {}",
-				right_score.holder.codegen_str(),
-				right_score.objective
-			))
+			let mut out =
+				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} *= ");
+			right_score.gen_writer(&mut out, cbcx)?;
+			Some(out)
 		}
 		LIRInstrKind::DivScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
 			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
 			cbcx.ccx.score_literals.extend(to_add);
 
-			Some(format!(
-				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} /= {} {}",
-				right_score.holder.codegen_str(),
-				right_score.objective
-			))
+			let mut out =
+				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} /= ");
+			right_score.gen_writer(&mut out, cbcx)?;
+			Some(out)
 		}
 		LIRInstrKind::ModScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
 			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
 			cbcx.ccx.score_literals.extend(to_add);
 
-			Some(format!(
-				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} %= {} {}",
-				right_score.holder.codegen_str(),
-				right_score.objective
-			))
+			let mut out =
+				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} %= ");
+			right_score.gen_writer(&mut out, cbcx)?;
+			Some(out)
 		}
 		LIRInstrKind::MinScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
 			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
 			cbcx.ccx.score_literals.extend(to_add);
 
-			Some(format!(
-				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} < {} {}",
-				right_score.holder.codegen_str(),
-				right_score.objective
-			))
+			let mut out =
+				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} < ");
+			right_score.gen_writer(&mut out, cbcx)?;
+			Some(out)
 		}
 		LIRInstrKind::MaxScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
+			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
 			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
 			cbcx.ccx.score_literals.extend(to_add);
 
-			Some(format!(
-				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} > {} {}",
-				right_score.holder.codegen_str(),
-				right_score.objective
-			))
+			let mut out =
+				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} > ");
+			right_score.gen_writer(&mut out, cbcx)?;
+			Some(out)
 		}
 		LIRInstrKind::SwapScore(left, right) => {
 			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
@@ -291,4 +288,63 @@ impl CommandBuilder {
 
 		out
 	}
+}
+
+pub trait Codegen {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write;
+
+	fn gen_str(&self, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
+		let mut out = String::new();
+		self.gen_writer(&mut out, cbcx)?;
+		Ok(out)
+	}
+}
+
+impl Codegen for &str {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+		write!(f, "{self}")?;
+		Ok(())
+	}
+}
+
+impl Codegen for Score {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		self.holder.gen_writer(f, cbcx)?;
+		write!(f, " {}", self.objective)?;
+		Ok(())
+	}
+}
+
+pub mod macros {
+	macro_rules! cgwrite {
+		($f:expr, $cbcx:expr, $($t:tt),*) => {{
+			$(
+				$t.gen_writer($f, $cbcx)?;
+			)*
+			Ok::<(), anyhow::Error>(())
+		}};
+	}
+
+	#[allow(unused_macros)]
+	macro_rules! cgformat {
+		($cbcx:expr, $($t:tt),*) => {{
+			let mut out = String::new();
+			$crate::linker::codegen::macros::cgwrite!(&mut out, $cbcx, $($t),*)?;
+			Ok::<String, anyhow::Error>(out)
+		}};
+	}
+
+	#[allow(unused_imports)]
+	pub(crate) use cgformat;
+	#[allow(unused_imports)]
+	pub(crate) use cgwrite;
 }

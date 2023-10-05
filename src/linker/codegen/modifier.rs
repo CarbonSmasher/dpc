@@ -7,8 +7,9 @@ use crate::common::modifier::{
 use crate::common::ScoreValue;
 use crate::linker::text::REG_OBJECTIVE;
 
+use super::macros::cgformat;
 use super::util::{create_lit_score, get_mut_score_val_score, get_score_val_lit};
-use super::CodegenBlockCx;
+use super::{Codegen, CodegenBlockCx};
 
 pub fn codegen_modifier(
 	modifier: Modifier,
@@ -23,13 +24,13 @@ pub fn codegen_modifier(
 			let out = match *condition {
 				IfModCondition::Score(condition) => match condition {
 					IfScoreCondition::Single { left, right } => {
-						let left = get_mut_score_val_score(&left, &cbcx.ra)?.codegen_str();
-						let right = get_score_val_lit(&right, &cbcx.ra)?;
+						let left = get_mut_score_val_score(&left, &cbcx.ra)?.gen_str(cbcx)?;
+						let right = get_score_val_lit(&right, cbcx)?;
 
 						Some(format!("{keyword} score {left} = {right}"))
 					}
 					IfScoreCondition::Range { score, left, right } => {
-						let score = get_mut_score_val_score(&score, &cbcx.ra)?.codegen_str();
+						let score = get_mut_score_val_score(&score, &cbcx.ra)?.gen_str(cbcx)?;
 						let out = match (left, right) {
 							(IfScoreRangeEnd::Infinite, IfScoreRangeEnd::Infinite) => {
 								format!(
@@ -116,8 +117,8 @@ pub fn codegen_modifier(
 			AnchorModLocation::Eyes => Some("anchored eyes".into()),
 			AnchorModLocation::Feet => Some("anchored feet".into()),
 		},
-		Modifier::As(target) => Some(format!("as {}", target.codegen_str())),
-		Modifier::At(target) => Some(format!("at {}", target.codegen_str())),
+		Modifier::As(target) => Some(cgformat!(cbcx, "as ", target)?),
+		Modifier::At(target) => Some(cgformat!(cbcx, "at ", target)?),
 		Modifier::In(dimension) => Some(format!("in {dimension}")),
 		Modifier::On(relation) => {
 			let string = match relation {
@@ -133,6 +134,7 @@ pub fn codegen_modifier(
 
 			Some(format!("on {string}"))
 		}
+		Modifier::Positioned(pos) => Some(cgformat!(cbcx, "positioned ", pos)?),
 	};
 
 	Ok(out)
@@ -150,22 +152,37 @@ fn codegen_if_score_range_side(
 		ScoreValue::Constant(val) => {
 			if inclusive {
 				let lit = val.get_literal_str();
-				let check = if lt {
-					format!("..{lit}")
-				} else {
-					format!("{lit}..")
-				};
+				let check = codegen_match(&lit, lt);
 				format!("{if_keyword} score {score} matches {check}")
 			} else {
 				let num = val.get_i32();
-				cbcx.ccx.score_literals.insert(num);
-				let rhs = create_lit_score(num).codegen_str();
-				let sign = if lt { "<" } else { ">" };
-				format!("{if_keyword} score {score} {sign} {rhs}")
+				// Constrict the range by adding or subtracting one if we can
+				let constricted = if lt {
+					if num == -i32::MAX {
+						None
+					} else {
+						Some(num - 1)
+					}
+				} else {
+					if num == i32::MAX {
+						None
+					} else {
+						Some(num + 1)
+					}
+				};
+				if let Some(constricted) = constricted {
+					let check = codegen_match(&constricted.to_string(), lt);
+					format!("{if_keyword} score {score} matches {check}")
+				} else {
+					cbcx.ccx.score_literals.insert(num);
+					let rhs = create_lit_score(num).gen_str(cbcx)?;
+					let sign = if lt { "<" } else { ">" };
+					format!("{if_keyword} score {score} {sign} {rhs}")
+				}
 			}
 		}
 		ScoreValue::Mutable(val) => {
-			let val = get_mut_score_val_score(&val, &cbcx.ra)?.codegen_str();
+			let val = get_mut_score_val_score(&val, &cbcx.ra)?.gen_str(cbcx)?;
 			let sign = if lt {
 				codegen_score_lt(inclusive)
 			} else {
@@ -176,6 +193,14 @@ fn codegen_if_score_range_side(
 	};
 
 	Ok(out)
+}
+
+fn codegen_match(lit: &str, lt: bool) -> String {
+	if lt {
+		format!("..{lit}")
+	} else {
+		format!("{lit}..")
+	}
 }
 
 fn codegen_score_gt(inclusive: bool) -> &'static str {
@@ -195,9 +220,9 @@ fn codegen_score_lt(inclusive: bool) -> &'static str {
 }
 
 impl StoreModLocation {
-	fn codegen(self, cbcx: &CodegenBlockCx) -> anyhow::Result<String> {
+	fn codegen(self, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
 		match self {
-			Self::Score(score) => Ok(format!("score {}", score.codegen_str())),
+			Self::Score(score) => Ok(format!("score {}", score.gen_str(cbcx)?)),
 			Self::Reg(reg) => {
 				let reg = cbcx
 					.ra
@@ -214,10 +239,10 @@ impl StoreModLocation {
 mod tests {
 	use super::*;
 
+	use crate::common::mc::{EntityTarget, Score};
 	use crate::common::RegisterList;
 	use crate::common::{ty::ScoreTypeContents, MutableScoreValue};
 	use crate::linker::{codegen::CodegenCx, ra::RegAllocResult};
-	use crate::mc::{Score, TargetSelector};
 
 	#[test]
 	fn test_if_score_codegen() {
@@ -231,7 +256,7 @@ mod tests {
 		let modifier = Modifier::If {
 			condition: Box::new(IfModCondition::Score(IfScoreCondition::Range {
 				score: MutableScoreValue::Score(Score::new(
-					TargetSelector::Player("foo".into()),
+					EntityTarget::Player("foo".into()),
 					"bar".into(),
 				)),
 				left: IfScoreRangeEnd::Fixed {
@@ -249,7 +274,9 @@ mod tests {
 		let code = codegen_modifier(modifier, &mut cbcx)
 			.expect("Failed to codegen modifier")
 			.expect("Modifier missing");
-		let lit_fmt = create_lit_score(219).codegen_str();
+		let lit_fmt = create_lit_score(219)
+			.gen_str(&mut cbcx)
+			.expect("Failed to format literal");
 		assert_eq!(
 			code,
 			format!("unless score foo bar > {lit_fmt} unless score foo bar matches ..2980")

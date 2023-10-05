@@ -1,6 +1,9 @@
 use anyhow::anyhow;
 use dashmap::DashSet;
 
+use crate::common::mc::EntityTarget;
+use crate::common::modifier::Modifier;
+use crate::common::target_selector::{SelectorType, TargetSelector};
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::Value;
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
@@ -199,4 +202,49 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 	}
 
 	run_again
+}
+
+pub struct SimplifyModifiersPass;
+
+impl Pass for SimplifyModifiersPass {
+	fn get_name(&self) -> &'static str {
+		"simplify_modifiers"
+	}
+}
+
+impl LIRPass for SimplifyModifiersPass {
+	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
+		let mods_to_remove = DashSet::new();
+
+		for (_, block) in &mut lir.functions {
+			let block = lir
+				.blocks
+				.get_mut(block)
+				.ok_or(anyhow!("Block does not exist"))?;
+
+			for instr in &mut block.contents {
+				if !mods_to_remove.is_empty() {
+					mods_to_remove.clear();
+				}
+				for (i, modifier) in instr.modifiers.iter_mut().enumerate() {
+					match modifier {
+						Modifier::As(EntityTarget::Selector(TargetSelector {
+							selector: SelectorType::This,
+							params,
+						})) if params.is_empty() => {
+							mods_to_remove.insert(i);
+						}
+						Modifier::Positioned(coords) if coords.are_zero() => {
+							mods_to_remove.insert(i);
+						}
+						_ => {}
+					}
+				}
+
+				remove_indices(&mut instr.modifiers, &mods_to_remove);
+			}
+		}
+
+		Ok(())
+	}
 }

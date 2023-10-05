@@ -1,6 +1,13 @@
+use std::sync::Arc;
+
+use dashmap::{DashMap, DashSet};
+
+use crate::common::block::BlockID;
+use crate::lir::LIRBlock;
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::ir::ValidatePass;
+use self::opt::lir::SimplifyModifiersPass;
 use self::opt::mir::{ConstPropPass, InstCombinePass, MIRSimplifyPass};
 use self::opt::{lir::LIRSimplifyPass, mir::DSEPass};
 
@@ -55,6 +62,7 @@ pub fn run_lir_passes(lir: &mut LIR) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn LIRPass>,
 		Box::new(LIRSimplifyPass),
+		Box::new(SimplifyModifiersPass),
 	];
 
 	for mut pass in passes {
@@ -63,6 +71,30 @@ pub fn run_lir_passes(lir: &mut LIR) -> anyhow::Result<()> {
 	}
 
 	Ok(())
+}
+
+pub trait LIRBlockPass: BlockPass {
+	fn run_pass(
+		&mut self,
+		block: &mut LIRBlock,
+		bpcx: &mut BlockPassCtx,
+		pass_id: usize,
+	) -> anyhow::Result<()>;
+}
+
+struct LIRBlockPassRunner;
+
+impl Pass for LIRBlockPassRunner {
+	fn get_name(&self) -> &'static str {
+		"lir_block_passes"
+	}
+}
+
+impl LIRPass for LIRBlockPassRunner {
+	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
+		let _ = lir;
+		Ok(())
+	}
 }
 
 struct NullPass;
@@ -88,7 +120,27 @@ impl LIRPass for NullPass {
 	}
 }
 
+impl LIRBlockPass for NullPass {
+	fn run_pass(
+		&mut self,
+		block: &mut LIRBlock,
+		bpcx: &mut BlockPassCtx,
+		pass_id: usize,
+	) -> anyhow::Result<()> {
+		let _ = block;
+		let _ = bpcx;
+		let _ = pass_id;
+		Ok(())
+	}
+}
+
 impl Pass for NullPass {
+	fn get_name(&self) -> &'static str {
+		"null"
+	}
+}
+
+impl BlockPass for NullPass {
 	fn get_name(&self) -> &'static str {
 		"null"
 	}
@@ -96,4 +148,13 @@ impl Pass for NullPass {
 
 pub trait Pass {
 	fn get_name(&self) -> &'static str;
+}
+
+pub trait BlockPass {
+	fn get_name(&self) -> &'static str;
+}
+
+pub struct BlockPassCtx {
+	pub removed_instrs: Arc<DashMap<BlockID, DashSet<usize>>>,
+	pub block_operation_progress: Arc<DashMap<BlockID, usize>>,
 }

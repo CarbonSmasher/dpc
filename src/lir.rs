@@ -55,6 +55,18 @@ impl LIRInstruction {
 	pub fn with_modifiers(kind: LIRInstrKind, modifiers: Vec<Modifier>) -> Self {
 		Self { kind, modifiers }
 	}
+
+	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+		[
+			self.kind.get_used_regs(),
+			self.modifiers
+				.iter()
+				.map(|x| x.get_used_regs().into_iter())
+				.flatten()
+				.collect(),
+		]
+		.concat()
+	}
 }
 
 impl Debug for LIRInstruction {
