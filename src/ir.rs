@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::common::block::{BlockAllocator, BlockID};
+use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
+use crate::common::mc::{EntityTarget, XPValue};
 use crate::common::ty::DataType;
 use crate::common::{DeclareBinding, FunctionInterface, Identifier, MutableValue, Value};
 
@@ -29,6 +30,16 @@ impl Block {
 		Self {
 			contents: Vec::new(),
 		}
+	}
+}
+
+impl BlockTrait for Block {
+	fn instr_count(&self) -> usize {
+		self.contents.len()
+	}
+
+	fn get_children(&self) -> Vec<BlockID> {
+		Vec::new()
 	}
 }
 
@@ -104,6 +115,22 @@ pub enum InstrKind {
 	Use {
 		val: MutableValue,
 	},
+	Say {
+		message: String,
+	},
+	Tell {
+		target: EntityTarget,
+		message: String,
+	},
+	Kill {
+		target: EntityTarget,
+	},
+	Reload,
+	SetXP {
+		target: EntityTarget,
+		amount: i32,
+		value: XPValue,
+	},
 }
 
 impl Debug for InstrKind {
@@ -121,6 +148,15 @@ impl Debug for InstrKind {
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
 			Self::Use { val } => format!("use {val:?}"),
+			Self::Say { message } => format!("say {message}"),
+			Self::Tell { target, message } => format!("tell {target:?} {message}"),
+			Self::Kill { target } => format!("kill {target:?}"),
+			Self::Reload => "reload".into(),
+			Self::SetXP {
+				target,
+				amount,
+				value,
+			} => format!("xps {target:?} {amount} {value}"),
 		};
 		write!(f, "{text}")
 	}

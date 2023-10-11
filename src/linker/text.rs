@@ -1,6 +1,6 @@
 // Objectives
-pub const REG_OBJECTIVE: &str = "_dpc.r";
-pub const LIT_OBJECTIVE: &str = "_dpc.l";
+pub const REG_OBJECTIVE: &str = "_r";
+pub const LIT_OBJECTIVE: &str = "_l";
 
 // Storage
 pub const REG_STORAGE_LOCATION: &str = "dpc:r";
@@ -18,5 +18,5 @@ pub fn format_local_storage_entry(num: u32) -> String {
 }
 
 pub fn format_local_storage_path(entry: &str) -> String {
-	format!("loc.{entry}")
+	format!("{entry}")
 }

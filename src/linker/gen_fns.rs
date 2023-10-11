@@ -4,11 +4,9 @@ use itertools::Itertools;
 
 use crate::common::ResourceLocation;
 
-use super::{
-	codegen::CodegenCx,
-	datapack::Function,
-	text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE, REG_STORAGE_LOCATION},
-};
+use super::codegen::CodegenCx;
+use super::datapack::Function;
+use super::text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE, REG_STORAGE_LOCATION};
 
 pub fn gen_fns(ccx: &CodegenCx) -> anyhow::Result<HashMap<ResourceLocation, Function>> {
 	let mut out = HashMap::new();

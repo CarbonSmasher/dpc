@@ -232,6 +232,7 @@ fn run_const_prop_iter(block: &mut MIRBlock) -> bool {
 				let MutableValue::Register(reg) = val;
 				prop_candidates.remove(reg);
 			}
+			_ => {}
 		};
 	}
 

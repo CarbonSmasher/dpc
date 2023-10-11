@@ -1,5 +1,6 @@
 mod entity_target;
 mod modifier;
+mod t;
 mod util;
 
 use std::collections::HashSet;
@@ -19,6 +20,9 @@ use self::util::{get_mut_val_reg, get_val_score};
 use super::text::REG_OBJECTIVE;
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
+
+use t::macros::cgformat;
+pub use t::Codegen;
 
 pub struct CodegenCx {
 	pub racx: RegAllocCx,
@@ -249,6 +253,21 @@ pub fn codegen_instr(
 				}
 			})
 		}
+		LIRInstrKind::Say(message) => Some(format!("say {message}")),
+		LIRInstrKind::Tell(target, message) => Some(cgformat!(cbcx, "w ", target, " ", message)?),
+		LIRInstrKind::Kill(target) => {
+			if target.is_blank_this() {
+				Some("kill".into())
+			} else {
+				Some(cgformat!(cbcx, "kill ", target)?)
+			}
+		}
+		LIRInstrKind::Reload => Some("reload".into()),
+		LIRInstrKind::SetXP(target, amount, value) => {
+			// Command cannot take negative values
+			let amount = if amount < &0 { 0 } else { *amount };
+			Some(cgformat!(cbcx, "xp set ", target, " ", amount, " ", value)?)
+		}
 		LIRInstrKind::Use(..) => None,
 	};
 
@@ -290,29 +309,6 @@ impl CommandBuilder {
 	}
 }
 
-pub trait Codegen {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write;
-
-	fn gen_str(&self, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
-		let mut out = String::new();
-		self.gen_writer(&mut out, cbcx)?;
-		Ok(out)
-	}
-}
-
-impl Codegen for &str {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self}")?;
-		Ok(())
-	}
-}
-
 impl Codegen for Score {
 	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
 	where
@@ -322,29 +318,4 @@ impl Codegen for Score {
 		write!(f, " {}", self.objective)?;
 		Ok(())
 	}
-}
-
-pub mod macros {
-	macro_rules! cgwrite {
-		($f:expr, $cbcx:expr, $($t:tt),*) => {{
-			$(
-				$t.gen_writer($f, $cbcx)?;
-			)*
-			Ok::<(), anyhow::Error>(())
-		}};
-	}
-
-	#[allow(unused_macros)]
-	macro_rules! cgformat {
-		($cbcx:expr, $($t:tt),*) => {{
-			let mut out = String::new();
-			$crate::linker::codegen::macros::cgwrite!(&mut out, $cbcx, $($t),*)?;
-			Ok::<String, anyhow::Error>(out)
-		}};
-	}
-
-	#[allow(unused_imports)]
-	pub(crate) use cgformat;
-	#[allow(unused_imports)]
-	pub(crate) use cgwrite;
 }

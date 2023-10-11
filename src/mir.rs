@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::common::block::{BlockAllocator, BlockID};
+use crate::common::block::{Block, BlockAllocator, BlockID};
+use crate::common::mc::{EntityTarget, XPValue};
 use crate::common::ty::DataType;
 use crate::common::{DeclareBinding, FunctionInterface, Identifier, MutableValue, Value};
 
@@ -17,6 +18,13 @@ impl MIR {
 			blocks: BlockAllocator::new(),
 		}
 	}
+
+	pub fn with_capacity(function_capacity: usize, block_capacity: usize) -> Self {
+		Self {
+			functions: HashMap::with_capacity(function_capacity),
+			blocks: BlockAllocator::with_capacity(block_capacity),
+		}
+	}
 }
 
 #[derive(Clone)]
@@ -29,6 +37,22 @@ impl MIRBlock {
 		Self {
 			contents: Vec::new(),
 		}
+	}
+
+	pub fn with_capacity(capacity: usize) -> Self {
+		Self {
+			contents: Vec::with_capacity(capacity),
+		}
+	}
+}
+
+impl Block for MIRBlock {
+	fn instr_count(&self) -> usize {
+		self.contents.len()
+	}
+
+	fn get_children(&self) -> Vec<BlockID> {
+		Vec::new()
 	}
 }
 
@@ -103,6 +127,22 @@ pub enum MIRInstrKind {
 	Use {
 		val: MutableValue,
 	},
+	Say {
+		message: String,
+	},
+	Tell {
+		target: EntityTarget,
+		message: String,
+	},
+	Kill {
+		target: EntityTarget,
+	},
+	Reload,
+	SetXP {
+		target: EntityTarget,
+		amount: i32,
+		value: XPValue,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -120,6 +160,15 @@ impl Debug for MIRInstrKind {
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
 			Self::Use { val } => format!("use {val:?}"),
+			Self::Say { message } => format!("say {message}"),
+			Self::Tell { target, message } => format!("tell {target:?} {message}"),
+			Self::Kill { target } => format!("kill {target:?}"),
+			Self::Reload => "reload".into(),
+			Self::SetXP {
+				target,
+				amount,
+				value,
+			} => format!("xps {target:?} {amount} {value}"),
 		};
 		write!(f, "{text}")
 	}
@@ -140,6 +189,7 @@ impl MIRInstrKind {
 			Self::Swap { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Abs { val } => val.get_used_regs(),
 			Self::Use { val } => val.get_used_regs(),
+			_ => Vec::new(),
 		}
 	}
 }

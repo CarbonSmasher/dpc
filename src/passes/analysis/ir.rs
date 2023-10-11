@@ -28,8 +28,10 @@ impl IRPass for ValidatePass {
 							bail!("Redefinition of register {left}");
 						}
 						let right_ty = right.get_ty(&regs)?;
-						if !right_ty.is_trivially_castable(ty) {
-							bail!("Register type does not match value type");
+						if let Some(right_ty) = right_ty {
+							if !right_ty.is_trivially_castable(ty) {
+								bail!("Register type does not match value type");
+							}
 						}
 						let reg = Register {
 							id: left.clone(),
@@ -58,7 +60,7 @@ impl IRPass for ValidatePass {
 							bail!("Incompatible types in instruction");
 						}
 					}
-					InstrKind::Abs { .. } | InstrKind::Use { .. } => {}
+					_ => {}
 				}
 			}
 		}

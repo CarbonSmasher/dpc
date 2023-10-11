@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use crate::common::block::{BlockAllocator, BlockID};
+use crate::common::block::{Block, BlockAllocator, BlockID};
+use crate::common::mc::{EntityTarget, XPValue};
 use crate::common::modifier::Modifier;
 use crate::common::ty::ArraySize;
 use crate::common::{FunctionInterface, Identifier, MutableValue, RegisterList, Value};
@@ -18,6 +19,13 @@ impl LIR {
 			blocks: BlockAllocator::new(),
 		}
 	}
+
+	pub fn with_capacity(function_capacity: usize, block_capacity: usize) -> Self {
+		Self {
+			functions: HashMap::with_capacity(function_capacity),
+			blocks: BlockAllocator::with_capacity(block_capacity),
+		}
+	}
 }
 
 #[derive(Clone)]
@@ -32,6 +40,16 @@ impl LIRBlock {
 			contents: Vec::new(),
 			regs,
 		}
+	}
+}
+
+impl Block for LIRBlock {
+	fn instr_count(&self) -> usize {
+		self.contents.len()
+	}
+
+	fn get_children(&self) -> Vec<BlockID> {
+		Vec::new()
 	}
 }
 
@@ -71,12 +89,23 @@ impl LIRInstruction {
 
 impl Debug for LIRInstruction {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		self.kind.fmt(f)
+		if !self.modifiers.is_empty() {
+			write!(f, "@")?;
+			for (i, modifier) in self.modifiers.iter().enumerate() {
+				write!(f, "{:?}", modifier)?;
+				if i != self.modifiers.len() - 1 {
+					write!(f, " ")?;
+				}
+			}
+			write!(f, ": ")?;
+		}
+		write!(f, "{:?}", self.kind)
 	}
 }
 
 #[derive(Clone)]
 pub enum LIRInstrKind {
+	// Basic
 	SetScore(MutableValue, Value),
 	AddScore(MutableValue, Value),
 	SubScore(MutableValue, Value),
@@ -93,6 +122,12 @@ pub enum LIRInstrKind {
 		index: ArraySize,
 	},
 	Use(MutableValue),
+	// Commands
+	Say(String),
+	Tell(EntityTarget, String),
+	Kill(EntityTarget),
+	Reload,
+	SetXP(EntityTarget, i32, XPValue),
 }
 
 impl LIRInstrKind {
@@ -114,6 +149,7 @@ impl LIRInstrKind {
 				[score.get_used_regs(), value.get_used_regs()].concat()
 			}
 			LIRInstrKind::Use(val) => val.get_used_regs(),
+			_ => Vec::new(),
 		}
 	}
 }
@@ -137,6 +173,11 @@ impl Debug for LIRInstrKind {
 				index,
 			} => format!("idxcs {score:?} {value:?} {index}"),
 			Self::Use(val) => format!("use {val:?}"),
+			Self::Say(text) => format!("say {text}"),
+			Self::Tell(target, text) => format!("tell {target:?} {text}"),
+			Self::Kill(target) => format!("kill {target:?}"),
+			Self::Reload => "reload".into(),
+			Self::SetXP(target, amount, value) => format!("xps {target:?} {amount} {value}"),
 		};
 		write!(f, "{text}")
 	}

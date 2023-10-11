@@ -36,6 +36,7 @@ pub fn get_val_score(
 }
 
 /// Returns a score and an optional score literal to add
+#[allow(dead_code)]
 pub fn get_score_val_score(
 	val: &ScoreValue,
 	ra: &RegAllocResult,
@@ -51,6 +52,7 @@ pub fn get_score_val_score(
 	Ok(out)
 }
 
+#[allow(dead_code)]
 pub fn get_score_val_lit(val: &ScoreValue, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
 	let out = match val {
 		ScoreValue::Constant(score) => score.get_literal_str(),

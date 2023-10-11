@@ -1,7 +1,7 @@
 pub mod block;
-pub mod target_selector;
 pub mod mc;
 pub mod modifier;
+pub mod target_selector;
 pub mod ty;
 
 use std::{fmt::Debug, hash::Hash, sync::Arc};
@@ -109,6 +109,7 @@ impl Debug for MutableValue {
 
 #[derive(Clone)]
 pub enum DeclareBinding {
+	Null,
 	Value(Value),
 	Cast(DataType, MutableValue),
 	Index {
@@ -119,11 +120,12 @@ pub enum DeclareBinding {
 }
 
 impl DeclareBinding {
-	pub fn get_ty(&self, regs: &RegisterList) -> anyhow::Result<DataType> {
+	pub fn get_ty(&self, regs: &RegisterList) -> anyhow::Result<Option<DataType>> {
 		let out = match self {
-			Self::Value(val) => val.get_ty(regs)?,
-			Self::Cast(ty, ..) => ty.clone(),
-			Self::Index { ty, .. } => ty.clone(),
+			Self::Null => None,
+			Self::Value(val) => Some(val.get_ty(regs)?),
+			Self::Cast(ty, ..) => Some(ty.clone()),
+			Self::Index { ty, .. } => Some(ty.clone()),
 		};
 
 		Ok(out)
@@ -131,6 +133,7 @@ impl DeclareBinding {
 
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
+			Self::Null => Vec::new(),
 			Self::Value(val) => val.get_used_regs(),
 			Self::Cast(_, val) => val.get_used_regs(),
 			Self::Index { val, index, .. } => [val.get_used_regs(), index.get_used_regs()].concat(),
@@ -141,6 +144,7 @@ impl DeclareBinding {
 impl Debug for DeclareBinding {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
+			Self::Null => "null".to_string(),
 			Self::Value(val) => format!("{val:?}"),
 			Self::Cast(ty, val) => format!("cast {ty:?} {val:?}"),
 			Self::Index { val, index, ty } => format!("idx {ty:?} {val:?} {index:?}"),
@@ -161,7 +165,7 @@ pub type RegisterList = DashMap<Identifier, Register>;
 
 pub type ResourceLocation = Identifier;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum ScoreValue {
 	Constant(ScoreTypeContents),
 	Mutable(MutableScoreValue),
@@ -176,7 +180,17 @@ impl ScoreValue {
 	}
 }
 
-#[derive(Debug, Clone)]
+impl Debug for ScoreValue {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Constant(val) => format!("{val:?}"),
+			Self::Mutable(val) => format!("{val:?}"),
+		};
+		write!(f, "{text}")
+	}
+}
+
+#[derive(Clone)]
 pub enum MutableScoreValue {
 	Score(Score),
 	Reg(Identifier),
@@ -188,6 +202,16 @@ impl MutableScoreValue {
 			Self::Score(..) => Vec::new(),
 			Self::Reg(reg) => vec![reg],
 		}
+	}
+}
+
+impl Debug for MutableScoreValue {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Score(score) => format!("{score:?}"),
+			Self::Reg(reg) => format!("${reg}"),
+		};
+		write!(f, "{text}")
 	}
 }
 

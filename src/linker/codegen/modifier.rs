@@ -7,8 +7,8 @@ use crate::common::modifier::{
 use crate::common::ScoreValue;
 use crate::linker::text::REG_OBJECTIVE;
 
-use super::macros::cgformat;
-use super::util::{create_lit_score, get_mut_score_val_score, get_score_val_lit};
+use super::t::macros::cgformat;
+use super::util::{create_lit_score, get_mut_score_val_score};
 use super::{Codegen, CodegenBlockCx};
 
 pub fn codegen_modifier(
@@ -25,9 +25,16 @@ pub fn codegen_modifier(
 				IfModCondition::Score(condition) => match condition {
 					IfScoreCondition::Single { left, right } => {
 						let left = get_mut_score_val_score(&left, &cbcx.ra)?.gen_str(cbcx)?;
-						let right = get_score_val_lit(&right, cbcx)?;
-
-						Some(format!("{keyword} score {left} = {right}"))
+						match right {
+							ScoreValue::Constant(val) => {
+								let lit = val.get_literal_str();
+								Some(format!("{keyword} score {left} matches {lit}"))
+							}
+							ScoreValue::Mutable(val) => {
+								let val = get_mut_score_val_score(&val, &cbcx.ra)?;
+								Some(cgformat!(cbcx, keyword, " score ", left, " = ", val)?)
+							}
+						}
 					}
 					IfScoreCondition::Range { score, left, right } => {
 						let score = get_mut_score_val_score(&score, &cbcx.ra)?.gen_str(cbcx)?;

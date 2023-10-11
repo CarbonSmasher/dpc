@@ -2,20 +2,22 @@ use anyhow::{anyhow, bail};
 
 use crate::common::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
 use crate::common::ty::{get_op_tys, ArraySize, DataType, DataTypeContents, ScoreTypeContents};
-use crate::common::{DeclareBinding, Identifier, MutableValue, Register, ScoreValue, Value, RegisterList};
+use crate::common::{
+	DeclareBinding, Identifier, MutableValue, Register, RegisterList, ScoreValue, Value,
+};
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
 use crate::mir::{MIRInstrKind, MIR};
 
 /// Lower IR to LIR
 pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
-	let mut lir = LIR::new();
+	let mut lir = LIR::with_capacity(mir.functions.len(), mir.blocks.count());
 
 	for (interface, block) in mir.functions {
 		let block = mir
 			.blocks
 			.remove(&block)
 			.ok_or(anyhow!("Block does not exist"))?;
-		let mut lir_instrs = Vec::new();
+		let mut lir_instrs = Vec::with_capacity(block.contents.len());
 
 		let mut lbcx = LowerBlockCx::new();
 
@@ -62,6 +64,25 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 				MIRInstrKind::Use { val } => {
 					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Use(val)));
 				}
+				MIRInstrKind::Say { message } => {
+					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Say(message)));
+				}
+				MIRInstrKind::Tell { target, message } => {
+					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Tell(target, message)));
+				}
+				MIRInstrKind::Kill { target } => {
+					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Kill(target)))
+				}
+				MIRInstrKind::Reload => {
+					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Reload));
+				}
+				MIRInstrKind::SetXP {
+					target,
+					amount,
+					value,
+				} => lir_instrs.push(LIRInstruction::new(LIRInstrKind::SetXP(
+					target, amount, value,
+				))),
 			}
 		}
 
@@ -105,7 +126,8 @@ fn lower_assign(
 	let left_ty = left.get_ty(&lbcx.registers)?;
 
 	let right_val = match &right {
-		DeclareBinding::Value(val) => val.clone(),
+		DeclareBinding::Null => None,
+		DeclareBinding::Value(val) => Some(val.clone()),
 		DeclareBinding::Cast(ty, val) => {
 			let val_ty = val.get_ty(&lbcx.registers)?;
 			// If the cast is not trivial, we have to declare a new register,
@@ -138,7 +160,7 @@ fn lower_assign(
 				out.push(LIRInstruction::new(cast_instr));
 				MutableValue::Register(new_reg)
 			};
-			Value::Mutable(assign_val)
+			Some(Value::Mutable(assign_val))
 		}
 		DeclareBinding::Index { ty, val, index } => {
 			let new_reg = lbcx.new_additional_reg();
@@ -165,15 +187,17 @@ fn lower_assign(
 				}
 				_ => bail!("Cannot use index declaration with these types"),
 			}
-			Value::Mutable(MutableValue::Register(new_reg))
+			Some(Value::Mutable(MutableValue::Register(new_reg)))
 		}
 	};
 
-	let kind = match left_ty {
-		DataType::Score(..) => LIRInstrKind::SetScore(left, right_val),
-		DataType::NBT(..) => LIRInstrKind::SetData(left, right_val),
-	};
-	out.push(LIRInstruction::new(kind));
+	if let Some(right_val) = right_val {
+		let kind = match left_ty {
+			DataType::Score(..) => LIRInstrKind::SetScore(left, right_val),
+			DataType::NBT(..) => LIRInstrKind::SetData(left, right_val),
+		};
+		out.push(LIRInstruction::new(kind));
+	}
 
 	Ok(out)
 }

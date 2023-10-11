@@ -1,3 +1,5 @@
+use dpc::common::mc::{EntityTarget, XPValue};
+use dpc::common::target_selector::{SelectorType, TargetSelector};
 use dpc::common::{DeclareBinding, FunctionInterface, Identifier, MutableValue, Value};
 use dpc::ir::{Block, InstrKind, Instruction, IR};
 use dpc::linker::link;
@@ -147,7 +149,7 @@ fn known() {
 
 #[allow(dead_code)]
 fn fuzz() {
-	let instr_count = 35;
+	let instr_count = 350;
 	let fn_count = 100000;
 	let mut rng = rand::thread_rng();
 
@@ -185,7 +187,7 @@ fn fuzz() {
 				_ => continue,
 			};
 
-			let instr = rng.gen_range(0..10);
+			let instr = rng.gen_range(0..11);
 			let kind = match instr {
 				0 => {
 					let new_reg = reg_count;
@@ -231,6 +233,14 @@ fn fuzz() {
 				9 => InstrKind::Abs {
 					val: MutableValue::Register(left_reg),
 				},
+				10 => {
+					let amount = rng.gen_range(0..1024);
+					InstrKind::SetXP {
+						target: EntityTarget::Selector(TargetSelector::new(SelectorType::This)),
+						amount,
+						value: XPValue::Points,
+					}
+				}
 				_ => continue,
 			};
 
@@ -252,17 +262,27 @@ fn run(mut ir: IR, debug: bool) {
 	run_ir_passes(&mut ir).expect("IR passes failed");
 
 	let mut mir = lower_ir(ir).expect("Failed to lower IR");
+	let init_count = mir.blocks.instr_count();
 	if debug {
 		println!("MIR:");
 		dbg!(&mir.blocks);
 	}
+
 	run_mir_passes(&mut mir).expect("MIR passes failed");
 	if debug {
 		println!("Optimized MIR:");
 		dbg!(&mir.blocks);
 	}
+	let final_count = mir.blocks.instr_count();
+	let pct = if init_count == 0 {
+		0.0
+	} else {
+		(1.0 - (final_count as f32 / init_count as f32)) * 100.0
+	};
+	println!("Removed percent: {pct}%");
 
 	let mut lir = lower_mir(mir).expect("Failed to lower MIR");
+	let init_count = lir.blocks.instr_count();
 	if debug {
 		println!("LIR:");
 		dbg!(&lir.blocks);
@@ -272,6 +292,13 @@ fn run(mut ir: IR, debug: bool) {
 		println!("Optimized LIR:");
 		dbg!(&lir.blocks);
 	}
+	let final_count = lir.blocks.instr_count();
+	let pct = if init_count == 0 {
+		0.0
+	} else {
+		(1.0 - (final_count as f32 / init_count as f32)) * 100.0
+	};
+	println!("Removed percent: {pct}%");
 
 	println!("Doing codegen...");
 	let datapack = link(lir).expect("Failed to link datapack");

@@ -7,7 +7,7 @@ use crate::lir::LIRBlock;
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::ir::ValidatePass;
-use self::opt::lir::SimplifyModifiersPass;
+use self::opt::lir::{SimplifyModifiersPass, ScoreboardDataflowPass};
 use self::opt::mir::{ConstPropPass, InstCombinePass, MIRSimplifyPass};
 use self::opt::{lir::LIRSimplifyPass, mir::DSEPass};
 
@@ -62,6 +62,7 @@ pub fn run_lir_passes(lir: &mut LIR) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn LIRPass>,
 		Box::new(LIRSimplifyPass),
+		Box::new(ScoreboardDataflowPass),
 		Box::new(SimplifyModifiersPass),
 	];
 

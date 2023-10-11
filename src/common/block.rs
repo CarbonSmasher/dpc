@@ -6,12 +6,19 @@ pub struct BlockAllocator<Block> {
 	block_count: BlockID,
 }
 
-pub type BlockID = u32;
+pub type BlockID = usize;
 
 impl<Block> BlockAllocator<Block> {
 	pub fn new() -> Self {
 		Self {
 			blocks: HashMap::new(),
+			block_count: 0,
+		}
+	}
+
+	pub fn with_capacity(capacity: usize) -> Self {
+		Self {
+			blocks: HashMap::with_capacity(capacity),
 			block_count: 0,
 		}
 	}
@@ -38,4 +45,21 @@ impl<Block> BlockAllocator<Block> {
 	pub fn remove(&mut self, id: &BlockID) -> Option<Block> {
 		self.blocks.remove(&id)
 	}
+
+	/// Counts the number of blocks
+	pub fn count(&self) -> BlockID {
+		self.block_count
+	}
+}
+
+impl<BlockT: Block> BlockAllocator<BlockT> {
+	pub fn instr_count(&self) -> usize {
+		self.blocks.iter().fold(0, |sum, x| sum + x.1.instr_count())
+	}
+}
+
+pub trait Block {
+	fn instr_count(&self) -> usize;
+
+	fn get_children(&self) -> Vec<BlockID>;
 }
