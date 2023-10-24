@@ -7,10 +7,10 @@ use crate::common::modifier::{
 };
 use crate::common::target_selector::{SelectorType, TargetSelector};
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
-use crate::common::{Identifier, MutableValue, Value};
+use crate::common::{Identifier, MutableScoreValue, MutableValue, ScoreValue, Value};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
-use crate::util::remove_indices;
+use crate::util::{remove_indices, DashSetEmptyTracker};
 
 pub struct LIRSimplifyPass;
 
@@ -60,8 +60,11 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 		}
 		let remove = match &instr.kind {
 			// Reflexive property; set to self or swap with self
+			// and also mins and maxes with self
 			LIRInstrKind::SetScore(left, Value::Mutable(right))
 			| LIRInstrKind::SwapScore(left, right)
+			| LIRInstrKind::MinScore(left, Value::Mutable(right))
+			| LIRInstrKind::MaxScore(left, Value::Mutable(right))
 				if left.is_same_val(right) =>
 			{
 				true
@@ -224,7 +227,7 @@ impl Pass for SimplifyModifiersPass {
 
 impl LIRPass for SimplifyModifiersPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		let mods_to_remove = DashSet::new();
+		let mut mods_to_remove = DashSetEmptyTracker::new();
 
 		for (_, block) in &mut lir.functions {
 			let block = lir
@@ -236,7 +239,12 @@ impl LIRPass for SimplifyModifiersPass {
 				if !mods_to_remove.is_empty() {
 					mods_to_remove.clear();
 				}
+				let modifier_count = instr.modifiers.len();
 				for (i, modifier) in instr.modifiers.iter_mut().enumerate() {
+					if mods_to_remove.contains(&i) {
+						continue;
+					}
+
 					match modifier {
 						Modifier::As(EntityTarget::Selector(TargetSelector {
 							selector: SelectorType::This,
@@ -247,10 +255,21 @@ impl LIRPass for SimplifyModifiersPass {
 						Modifier::Positioned(coords) if coords.are_zero() => {
 							mods_to_remove.insert(i);
 						}
-						Modifier::If { condition, .. } => {
-							let remove = optimize_condition(condition);
-							if remove {
-								mods_to_remove.insert(i);
+						Modifier::If { condition, negate } => {
+							let result = optimize_condition(condition);
+							match result {
+								OptimizeConditionResult::Invert => {
+									*negate = !*negate;
+								}
+								OptimizeConditionResult::Guaranteed => {
+									mods_to_remove.insert(i);
+								}
+								OptimizeConditionResult::Impossible => {
+									// Remove this if and all modifiers after since they cannot be reached
+									mods_to_remove.extend(i..modifier_count);
+									instr.kind = LIRInstrKind::NoOp;
+								}
+								OptimizeConditionResult::Nothing => {}
 							}
 						}
 						_ => {}
@@ -265,20 +284,100 @@ impl LIRPass for SimplifyModifiersPass {
 	}
 }
 
-fn optimize_condition(condition: &mut Box<IfModCondition>) -> bool {
-	match **condition {
-		// Unbounded check doesnt do anything
+fn optimize_condition(condition: &mut Box<IfModCondition>) -> OptimizeConditionResult {
+	match condition.as_ref() {
+		// Reflexive property
+		IfModCondition::Score(IfScoreCondition::Single {
+			left: MutableScoreValue::Reg(left),
+			right: ScoreValue::Mutable(MutableScoreValue::Reg(right)),
+		}) if left == right => {
+			return OptimizeConditionResult::Guaranteed;
+		}
+		// Replace ranges that are only one number long with singles
+		// or mark them as impossible if they don't match anything
 		IfModCondition::Score(IfScoreCondition::Range {
-			left: IfScoreRangeEnd::Infinite,
+			score,
+			left:
+				IfScoreRangeEnd::Fixed {
+					value: ScoreValue::Constant(left_val),
+					inclusive: left_inc,
+				},
+			right:
+				IfScoreRangeEnd::Fixed {
+					value: ScoreValue::Constant(right_val),
+					inclusive: right_inc,
+				},
+		}) if left_val.is_value_eq(right_val) => {
+			// If both sides are exclusive then this matches nothing and the condition is impossible
+			if !left_inc && !right_inc {
+				return OptimizeConditionResult::Impossible;
+			} else {
+				*condition = Box::new(IfModCondition::Score(IfScoreCondition::Single {
+					left: score.clone(),
+					right: ScoreValue::Constant(left_val.clone()),
+				}));
+			}
+		}
+		// Replace constant ranges that would be smaller if inverted
+		IfModCondition::Score(IfScoreCondition::Range {
+			score,
+			left:
+				IfScoreRangeEnd::Fixed {
+					value: ScoreValue::Constant(value),
+					inclusive,
+				},
 			right: IfScoreRangeEnd::Infinite,
-			..
-		}) => {
-			return true;
+		}) if check_constant_range_size(value.get_i32(), i32::MAX) => {
+			*condition = Box::new(IfModCondition::Score(IfScoreCondition::Range {
+				score: score.clone(),
+				left: IfScoreRangeEnd::Infinite,
+				right: IfScoreRangeEnd::Fixed {
+					value: ScoreValue::Constant(value.clone()),
+					inclusive: !inclusive,
+				},
+			}));
+			return OptimizeConditionResult::Invert;
+		}
+		IfModCondition::Score(IfScoreCondition::Range {
+			score,
+			left: IfScoreRangeEnd::Infinite,
+			right:
+				IfScoreRangeEnd::Fixed {
+					value: ScoreValue::Constant(value),
+					inclusive,
+				},
+		}) if check_constant_range_size(value.get_i32(), i32::MAX) => {
+			*condition = Box::new(IfModCondition::Score(IfScoreCondition::Range {
+				score: score.clone(),
+				left: IfScoreRangeEnd::Fixed {
+					value: ScoreValue::Constant(value.clone()),
+					inclusive: !inclusive,
+				},
+				right: IfScoreRangeEnd::Infinite,
+			}));
+			return OptimizeConditionResult::Invert;
 		}
 		_ => {}
 	}
 
-	false
+	OptimizeConditionResult::Nothing
+}
+
+enum OptimizeConditionResult {
+	/// Do nothing
+	Nothing,
+	/// Invert the negation of the conditon
+	Invert,
+	/// This condition is always true, remove the if modifier
+	Guaranteed,
+	/// This condition is always false. Remove the if modifier and all modifiers after it
+	Impossible,
+}
+
+/// Checks if a constant range's size is greater than the integer limit
+fn check_constant_range_size(left: i32, right: i32) -> bool {
+	let range = (left - right).abs();
+	range > i32::MAX
 }
 
 pub struct ScoreboardDataflowPass;

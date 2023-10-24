@@ -18,6 +18,11 @@ impl EntityTarget {
 	pub fn is_blank_this(&self) -> bool {
 		matches!(self, EntityTarget::Selector(sel) if sel.is_blank_this())
 	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Player(l), Self::Player(r)) if l == r)
+			|| matches!((self, other), (Self::Selector(l), Self::Selector(r)) if l.is_value_eq(r))
+	}
 }
 
 impl Debug for EntityTarget {
@@ -38,6 +43,10 @@ pub struct Score {
 impl Score {
 	pub fn new(holder: EntityTarget, objective: Identifier) -> Self {
 		Self { holder, objective }
+	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		self.holder.is_value_eq(&other.holder) && self.objective == other.objective
 	}
 }
 

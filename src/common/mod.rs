@@ -178,6 +178,11 @@ impl ScoreValue {
 			ScoreValue::Mutable(val) => val.get_used_regs(),
 		}
 	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Constant(l), Self::Constant(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::Mutable(l), Self::Mutable(r)) if l.is_value_eq(r))
+	}
 }
 
 impl Debug for ScoreValue {
@@ -202,6 +207,11 @@ impl MutableScoreValue {
 			Self::Score(..) => Vec::new(),
 			Self::Reg(reg) => vec![reg],
 		}
+	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Score(l), Self::Score(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::Reg(l), Self::Reg(r)) if l == r)
 	}
 }
 

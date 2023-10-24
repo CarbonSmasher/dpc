@@ -149,8 +149,10 @@ fn known() {
 
 #[allow(dead_code)]
 fn fuzz() {
-	let instr_count = 350;
-	let fn_count = 100000;
+	let instr_count = 35;
+	let fn_count = 10;
+	let debug = true;
+
 	let mut rng = rand::thread_rng();
 
 	let mut ir = IR::new();
@@ -251,7 +253,7 @@ fn fuzz() {
 		ir.functions
 			.insert(FunctionInterface::new(format!("foo::{fn_i}").into()), block);
 	}
-	run(ir, false);
+	run(ir, debug);
 }
 
 fn run(mut ir: IR, debug: bool) {

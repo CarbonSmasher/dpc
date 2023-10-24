@@ -202,6 +202,10 @@ impl ScoreTypeContents {
 	pub fn get_literal_str(&self) -> String {
 		self.get_i32().to_string()
 	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		self.get_i32() == other.get_i32()
+	}
 }
 
 impl Debug for ScoreTypeContents {

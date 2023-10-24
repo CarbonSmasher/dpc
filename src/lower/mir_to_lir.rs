@@ -83,6 +83,14 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 				} => lir_instrs.push(LIRInstruction::new(LIRInstrKind::SetXP(
 					target, amount, value,
 				))),
+				MIRInstrKind::Pow { base, exp } => {
+					for _ in 0..exp {
+						lir_instrs.push(LIRInstruction::new(LIRInstrKind::MulScore(
+							base.clone(),
+							Value::Mutable(base.clone()),
+						)));
+					}
+				}
 			}
 		}
 

@@ -29,6 +29,12 @@ impl Modifier {
 			_ => Vec::new(),
 		}
 	}
+
+	/// Checks if this modifier has any side effects that aren't applied to
+	/// the command it is modifying
+	pub fn has_extra_side_efects(&self) -> bool {
+		matches!(self, Self::StoreResult(..) | Self::StoreSuccess(..))
+	}
 }
 
 impl Debug for Modifier {

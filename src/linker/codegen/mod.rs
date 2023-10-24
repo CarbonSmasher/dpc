@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use anyhow::{anyhow, bail};
 
 use crate::common::mc::Score;
+use crate::common::modifier::Modifier;
 use crate::common::ty::{DataType, NBTTypeContents};
 use crate::common::RegisterList;
 use crate::common::{ty::DataTypeContents, Value};
@@ -268,21 +269,18 @@ pub fn codegen_instr(
 			let amount = if amount < &0 { 0 } else { *amount };
 			Some(cgformat!(cbcx, "xp set ", target, " ", amount, " ", value)?)
 		}
-		LIRInstrKind::Use(..) => None,
+		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 
-	if let Some(cmd) = cmd {
-		for modifier in instr.modifiers.clone() {
-			out.modifiers.extend(codegen_modifier(modifier, cbcx)?);
-		}
-		Ok(Some(out.generate(cmd)))
-	} else {
-		Ok(None)
+	for modifier in instr.modifiers.clone() {
+		out.modifiers.push(modifier);
 	}
+
+	out.generate(cmd, cbcx)
 }
 
 struct CommandBuilder {
-	modifiers: Vec<String>,
+	modifiers: Vec<Modifier>,
 }
 
 impl CommandBuilder {
@@ -292,20 +290,39 @@ impl CommandBuilder {
 		}
 	}
 
-	fn generate(self, command: String) -> String {
+	fn generate(
+		self,
+		command: Option<String>,
+		cbcx: &mut CodegenBlockCx,
+	) -> anyhow::Result<Option<String>> {
 		let mut out = String::new();
+
+		let command = if let Some(command) = command {
+			command
+		} else {
+			// If the command is a no-op and none of the modifiers have any side effects
+			// then it can be omitted
+			if !self.modifiers.iter().any(|x| x.has_extra_side_efects()) {
+				return Ok(None);
+			} else {
+				"say foo".into()
+			}
+		};
+
 		if !self.modifiers.is_empty() {
 			out.push_str("execute ");
 			for modifier in self.modifiers {
-				out.push_str(&modifier);
-				out.push(' ');
+				if let Some(modifier) = codegen_modifier(modifier, cbcx)? {
+					out.push_str(&modifier);
+					out.push(' ');
+				}
 			}
 			out.push_str("run ");
 		}
 
 		out.push_str(&command);
 
-		out
+		Ok(Some(out))
 	}
 }
 

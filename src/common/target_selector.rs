@@ -18,6 +18,10 @@ impl TargetSelector {
 	pub fn is_blank_this(&self) -> bool {
 		matches!(self.selector, SelectorType::This) && self.params.is_empty()
 	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		self.selector == other.selector && self.params == other.params
+	}
 }
 
 impl Debug for TargetSelector {
@@ -37,7 +41,7 @@ impl Debug for TargetSelector {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SelectorType {
 	This,
 	NearestPlayer,
@@ -58,7 +62,7 @@ impl SelectorType {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SelectorParameter {
 	Type { ty: String, invert: bool },
 	Tag { tag: String, invert: bool },

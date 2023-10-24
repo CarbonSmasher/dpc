@@ -112,6 +112,10 @@ pub enum InstrKind {
 	Abs {
 		val: MutableValue,
 	},
+	Pow {
+		base: MutableValue,
+		exp: u8,
+	},
 	Use {
 		val: MutableValue,
 	},
@@ -147,6 +151,7 @@ impl Debug for InstrKind {
 			Self::Max { left, right } => format!("max {left:?}, {right:?}"),
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
+			Self::Pow { base, exp } => format!("pow {base:?}, {exp}"),
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Say { message } => format!("say {message}"),
 			Self::Tell { target, message } => format!("tell {target:?} {message}"),

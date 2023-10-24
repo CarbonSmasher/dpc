@@ -122,6 +122,7 @@ pub enum LIRInstrKind {
 		index: ArraySize,
 	},
 	Use(MutableValue),
+	NoOp,
 	// Commands
 	Say(String),
 	Tell(EntityTarget, String),
@@ -173,6 +174,7 @@ impl Debug for LIRInstrKind {
 				index,
 			} => format!("idxcs {score:?} {value:?} {index}"),
 			Self::Use(val) => format!("use {val:?}"),
+			Self::NoOp => "no".into(),
 			Self::Say(text) => format!("say {text}"),
 			Self::Tell(target, text) => format!("tell {target:?} {text}"),
 			Self::Kill(target) => format!("kill {target:?}"),

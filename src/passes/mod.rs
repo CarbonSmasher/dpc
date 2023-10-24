@@ -7,8 +7,8 @@ use crate::lir::LIRBlock;
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::ir::ValidatePass;
-use self::opt::lir::{SimplifyModifiersPass, ScoreboardDataflowPass};
-use self::opt::mir::{ConstPropPass, InstCombinePass, MIRSimplifyPass};
+use self::opt::lir::{ScoreboardDataflowPass, SimplifyModifiersPass};
+use self::opt::mir::{ConstPropPass, InstCombinePass, MIRSimplifyPass, ConstFoldPass};
 use self::opt::{lir::LIRSimplifyPass, mir::DSEPass};
 
 pub mod analysis;
@@ -41,9 +41,15 @@ pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 		Box::new(NullPass) as Box<dyn MIRPass>,
 		Box::new(MIRSimplifyPass),
 		Box::new(ConstPropPass),
+		Box::new(ConstFoldPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(DSEPass),
 		Box::new(InstCombinePass),
+		Box::new(ConstPropPass),
+		Box::new(MIRSimplifyPass),
+		Box::new(ConstFoldPass),
+		Box::new(DSEPass),
+		Box::new(MIRSimplifyPass),
 	];
 
 	for mut pass in passes {
@@ -64,6 +70,7 @@ pub fn run_lir_passes(lir: &mut LIR) -> anyhow::Result<()> {
 		Box::new(LIRSimplifyPass),
 		Box::new(ScoreboardDataflowPass),
 		Box::new(SimplifyModifiersPass),
+		Box::new(LIRSimplifyPass),
 	];
 
 	for mut pass in passes {
