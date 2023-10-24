@@ -7,9 +7,12 @@ use crate::lir::LIRBlock;
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::ir::ValidatePass;
-use self::opt::lir::{ScoreboardDataflowPass, SimplifyModifiersPass};
-use self::opt::mir::{ConstPropPass, InstCombinePass, MIRSimplifyPass, ConstFoldPass};
-use self::opt::{lir::LIRSimplifyPass, mir::DSEPass};
+use self::opt::const_passes::{ConstFoldPass, ConstPropPass};
+use self::opt::dse::DSEPass;
+use self::opt::inst_combine::InstCombinePass;
+use self::opt::scoreboard_dataflow::ScoreboardDataflowPass;
+use self::opt::simplify::{LIRSimplifyPass, MIRSimplifyPass};
+use self::opt::simplify_modifiers::SimplifyModifiersPass;
 
 pub mod analysis;
 pub mod opt;
