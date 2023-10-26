@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::CodegenBlockCx;
 
 pub trait Codegen {
@@ -30,10 +32,11 @@ macro_rules! cg_impl {
 cg_impl!(&str);
 cg_impl!(String);
 cg_impl!(i32);
+cg_impl!(Arc<str>);
 
 pub mod macros {
 	macro_rules! cgwrite {
-		($f:expr, $cbcx:expr, $($t:tt),*) => {{
+		($f:expr, $cbcx:expr, $($t:expr),*) => {{
 			$(
 				$t.gen_writer($f, $cbcx)?;
 			)*
@@ -43,7 +46,7 @@ pub mod macros {
 
 	#[allow(unused_macros)]
 	macro_rules! cgformat {
-		($cbcx:expr, $($t:tt),*) => {{
+		($cbcx:expr, $($t:expr),*) => {{
 			let mut out = String::new();
 			$crate::linker::codegen::t::macros::cgwrite!(&mut out, $cbcx, $($t),*)?;
 			Ok::<String, anyhow::Error>(out)

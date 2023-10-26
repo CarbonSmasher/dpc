@@ -1,6 +1,6 @@
 use crate::common::modifier::Modifier;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
-use crate::common::{DeclareBinding, Value};
+use crate::common::{DeclareBinding, ScoreValue, Value};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::mir::{MIRBlock, MIRInstrKind, MIR};
 use crate::passes::{LIRPass, MIRPass, Pass};
@@ -207,32 +207,32 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 		let remove = match &instr.kind {
 			// Reflexive property; set to self or swap with self
 			// and also mins and maxes with self
-			LIRInstrKind::SetScore(left, Value::Mutable(right))
+			LIRInstrKind::SetScore(left, ScoreValue::Mutable(right))
 			| LIRInstrKind::SwapScore(left, right)
-			| LIRInstrKind::MinScore(left, Value::Mutable(right))
-			| LIRInstrKind::MaxScore(left, Value::Mutable(right))
-				if left.is_same_val(right) =>
+			| LIRInstrKind::MinScore(left, ScoreValue::Mutable(right))
+			| LIRInstrKind::MaxScore(left, ScoreValue::Mutable(right))
+				if left.is_value_eq(right) =>
 			{
 				true
 			}
 			// Multiplies and divides by 1
-			LIRInstrKind::MulScore(_, Value::Constant(DataTypeContents::Score(score)))
-			| LIRInstrKind::DivScore(_, Value::Constant(DataTypeContents::Score(score)))
+			LIRInstrKind::MulScore(_, ScoreValue::Constant(score))
+			| LIRInstrKind::DivScore(_, ScoreValue::Constant(score))
 				if score.get_i32() == 1 =>
 			{
 				true
 			}
 			// Divides and modulos by zero, since these produce an error and don't change the score.
 			// However, if the success of this operation was stored somewhere, we need to respect that
-			LIRInstrKind::DivScore(_, Value::Constant(DataTypeContents::Score(score)))
-			| LIRInstrKind::ModScore(_, Value::Constant(DataTypeContents::Score(score)))
+			LIRInstrKind::DivScore(_, ScoreValue::Constant(score))
+			| LIRInstrKind::ModScore(_, ScoreValue::Constant(score))
 				if score.get_i32() == 0 =>
 			{
 				true
 			}
 			// Adds and subtracts by 0 or the integer limit don't do anything
-			LIRInstrKind::AddScore(_, Value::Constant(DataTypeContents::Score(score)))
-			| LIRInstrKind::SubScore(_, Value::Constant(DataTypeContents::Score(score)))
+			LIRInstrKind::AddScore(_, ScoreValue::Constant(score))
+			| LIRInstrKind::SubScore(_, ScoreValue::Constant(score))
 				if score.get_i32() == 0
 					|| score.get_i32() == i32::MAX
 					|| score.get_i32() == -i32::MAX =>
@@ -254,95 +254,81 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 		// Instructions to replace
 		let kind_repl = match &instr.kind {
 			// Add by negative is sub by positive
-			LIRInstrKind::AddScore(left, Value::Constant(DataTypeContents::Score(score)))
+			LIRInstrKind::AddScore(left, ScoreValue::Constant(score))
 				if score.get_i32().is_negative() =>
 			{
 				Some(LIRInstrKind::SubScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
-						score.get_i32().abs(),
-					))),
+					ScoreValue::Constant(ScoreTypeContents::Score(score.get_i32().abs())),
 				))
 			}
 			// Sub by negative is add by positive
-			LIRInstrKind::SubScore(left, Value::Constant(DataTypeContents::Score(score)))
+			LIRInstrKind::SubScore(left, ScoreValue::Constant(score))
 				if score.get_i32().is_negative() =>
 			{
 				Some(LIRInstrKind::AddScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
-						score.get_i32().abs(),
-					))),
+					ScoreValue::Constant(ScoreTypeContents::Score(score.get_i32().abs())),
 				))
 			}
 			// Mod by negative is same as mod by positive
-			LIRInstrKind::ModScore(left, Value::Constant(DataTypeContents::Score(score)))
+			LIRInstrKind::ModScore(left, ScoreValue::Constant(score))
 				if score.get_i32().is_negative() =>
 			{
 				Some(LIRInstrKind::ModScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
-						score.get_i32().abs(),
-					))),
+					ScoreValue::Constant(ScoreTypeContents::Score(score.get_i32().abs())),
 				))
 			}
 			// Div by -1 is same as mul by -1
-			LIRInstrKind::DivScore(left, Value::Constant(DataTypeContents::Score(score)))
-				if score.get_i32() == -1 =>
-			{
+			LIRInstrKind::DivScore(left, ScoreValue::Constant(score)) if score.get_i32() == -1 => {
 				Some(LIRInstrKind::MulScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-1))),
+					ScoreValue::Constant(ScoreTypeContents::Score(-1)),
 				))
 			}
 			// x / x == 1
-			LIRInstrKind::DivScore(left, Value::Mutable(right)) if left.is_same_val(right) => {
+			LIRInstrKind::DivScore(left, ScoreValue::Mutable(right)) if left.is_value_eq(right) => {
 				Some(LIRInstrKind::SetScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(1))),
+					ScoreValue::Constant(ScoreTypeContents::Score(1)),
 				))
 			}
 			// x * 0 == 0
-			LIRInstrKind::MulScore(left, Value::Constant(DataTypeContents::Score(score)))
-				if score.get_i32() == 0 =>
-			{
+			LIRInstrKind::MulScore(left, ScoreValue::Constant(score)) if score.get_i32() == 0 => {
 				Some(LIRInstrKind::SetScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(0))),
+					ScoreValue::Constant(ScoreTypeContents::Score(0)),
 				))
 			}
 			// x % 1 always equals 0
-			LIRInstrKind::ModScore(left, Value::Constant(DataTypeContents::Score(score)))
-				if score.get_i32() == 1 =>
-			{
+			LIRInstrKind::ModScore(left, ScoreValue::Constant(score)) if score.get_i32() == 1 => {
 				Some(LIRInstrKind::SetScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(0))),
+					ScoreValue::Constant(ScoreTypeContents::Score(0)),
 				))
 			}
 			// x - x == 0
-			LIRInstrKind::SubScore(left, Value::Mutable(right)) if left.is_same_val(right) => {
+			LIRInstrKind::SubScore(left, ScoreValue::Mutable(right)) if left.is_value_eq(right) => {
 				Some(LIRInstrKind::SetScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(0))),
+					ScoreValue::Constant(ScoreTypeContents::Score(0)),
 				))
 			}
 			// x * 2 == x + x, which is faster
-			LIRInstrKind::MulScore(left, Value::Constant(DataTypeContents::Score(score)))
-				if score.get_i32() == 2 =>
-			{
+			LIRInstrKind::MulScore(left, ScoreValue::Constant(score)) if score.get_i32() == 2 => {
 				Some(LIRInstrKind::AddScore(
 					left.clone(),
-					Value::Mutable(left.clone()),
+					ScoreValue::Mutable(left.clone()),
 				))
 			}
 			// x / integer limit always equals 0
-			LIRInstrKind::DivScore(left, Value::Constant(DataTypeContents::Score(score)))
+			LIRInstrKind::DivScore(left, ScoreValue::Constant(score))
 				if score.get_i32() == i32::MAX || score.get_i32() == -i32::MAX =>
 			{
 				Some(LIRInstrKind::SetScore(
 					left.clone(),
-					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(0))),
+					ScoreValue::Constant(ScoreTypeContents::Score(0)),
 				))
 			}
 			_ => None,

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use dashmap::{DashMap, DashSet};
 
 use crate::common::modifier::{Modifier, StoreModLocation};
-use crate::common::{Identifier, MutableValue, Value};
+use crate::common::{Identifier, MutableScoreValue, MutableValue, ScoreValue};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
 use crate::util::remove_indices;
@@ -64,11 +64,12 @@ fn run_scoreboard_dataflow_iter(
 		}
 		match &instr.kind {
 			LIRInstrKind::SetScore(left, right) => {
-				let MutableValue::Register(left) = left;
-				if let Value::Mutable(MutableValue::Register(right)) = right {
-					if let Some(mut point) = flow_points.get_mut(right) {
-						point.store_regs.push(left.clone());
-						instrs_to_remove.insert(i);
+				if let MutableScoreValue::Reg(left) = left {
+					if let ScoreValue::Mutable(MutableScoreValue::Reg(right)) = right {
+						if let Some(mut point) = flow_points.get_mut(right) {
+							point.store_regs.push(left.clone());
+							instrs_to_remove.insert(i);
+						}
 					}
 				}
 			}
@@ -79,26 +80,34 @@ fn run_scoreboard_dataflow_iter(
 			| LIRInstrKind::ModScore(left, right)
 			| LIRInstrKind::MinScore(left, right)
 			| LIRInstrKind::MaxScore(left, right) => {
-				let MutableValue::Register(left) = left;
-				if let Value::Mutable(MutableValue::Register(right)) = right {
-					finished_flow_points.extend(flow_points.remove(right).map(|x| x.1));
-				}
+				if let MutableScoreValue::Reg(left) = left {
+					if let ScoreValue::Mutable(MutableScoreValue::Reg(right)) = right {
+						finished_flow_points.extend(flow_points.remove(right).map(|x| x.1));
+					}
 
-				flow_points.insert(
-					left.clone(),
-					SBDataflowPoint {
-						pos: i,
-						store_regs: Vec::new(),
-					},
-				);
+					flow_points.insert(
+						left.clone(),
+						SBDataflowPoint {
+							pos: i,
+							store_regs: Vec::new(),
+						},
+					);
+				}
 			}
 			LIRInstrKind::SwapScore(left, right) => {
-				let MutableValue::Register(left) = left;
-				let MutableValue::Register(right) = right;
-				finished_flow_points.extend(flow_points.remove(left).map(|x| x.1));
-				finished_flow_points.extend(flow_points.remove(right).map(|x| x.1));
+				if let MutableScoreValue::Reg(left) = left {
+					if let MutableScoreValue::Reg(right) = right {
+						finished_flow_points.extend(flow_points.remove(left).map(|x| x.1));
+						finished_flow_points.extend(flow_points.remove(right).map(|x| x.1));
+					}
+				}
 			}
-			LIRInstrKind::ConstIndexToScore { score: reg, .. } | LIRInstrKind::Use(reg) => {
+			LIRInstrKind::ConstIndexToScore { score: reg, .. } => {
+				if let MutableScoreValue::Reg(reg) = reg {
+					finished_flow_points.extend(flow_points.remove(reg).map(|x| x.1));
+				}
+			}
+			LIRInstrKind::Use(reg) => {
 				let MutableValue::Register(reg) = reg;
 				finished_flow_points.extend(flow_points.remove(reg).map(|x| x.1));
 			}

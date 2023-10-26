@@ -254,6 +254,16 @@ impl NBTTypeContents {
 			Self::List(_, list) => fmt_arr(list.iter().map(|x| x.get_literal_str())),
 		}
 	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Byte(l), Self::Byte(r)) if l == r)
+			|| matches!((self, other), (Self::Bool(l), Self::Bool(r)) if l == r)
+			|| matches!((self, other), (Self::Short(l), Self::Short(r)) if l == r)
+			|| matches!((self, other), (Self::Int(l), Self::Int(r)) if l == r)
+			|| matches!((self, other), (Self::Long(l), Self::Long(r)) if l == r)
+			|| matches!((self, other), (Self::Arr(l), Self::Arr(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::List(lt, l), Self::List(rt, r)) if lt == rt && l.iter().zip(r).all(|(l, r)| l.is_value_eq(r)))
+	}
 }
 
 impl Debug for NBTTypeContents {
@@ -287,6 +297,11 @@ impl NBTArrayTypeContents {
 		}
 	}
 
+	pub fn get_size(&self) -> &ArraySize {
+		let (Self::Byte(_, size) | Self::Int(_, size) | Self::Long(_, size)) = self;
+		size
+	}
+
 	pub fn get_literal_str(&self) -> String {
 		match self {
 			Self::Byte(val, ..) => format!("[B;{}]", fmt_arr(val.iter().map(|x| format!("{x}b")))),
@@ -301,6 +316,12 @@ impl NBTArrayTypeContents {
 			Self::Int(val, ..) => val.get(index).map(ToString::to_string),
 			Self::Long(val, ..) => val.get(index).map(ToString::to_string),
 		}
+	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Byte(l, ..), Self::Byte(r, ..)) if l == r)
+			|| matches!((self, other), (Self::Int(l, ..), Self::Int(r, ..)) if l == r)
+			|| matches!((self, other), (Self::Long(l, ..), Self::Long(r, ..)) if l == r)
 	}
 }
 

@@ -4,7 +4,9 @@ use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::mc::{EntityTarget, XPValue};
 use crate::common::modifier::Modifier;
 use crate::common::ty::ArraySize;
-use crate::common::{FunctionInterface, Identifier, MutableValue, RegisterList, Value};
+use crate::common::{
+	FunctionInterface, Identifier, MutableScoreValue, MutableValue, RegisterList, ScoreValue, Value, MutableNBTValue, NBTValue,
+};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
@@ -106,18 +108,20 @@ impl Debug for LIRInstruction {
 #[derive(Clone)]
 pub enum LIRInstrKind {
 	// Basic
-	SetScore(MutableValue, Value),
-	AddScore(MutableValue, Value),
-	SubScore(MutableValue, Value),
-	MulScore(MutableValue, Value),
-	DivScore(MutableValue, Value),
-	ModScore(MutableValue, Value),
-	MinScore(MutableValue, Value),
-	MaxScore(MutableValue, Value),
-	SwapScore(MutableValue, MutableValue),
-	SetData(MutableValue, Value),
+	SetScore(MutableScoreValue, ScoreValue),
+	AddScore(MutableScoreValue, ScoreValue),
+	SubScore(MutableScoreValue, ScoreValue),
+	MulScore(MutableScoreValue, ScoreValue),
+	DivScore(MutableScoreValue, ScoreValue),
+	ModScore(MutableScoreValue, ScoreValue),
+	MinScore(MutableScoreValue, ScoreValue),
+	MaxScore(MutableScoreValue, ScoreValue),
+	SwapScore(MutableScoreValue, MutableScoreValue),
+	SetData(MutableNBTValue, NBTValue),
+	GetScore(MutableScoreValue),
+	GetData(MutableNBTValue),
 	ConstIndexToScore {
-		score: MutableValue,
+		score: MutableScoreValue,
 		value: Value,
 		index: ArraySize,
 	},
@@ -141,11 +145,15 @@ impl LIRInstrKind {
 			| LIRInstrKind::DivScore(left, right)
 			| LIRInstrKind::ModScore(left, right)
 			| LIRInstrKind::MinScore(left, right)
-			| LIRInstrKind::MaxScore(left, right)
-			| LIRInstrKind::SetData(left, right) => [left.get_used_regs(), right.get_used_regs()].concat(),
+			| LIRInstrKind::MaxScore(left, right) => [left.get_used_regs(), right.get_used_regs()].concat(),
+			LIRInstrKind::SetData(left, right) => {
+				[left.get_used_regs(), right.get_used_regs()].concat()
+			}
 			LIRInstrKind::SwapScore(left, right) => {
 				[left.get_used_regs(), right.get_used_regs()].concat()
 			}
+			LIRInstrKind::GetScore(score) => score.get_used_regs(),
+			LIRInstrKind::GetData(data) => data.get_used_regs(),
 			LIRInstrKind::ConstIndexToScore { score, value, .. } => {
 				[score.get_used_regs(), value.get_used_regs()].concat()
 			}
@@ -168,6 +176,8 @@ impl Debug for LIRInstrKind {
 			Self::MaxScore(left, right) => format!("maxs {left:?} {right:?}"),
 			Self::SwapScore(left, right) => format!("swps {left:?} {right:?}"),
 			Self::SetData(left, right) => format!("setd {left:?} {right:?}"),
+			Self::GetScore(val) => format!("gets {val:?}"),
+			Self::GetData(val) => format!("getd {val:?}"),
 			Self::ConstIndexToScore {
 				score,
 				value,

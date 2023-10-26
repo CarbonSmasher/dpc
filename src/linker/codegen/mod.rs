@@ -1,24 +1,22 @@
 mod entity_target;
 mod modifier;
-mod t;
+pub mod t;
 mod util;
 
 use std::collections::HashSet;
 
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Context};
 
 use crate::common::mc::Score;
-use crate::common::modifier::Modifier;
-use crate::common::ty::{DataType, NBTTypeContents};
-use crate::common::RegisterList;
+use crate::common::modifier::{Modifier, StoreModLocation};
+use crate::common::ty::NBTTypeContents;
 use crate::common::{ty::DataTypeContents, Value};
-use crate::linker::text::{format_local_storage_path, REG_STORAGE_LOCATION};
+use crate::common::{NBTValue, RegisterList, ScoreValue};
+use crate::linker::text::REG_STORAGE_LOCATION;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 
 use self::modifier::codegen_modifier;
-use self::util::{get_mut_val_reg, get_val_score};
-
-use super::text::REG_OBJECTIVE;
+use self::util::get_mut_val_reg;
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 
@@ -65,8 +63,9 @@ pub fn codegen_block(block: &LIRBlock, ccx: &mut CodegenCx) -> anyhow::Result<Ve
 	};
 
 	let mut out = Vec::new();
-	for instr in &block.contents {
-		let command = codegen_instr(instr, &mut cbcx)?;
+	for (i, instr) in block.contents.iter().enumerate() {
+		let command =
+			codegen_instr(instr, &mut cbcx).with_context(|| format!("At instruction {i}"))?;
 		out.extend(command);
 	}
 
@@ -79,181 +78,128 @@ pub fn codegen_instr(
 ) -> anyhow::Result<Option<String>> {
 	let mut out = CommandBuilder::new();
 
+	let mut modifiers = Vec::new();
+
+	dbg!(&cbcx.ra);
+
 	let cmd = match &instr.kind {
-		LIRInstrKind::SetScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
-			Some(match right {
-				Value::Constant(data) => {
-					let lit = match data {
-						DataTypeContents::Score(score) => score.get_literal_str(),
-						_ => bail!("LIR instruction given wrong type"),
-					};
-					format!("scoreboard players set {left_scoreholder} {REG_OBJECTIVE} {lit}")
-				}
-				Value::Mutable(val) => match val.get_ty(&cbcx.regs)? {
-					DataType::Score(..) => {
-						let right_scoreholder = get_mut_val_reg(&val, &cbcx.ra, &cbcx.regs)?;
-						format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} = {right_scoreholder} {REG_OBJECTIVE}")
-					}
-					DataType::NBT(..) => {
-						let right_loc = get_mut_val_reg(&val, &cbcx.ra, &cbcx.regs)?;
-						format!("execute store result score {left_scoreholder} {REG_OBJECTIVE} run data get storage {REG_STORAGE_LOCATION} {} 1.0", format_local_storage_path(right_loc))
-					}
-				},
-			})
-		}
+		LIRInstrKind::SetScore(left, right) => Some(match right {
+			ScoreValue::Constant(data) => {
+				let lit = data.get_literal_str();
+				cgformat!(cbcx, "scoreboard players set ", left, " ", lit)?
+			}
+			ScoreValue::Mutable(right) => {
+				cgformat!(cbcx, "scoreboard players operation ", left, " = ", right)?
+			}
+		}),
 		LIRInstrKind::AddScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
 			Some(match right {
-				Value::Constant(data) => {
-					let lit = match data {
-						DataTypeContents::Score(score) => score.get_i32(),
-						_ => bail!("LIR instruction given wrong type"),
-					};
+				ScoreValue::Constant(data) => {
+					let lit = data.get_i32();
 					// Negative signs in add/remove commands are illegal
 					if lit.is_negative() {
-						format!(
-							"scoreboard players remove {left_scoreholder} {REG_OBJECTIVE} {}",
-							lit.abs()
-						)
+						cgformat!(cbcx, "scoreboard players remove ", left, " ", lit.abs())?
 					} else {
-						format!("scoreboard players add {left_scoreholder} {REG_OBJECTIVE} {lit}")
+						cgformat!(cbcx, "scoreboard players add ", left, " ", lit)?
 					}
 				}
-				Value::Mutable(val) => {
-					let right_scoreholder = get_mut_val_reg(&val, &cbcx.ra, &cbcx.regs)?;
-					format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} += {right_scoreholder} {REG_OBJECTIVE}")
+				ScoreValue::Mutable(val) => {
+					cgformat!(cbcx, "scoreboard players operation ", left, " += ", val)?
 				}
 			})
 		}
 		LIRInstrKind::SubScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
 			Some(match right {
-				Value::Constant(data) => {
-					let lit = match data {
-						DataTypeContents::Score(score) => score.get_i32(),
-						_ => bail!("LIR instruction given wrong type"),
-					};
+				ScoreValue::Constant(data) => {
+					let lit = data.get_i32();
 					// Negative signs in add/remove commands are illegal
 					if lit.is_negative() {
-						format!(
-							"scoreboard players add {left_scoreholder} {REG_OBJECTIVE} {}",
-							lit.abs()
-						)
+						cgformat!(cbcx, "scoreboard players add ", left, " ", lit.abs())?
 					} else {
-						format!(
-							"scoreboard players remove {left_scoreholder} {REG_OBJECTIVE} {lit}"
-						)
+						cgformat!(cbcx, "scoreboard players remove ", left, " ", lit)?
 					}
 				}
-				Value::Mutable(val) => {
-					let right_scoreholder = get_mut_val_reg(&val, &cbcx.ra, &cbcx.regs)?;
-					format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} -= {right_scoreholder} {REG_OBJECTIVE}")
+				ScoreValue::Mutable(val) => {
+					cgformat!(cbcx, "scoreboard players operation ", left, " -= ", val)?
 				}
 			})
 		}
-		LIRInstrKind::MulScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
-			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
-			cbcx.ccx.score_literals.extend(to_add);
-
-			let mut out =
-				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} *= ");
-			right_score.gen_writer(&mut out, cbcx)?;
-			Some(out)
-		}
-		LIRInstrKind::DivScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
-			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
-			cbcx.ccx.score_literals.extend(to_add);
-
-			let mut out =
-				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} /= ");
-			right_score.gen_writer(&mut out, cbcx)?;
-			Some(out)
-		}
-		LIRInstrKind::ModScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
-			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
-			cbcx.ccx.score_literals.extend(to_add);
-
-			let mut out =
-				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} %= ");
-			right_score.gen_writer(&mut out, cbcx)?;
-			Some(out)
-		}
-		LIRInstrKind::MinScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
-			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
-			cbcx.ccx.score_literals.extend(to_add);
-
-			let mut out =
-				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} < ");
-			right_score.gen_writer(&mut out, cbcx)?;
-			Some(out)
-		}
-		LIRInstrKind::MaxScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?.clone();
-			let (right_score, to_add) = get_val_score(&right, &cbcx.ra, &cbcx.regs)?;
-			cbcx.ccx.score_literals.extend(to_add);
-
-			let mut out =
-				format!("scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} > ");
-			right_score.gen_writer(&mut out, cbcx)?;
-			Some(out)
-		}
-		LIRInstrKind::SwapScore(left, right) => {
-			let left_scoreholder = get_mut_val_reg(&left, &cbcx.ra, &cbcx.regs)?;
-			let right_scoreholder = get_mut_val_reg(&right, &cbcx.ra, &cbcx.regs)?;
-
-			Some(format!(
-				"scoreboard players operation {left_scoreholder} {REG_OBJECTIVE} >< {right_scoreholder} {REG_OBJECTIVE}"
-			))
-		}
-		LIRInstrKind::SetData(left, right) => {
-			let left_loc = get_mut_val_reg(left, &cbcx.ra, &cbcx.regs)?;
-			Some(match right {
-				Value::Constant(data) => {
-					let lit = match data {
-						DataTypeContents::NBT(nbt) => nbt.get_literal_str(),
-						_ => bail!("LIR instruction given wrong type"),
-					};
-					format!("data merge storage {REG_STORAGE_LOCATION} {{{left_loc}:{lit}}}")
-				}
-				Value::Mutable(val) => match val.get_ty(&cbcx.regs)? {
-					DataType::Score(..) => {
-						let right_scoreholder = get_mut_val_reg(&val, &cbcx.ra, &cbcx.regs)?;
-						format!("execute store result storage {REG_STORAGE_LOCATION} {left_loc} run scoreboard players get {right_scoreholder} {REG_OBJECTIVE}")
-					}
-					DataType::NBT(..) => {
-						let right_loc = get_mut_val_reg(val, &cbcx.ra, &cbcx.regs)?;
-						format!("data modify storage {REG_STORAGE_LOCATION} {left_loc} set from storage {REG_STORAGE_LOCATION} {right_loc}")
-					}
-				},
-			})
-		}
+		LIRInstrKind::MulScore(left, right) => Some(cgformat!(
+			cbcx,
+			"scoreboard players operation ",
+			left,
+			" *= ",
+			right
+		)?),
+		LIRInstrKind::DivScore(left, right) => Some(cgformat!(
+			cbcx,
+			"scoreboard players operation ",
+			left,
+			" /= ",
+			right
+		)?),
+		LIRInstrKind::ModScore(left, right) => Some(cgformat!(
+			cbcx,
+			"scoreboard players operation ",
+			left,
+			" %= ",
+			right
+		)?),
+		LIRInstrKind::MinScore(left, right) => Some(cgformat!(
+			cbcx,
+			"scoreboard players operation ",
+			left,
+			" < ",
+			right
+		)?),
+		LIRInstrKind::MaxScore(left, right) => Some(cgformat!(
+			cbcx,
+			"scoreboard players operation ",
+			left,
+			" > ",
+			right
+		)?),
+		LIRInstrKind::SwapScore(left, right) => Some(cgformat!(
+			cbcx,
+			"scoreboard players operation ",
+			left,
+			" >< ",
+			right
+		)?),
+		LIRInstrKind::SetData(left, right) => Some(match right {
+			NBTValue::Constant(data) => cgformat!(
+				cbcx,
+				"data modify ",
+				left,
+				" set from value ",
+				data.get_literal_str()
+			)?,
+			NBTValue::Mutable(val) => cgformat!(cbcx, "data modify ", left, " set from ", val)?,
+		}),
+		LIRInstrKind::GetScore(val) => Some(cgformat!(cbcx, "scoreboard players get ", val)?),
+		LIRInstrKind::GetData(val) => Some(cgformat!(cbcx, "data get ", val)?),
 		LIRInstrKind::ConstIndexToScore {
 			score,
 			value,
 			index,
-		} => {
-			let scoreholder = get_mut_val_reg(&score, &cbcx.ra, &cbcx.regs)?;
-			Some(match value {
-				Value::Constant(val) => match val {
-					DataTypeContents::NBT(NBTTypeContents::Arr(arr)) => {
-						let lit = arr
-							.const_index(*index)
-							.ok_or(anyhow!("Const index out of range"))?;
-						format!("scoreboard players set {scoreholder} {REG_OBJECTIVE} {lit}")
-					}
-					_ => bail!("Cannot index non-array type"),
-				},
-				Value::Mutable(val) => {
-					let loc = get_mut_val_reg(val, &cbcx.ra, &cbcx.regs)?;
-					format!("execute store result score {scoreholder} {REG_OBJECTIVE} run data get storage {REG_STORAGE_LOCATION} {loc}")
+		} => Some(match value {
+			Value::Constant(val) => match val {
+				DataTypeContents::NBT(NBTTypeContents::Arr(arr)) => {
+					let lit = arr
+						.const_index(*index)
+						.ok_or(anyhow!("Const index out of range"))?;
+					cgformat!(cbcx, "scoreboard players set ", score, lit)?
 				}
-			})
-		}
+				_ => bail!("Cannot index non-array type"),
+			},
+			Value::Mutable(val) => {
+				let loc = get_mut_val_reg(val, &cbcx.ra, &cbcx.regs)?.clone();
+				modifiers.push(Modifier::StoreResult(StoreModLocation::from_mut_score_val(
+					score,
+				)));
+				cgformat!(cbcx, "data get storage ", REG_STORAGE_LOCATION, loc)?
+			}
+		}),
 		LIRInstrKind::Say(message) => Some(format!("say {message}")),
 		LIRInstrKind::Tell(target, message) => Some(cgformat!(cbcx, "w ", target, " ", message)?),
 		LIRInstrKind::Kill(target) => {
@@ -272,9 +218,8 @@ pub fn codegen_instr(
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 
-	for modifier in instr.modifiers.clone() {
-		out.modifiers.push(modifier);
-	}
+	out.modifiers.extend(modifiers);
+	out.modifiers.extend(instr.modifiers.clone());
 
 	out.generate(cmd, cbcx)
 }

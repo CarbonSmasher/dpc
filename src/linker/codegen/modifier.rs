@@ -4,7 +4,7 @@ use crate::common::modifier::{
 	AnchorModLocation, EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier,
 	StoreModLocation,
 };
-use crate::common::ScoreValue;
+use crate::common::{MutableNBTValue, ScoreValue};
 use crate::linker::text::REG_OBJECTIVE;
 
 use super::t::macros::cgformat;
@@ -229,7 +229,6 @@ fn codegen_score_lt(inclusive: bool) -> &'static str {
 impl StoreModLocation {
 	fn codegen(self, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
 		match self {
-			Self::Score(score) => Ok(format!("score {}", score.gen_str(cbcx)?)),
 			Self::Reg(reg) => {
 				let reg = cbcx
 					.ra
@@ -238,6 +237,9 @@ impl StoreModLocation {
 					.ok_or(anyhow!("Register {reg} not allocated"))?;
 				Ok(format!("score {reg} {REG_OBJECTIVE}"))
 			}
+			Self::LocalReg(reg) => MutableNBTValue::Reg(reg).gen_str(cbcx),
+			Self::Score(score) => Ok(format!("score {}", score.gen_str(cbcx)?)),
+			Self::Data(data) => data.gen_str(cbcx),
 		}
 	}
 }

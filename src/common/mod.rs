@@ -9,9 +9,9 @@ use std::{fmt::Debug, hash::Hash, sync::Arc};
 use anyhow::{bail, Context};
 use dashmap::DashMap;
 
-use self::mc::Score;
+use self::mc::{FullDataLocation, Score};
 
-use self::ty::{DataType, DataTypeContents, ScoreTypeContents};
+use self::ty::{DataType, DataTypeContents, NBTTypeContents, ScoreTypeContents};
 
 #[derive(Clone)]
 pub enum Value {
@@ -46,6 +46,21 @@ impl Value {
 				}
 			}
 			Self::Mutable(val) => ScoreValue::Mutable(val.to_mutable_score_value()),
+		};
+
+		Ok(out)
+	}
+
+	pub fn to_nbt_value(self) -> anyhow::Result<NBTValue> {
+		let out = match self {
+			Self::Constant(val) => {
+				if let DataTypeContents::NBT(nbt) = val {
+					NBTValue::Constant(nbt)
+				} else {
+					bail!("Expected value to be NBT");
+				}
+			}
+			Self::Mutable(val) => NBTValue::Mutable(val.to_mutable_nbt_value()),
 		};
 
 		Ok(out)
@@ -94,6 +109,12 @@ impl MutableValue {
 	pub fn to_mutable_score_value(self) -> MutableScoreValue {
 		match self {
 			Self::Register(reg) => MutableScoreValue::Reg(reg),
+		}
+	}
+
+	pub fn to_mutable_nbt_value(self) -> MutableNBTValue {
+		match self {
+			Self::Register(reg) => MutableNBTValue::Reg(reg),
 		}
 	}
 }
@@ -175,7 +196,7 @@ impl ScoreValue {
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
 			Self::Constant(..) => Vec::new(),
-			ScoreValue::Mutable(val) => val.get_used_regs(),
+			Self::Mutable(val) => val.get_used_regs(),
 		}
 	}
 
@@ -225,7 +246,67 @@ impl Debug for MutableScoreValue {
 	}
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone)]
+pub enum NBTValue {
+	Constant(NBTTypeContents),
+	Mutable(MutableNBTValue),
+}
+
+impl NBTValue {
+	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+		match self {
+			Self::Constant(..) => Vec::new(),
+			Self::Mutable(val) => val.get_used_regs(),
+		}
+	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Constant(l), Self::Constant(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::Mutable(l), Self::Mutable(r)) if l.is_value_eq(r))
+	}
+}
+
+impl Debug for NBTValue {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Constant(val) => format!("{val:?}"),
+			Self::Mutable(val) => format!("{val:?}"),
+		};
+		write!(f, "{text}")
+	}
+}
+
+#[derive(Clone)]
+pub enum MutableNBTValue {
+	Data(FullDataLocation),
+	Reg(Identifier),
+}
+
+impl MutableNBTValue {
+	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+		match self {
+			Self::Data(..) => Vec::new(),
+			Self::Reg(reg) => vec![reg],
+		}
+	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Data(l), Self::Data(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::Reg(l), Self::Reg(r)) if l == r)
+	}
+}
+
+impl Debug for MutableNBTValue {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Data(data) => format!("{data:?}"),
+			Self::Reg(reg) => format!("${reg}"),
+		};
+		write!(f, "{text}")
+	}
+}
+
+#[derive(Clone, Eq)]
 pub struct FunctionInterface {
 	pub id: ResourceLocation,
 	pub sig: FunctionSignature,
@@ -238,6 +319,12 @@ impl FunctionInterface {
 
 	pub fn with_signature(id: ResourceLocation, sig: FunctionSignature) -> Self {
 		Self { id, sig }
+	}
+}
+
+impl Debug for FunctionInterface {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}{:?}", self.id, self.sig)
 	}
 }
 
@@ -255,7 +342,7 @@ impl PartialEq for FunctionInterface {
 
 pub type FunctionArgs = Vec<DataType>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FunctionSignature {
 	pub args: FunctionArgs,
 	pub ret: ReturnType,
@@ -279,8 +366,32 @@ impl FunctionSignature {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl Debug for FunctionSignature {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "(")?;
+		for (i, arg) in self.args.iter().enumerate() {
+			arg.fmt(f)?;
+			if i != self.args.len() - 1 {
+				write!(f, ",")?;
+			}
+		}
+		write!(f, "): {:?}", self.ret)?;
+
+		Ok(())
+	}
+}
+
+#[derive(Clone, PartialEq, Eq)]
 pub enum ReturnType {
 	Void,
 	Standard(DataType),
+}
+
+impl Debug for ReturnType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Void => write!(f, "void"),
+			Self::Standard(ty) => ty.fmt(f),
+		}
+	}
 }

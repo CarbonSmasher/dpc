@@ -108,6 +108,7 @@ impl RegAllocator {
 }
 
 /// Result from allocating registers for a block
+#[derive(Debug)]
 pub struct RegAllocResult {
 	pub regs: HashMap<Identifier, String>,
 	pub locals: HashMap<Identifier, String>,

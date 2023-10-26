@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use super::mc::{DoubleCoordinates, EntityTarget, Score};
+use super::mc::{DoubleCoordinates, EntityTarget, FullDataLocation, Score};
 
-use super::{Identifier, MutableScoreValue, ScoreValue};
+use super::{Identifier, MutableNBTValue, MutableScoreValue, ScoreValue};
 
 /// A modifier to the context of a command
 #[derive(Clone)]
@@ -62,14 +62,30 @@ impl Debug for Modifier {
 #[derive(Clone)]
 pub enum StoreModLocation {
 	Reg(Identifier),
+	LocalReg(Identifier),
 	Score(Score),
+	Data(FullDataLocation),
 }
 
 impl StoreModLocation {
+	pub fn from_mut_score_val(val: &MutableScoreValue) -> Self {
+		match val {
+			MutableScoreValue::Reg(reg) => Self::Reg(reg.clone()),
+			MutableScoreValue::Score(score) => Self::Score(score.clone()),
+		}
+	}
+
+	pub fn from_mut_nbt_val(val: &MutableNBTValue) -> Self {
+		match val {
+			MutableNBTValue::Reg(reg) => Self::LocalReg(reg.clone()),
+			MutableNBTValue::Data(data) => Self::Data(data.clone()),
+		}
+	}
+
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
-			Self::Reg(reg) => vec![reg],
-			Self::Score(..) => Vec::new(),
+			Self::Reg(reg) | Self::LocalReg(reg) => vec![reg],
+			Self::Score(..) | Self::Data(..) => Vec::new(),
 		}
 	}
 }
@@ -77,8 +93,9 @@ impl StoreModLocation {
 impl Debug for StoreModLocation {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Reg(reg) => write!(f, "{reg}"),
+			Self::Reg(reg) | Self::LocalReg(reg) => write!(f, "{reg}"),
 			Self::Score(score) => write!(f, "{score:?}"),
+			Self::Data(data) => write!(f, "{data:?}"),
 		}
 	}
 }

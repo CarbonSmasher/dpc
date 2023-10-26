@@ -1,3 +1,4 @@
+use anyhow::Context;
 use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::target_selector::{SelectorType, TargetSelector};
 use dpc::common::{DeclareBinding, FunctionInterface, Identifier, MutableValue, Value};
@@ -14,7 +15,7 @@ use dpc::passes::{run_ir_passes, run_lir_passes, run_mir_passes};
 use rand::Rng;
 
 fn main() {
-	fuzz();
+	known();
 }
 
 #[allow(dead_code)]
@@ -144,7 +145,10 @@ fn known() {
 	ir.functions
 		.insert(FunctionInterface::new("foo::main".into()), block);
 
-	run(ir, true);
+	let res = run(ir, true);
+	if let Err(e) = res {
+		eprintln!("{e:?}");
+	}
 }
 
 #[allow(dead_code)]
@@ -253,24 +257,27 @@ fn fuzz() {
 		ir.functions
 			.insert(FunctionInterface::new(format!("foo::{fn_i}").into()), block);
 	}
-	run(ir, debug);
+	let res = run(ir, debug);
+	if let Err(e) = res {
+		eprintln!("{e:?}");
+	}
 }
 
-fn run(mut ir: IR, debug: bool) {
+fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 	if debug {
 		println!("IR:");
 		dbg!(&ir.blocks);
 	}
-	run_ir_passes(&mut ir).expect("IR passes failed");
+	run_ir_passes(&mut ir).context("IR passes failed")?;
 
-	let mut mir = lower_ir(ir).expect("Failed to lower IR");
+	let mut mir = lower_ir(ir).context("Failed to lower IR")?;
 	let init_count = mir.blocks.instr_count();
 	if debug {
 		println!("MIR:");
 		dbg!(&mir.blocks);
 	}
 
-	run_mir_passes(&mut mir).expect("MIR passes failed");
+	run_mir_passes(&mut mir).context("MIR passes failed")?;
 	if debug {
 		println!("Optimized MIR:");
 		dbg!(&mir.blocks);
@@ -283,13 +290,13 @@ fn run(mut ir: IR, debug: bool) {
 	};
 	println!("Removed percent: {pct}%");
 
-	let mut lir = lower_mir(mir).expect("Failed to lower MIR");
+	let mut lir = lower_mir(mir).context("Failed to lower MIR")?;
 	let init_count = lir.blocks.instr_count();
 	if debug {
 		println!("LIR:");
 		dbg!(&lir.blocks);
 	}
-	run_lir_passes(&mut lir).expect("LIR passes failed");
+	run_lir_passes(&mut lir).context("LIR passes failed")?;
 	if debug {
 		println!("Optimized LIR:");
 		dbg!(&lir.blocks);
@@ -303,8 +310,10 @@ fn run(mut ir: IR, debug: bool) {
 	println!("Removed percent: {pct}%");
 
 	println!("Doing codegen...");
-	let datapack = link(lir).expect("Failed to link datapack");
+	let datapack = link(lir).context("Failed to link datapack")?;
 	if debug {
 		dbg!(datapack);
 	}
+
+	Ok(())
 }
