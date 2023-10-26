@@ -99,6 +99,13 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				left: left.clone(),
 				right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-1))),
 			}),
+			// x ^ 0 = 1
+			MIRInstrKind::Pow { base, exp: 0 } => Some(MIRInstrKind::Assign {
+				left: base.clone(),
+				right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+					ScoreTypeContents::Score(1),
+				))),
+			}),
 			// A couple of canonicalizations that just help out const prop and const fold
 			// x / x = 1
 			MIRInstrKind::Div {
