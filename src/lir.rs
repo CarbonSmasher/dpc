@@ -5,7 +5,8 @@ use crate::common::mc::{EntityTarget, XPValue};
 use crate::common::modifier::Modifier;
 use crate::common::ty::ArraySize;
 use crate::common::{
-	FunctionInterface, Identifier, MutableScoreValue, MutableValue, RegisterList, ScoreValue, Value, MutableNBTValue, NBTValue,
+	FunctionInterface, Identifier, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue,
+	RegisterList, ScoreValue, Value,
 };
 
 #[derive(Debug, Clone)]
@@ -118,8 +119,12 @@ pub enum LIRInstrKind {
 	MaxScore(MutableScoreValue, ScoreValue),
 	SwapScore(MutableScoreValue, MutableScoreValue),
 	SetData(MutableNBTValue, NBTValue),
+	MergeData(MutableNBTValue, NBTValue),
 	GetScore(MutableScoreValue),
 	GetData(MutableNBTValue),
+	PushData(MutableNBTValue, NBTValue),
+	PushFrontData(MutableNBTValue, NBTValue),
+	InsertData(MutableNBTValue, NBTValue, i32),
 	ConstIndexToScore {
 		score: MutableScoreValue,
 		value: Value,
@@ -146,7 +151,11 @@ impl LIRInstrKind {
 			| LIRInstrKind::ModScore(left, right)
 			| LIRInstrKind::MinScore(left, right)
 			| LIRInstrKind::MaxScore(left, right) => [left.get_used_regs(), right.get_used_regs()].concat(),
-			LIRInstrKind::SetData(left, right) => {
+			LIRInstrKind::SetData(left, right)
+			| LIRInstrKind::MergeData(left, right)
+			| LIRInstrKind::PushData(left, right)
+			| LIRInstrKind::PushFrontData(left, right)
+			| LIRInstrKind::InsertData(left, right, ..) => {
 				[left.get_used_regs(), right.get_used_regs()].concat()
 			}
 			LIRInstrKind::SwapScore(left, right) => {
@@ -176,8 +185,12 @@ impl Debug for LIRInstrKind {
 			Self::MaxScore(left, right) => format!("maxs {left:?} {right:?}"),
 			Self::SwapScore(left, right) => format!("swps {left:?} {right:?}"),
 			Self::SetData(left, right) => format!("setd {left:?} {right:?}"),
+			Self::MergeData(left, right) => format!("mrgd {left:?} {right:?}"),
 			Self::GetScore(val) => format!("gets {val:?}"),
 			Self::GetData(val) => format!("getd {val:?}"),
+			Self::PushData(left, right) => format!("pushd {left:?} {right:?}"),
+			Self::PushFrontData(left, right) => format!("pushfd {left:?} {right:?}"),
+			Self::InsertData(left, right, i) => format!("insd {left:?} {right:?} {i}"),
 			Self::ConstIndexToScore {
 				score,
 				value,

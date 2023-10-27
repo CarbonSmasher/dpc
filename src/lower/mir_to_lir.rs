@@ -64,6 +64,21 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 				MIRInstrKind::Abs { val } => {
 					lir_instrs.push(lower_abs(val, &lbcx)?);
 				}
+				MIRInstrKind::Get { value } => {
+					lir_instrs.push(LIRInstruction::new(lower_get(value, &lbcx)?));
+				}
+				MIRInstrKind::Merge { left, right } => {
+					lir_instrs.push(LIRInstruction::new(lower_merge(left, right, &lbcx)?));
+				}
+				MIRInstrKind::Push { left, right } => {
+					lir_instrs.push(LIRInstruction::new(lower_push(left, right, &lbcx)?));
+				}
+				MIRInstrKind::PushFront { left, right } => {
+					lir_instrs.push(LIRInstruction::new(lower_push_front(left, right, &lbcx)?));
+				}
+				MIRInstrKind::Insert { left, right, index } => {
+					lir_instrs.push(LIRInstruction::new(lower_insert(left, right, index, &lbcx)?));
+				}
 				MIRInstrKind::Use { val } => {
 					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Use(val)));
 				}
@@ -406,4 +421,78 @@ fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstru
 	let instr = LIRInstruction::with_modifiers(kind, vec![modifier]);
 
 	Ok(instr)
+}
+
+fn lower_get(value: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {
+	let kind = match value.get_ty(&lbcx.registers)? {
+		DataType::Score(..) => LIRInstrKind::GetScore(value.to_mutable_score_value()),
+		DataType::NBT(..) => LIRInstrKind::GetData(value.to_mutable_nbt_value()),
+	};
+
+	Ok(kind)
+}
+
+fn lower_merge(
+	left: MutableValue,
+	right: Value,
+	lbcx: &LowerBlockCx,
+) -> anyhow::Result<LIRInstrKind> {
+	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let kind = match tys {
+		(DataType::NBT(..), DataType::NBT(..)) => {
+			LIRInstrKind::MergeData(left.to_mutable_nbt_value(), right.to_nbt_value()?)
+		}
+		_ => bail!("Instruction does not allow this type"),
+	};
+
+	Ok(kind)
+}
+
+fn lower_push(
+	left: MutableValue,
+	right: Value,
+	lbcx: &LowerBlockCx,
+) -> anyhow::Result<LIRInstrKind> {
+	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let kind = match tys {
+		(DataType::NBT(..), DataType::NBT(..)) => {
+			LIRInstrKind::PushData(left.to_mutable_nbt_value(), right.to_nbt_value()?)
+		}
+		_ => bail!("Instruction does not allow this type"),
+	};
+
+	Ok(kind)
+}
+
+fn lower_push_front(
+	left: MutableValue,
+	right: Value,
+	lbcx: &LowerBlockCx,
+) -> anyhow::Result<LIRInstrKind> {
+	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let kind = match tys {
+		(DataType::NBT(..), DataType::NBT(..)) => {
+			LIRInstrKind::PushFrontData(left.to_mutable_nbt_value(), right.to_nbt_value()?)
+		}
+		_ => bail!("Instruction does not allow this type"),
+	};
+
+	Ok(kind)
+}
+
+fn lower_insert(
+	left: MutableValue,
+	right: Value,
+	index: i32,
+	lbcx: &LowerBlockCx,
+) -> anyhow::Result<LIRInstrKind> {
+	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let kind = match tys {
+		(DataType::NBT(..), DataType::NBT(..)) => {
+			LIRInstrKind::InsertData(left.to_mutable_nbt_value(), right.to_nbt_value()?, index)
+		}
+		_ => bail!("Instruction does not allow this type"),
+	};
+
+	Ok(kind)
 }

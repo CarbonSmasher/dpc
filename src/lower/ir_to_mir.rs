@@ -63,6 +63,13 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 				InstrKind::Swap { left, right } => lower!(mir_block, Swap, left, right),
 				InstrKind::Abs { val } => lower!(mir_block, Abs, val),
 				InstrKind::Pow { base, exp } => lower!(mir_block, Pow, base, exp),
+				InstrKind::Get { value } => lower!(mir_block, Get, value),
+				InstrKind::Merge { left, right } => lower!(mir_block, Merge, left, right),
+				InstrKind::Push { left, right } => lower!(mir_block, Push, left, right),
+				InstrKind::PushFront { left, right } => lower!(mir_block, PushFront, left, right),
+				InstrKind::Insert { left, right, index } => {
+					lower!(mir_block, Insert, left, right, index)
+				}
 				InstrKind::Use { val } => lower!(mir_block, Use, val),
 				InstrKind::Say { message } => lower!(mir_block, Say, message),
 				InstrKind::Tell { target, message } => {

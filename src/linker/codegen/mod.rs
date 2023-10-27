@@ -11,7 +11,8 @@ use crate::common::mc::Score;
 use crate::common::modifier::{Modifier, StoreModLocation};
 use crate::common::ty::NBTTypeContents;
 use crate::common::{ty::DataTypeContents, Value};
-use crate::common::{NBTValue, RegisterList, ScoreValue};
+use crate::common::{RegisterList, ScoreValue};
+use crate::linker::codegen::util::cg_data_modify_rhs;
 use crate::linker::text::REG_STORAGE_LOCATION;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 
@@ -166,18 +167,36 @@ pub fn codegen_instr(
 			" >< ",
 			right
 		)?),
-		LIRInstrKind::SetData(left, right) => Some(match right {
-			NBTValue::Constant(data) => cgformat!(
+		LIRInstrKind::SetData(left, right) => {
+			let rhs = cg_data_modify_rhs(cbcx, right)?;
+			Some(cgformat!(cbcx, "data modify ", left, " set ", rhs)?)
+		}
+		LIRInstrKind::MergeData(left, right) => {
+			let rhs = cg_data_modify_rhs(cbcx, right)?;
+			Some(cgformat!(cbcx, "data modify ", left, " merge ", rhs)?)
+		}
+		LIRInstrKind::GetScore(val) => Some(cgformat!(cbcx, "scoreboard players get ", val)?),
+		LIRInstrKind::GetData(val) => Some(cgformat!(cbcx, "data get ", val)?),
+		LIRInstrKind::PushData(left, right) => {
+			let rhs = cg_data_modify_rhs(cbcx, right)?;
+			Some(cgformat!(cbcx, "data modify ", left, " append ", rhs)?)
+		}
+		LIRInstrKind::PushFrontData(left, right) => {
+			let rhs = cg_data_modify_rhs(cbcx, right)?;
+			Some(cgformat!(cbcx, "data modify ", left, " prepend ", rhs)?)
+		}
+		LIRInstrKind::InsertData(left, right, i) => {
+			let rhs = cg_data_modify_rhs(cbcx, right)?;
+			Some(cgformat!(
 				cbcx,
 				"data modify ",
 				left,
-				" set from value ",
-				data.get_literal_str()
-			)?,
-			NBTValue::Mutable(val) => cgformat!(cbcx, "data modify ", left, " set from ", val)?,
-		}),
-		LIRInstrKind::GetScore(val) => Some(cgformat!(cbcx, "scoreboard players get ", val)?),
-		LIRInstrKind::GetData(val) => Some(cgformat!(cbcx, "data get ", val)?),
+				" insert ",
+				i,
+				" ",
+				rhs
+			)?)
+		}
 		LIRInstrKind::ConstIndexToScore {
 			score,
 			value,

@@ -128,6 +128,26 @@ pub enum MIRInstrKind {
 		base: MutableValue,
 		exp: u8,
 	},
+	Get {
+		value: MutableValue,
+	},
+	Merge {
+		left: MutableValue,
+		right: Value,
+	},
+	Push {
+		left: MutableValue,
+		right: Value,
+	},
+	PushFront {
+		left: MutableValue,
+		right: Value,
+	},
+	Insert {
+		left: MutableValue,
+		right: Value,
+		index: i32,
+	},
 	Use {
 		val: MutableValue,
 	},
@@ -164,6 +184,11 @@ impl Debug for MIRInstrKind {
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
 			Self::Pow { base, exp } => format!("pow {base:?}, {exp}"),
+			Self::Get { value } => format!("get {value:?}"),
+			Self::Merge { left, right } => format!("merge {left:?}, {right:?}"),
+			Self::Push { left, right } => format!("push {left:?}, {right:?}"),
+			Self::PushFront { left, right } => format!("pushf {left:?}, {right:?}"),
+			Self::Insert { left, right, index } => format!("ins {left:?}, {right:?}, {index}"),
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Say { message } => format!("say {message}"),
 			Self::Tell { target, message } => format!("tell {target:?} {message}"),
@@ -190,7 +215,11 @@ impl MIRInstrKind {
 			| Self::Div { left, right }
 			| Self::Mod { left, right }
 			| Self::Min { left, right }
-			| Self::Max { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
+			| Self::Max { left, right }
+			| Self::Merge { left, right }
+			| Self::Push { left, right }
+			| Self::PushFront { left, right }
+			| Self::Insert { left, right, .. } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Swap { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Abs { val } => val.get_used_regs(),
 			Self::Use { val } => val.get_used_regs(),

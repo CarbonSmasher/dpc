@@ -116,6 +116,26 @@ pub enum InstrKind {
 		base: MutableValue,
 		exp: u8,
 	},
+	Get {
+		value: MutableValue,
+	},
+	Merge {
+		left: MutableValue,
+		right: Value,
+	},
+	Push {
+		left: MutableValue,
+		right: Value,
+	},
+	PushFront {
+		left: MutableValue,
+		right: Value,
+	},
+	Insert {
+		left: MutableValue,
+		right: Value,
+		index: i32,
+	},
 	Use {
 		val: MutableValue,
 	},
@@ -152,6 +172,11 @@ impl Debug for InstrKind {
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
 			Self::Pow { base, exp } => format!("pow {base:?}, {exp}"),
+			Self::Get { value } => format!("get {value:?}"),
+			Self::Merge { left, right } => format!("merge {left:?}, {right:?}"),
+			Self::Push { left, right } => format!("push {left:?}, {right:?}"),
+			Self::PushFront { left, right } => format!("pushf {left:?}, {right:?}"),
+			Self::Insert { left, right, index } => format!("ins {left:?}, {right:?}, {index}"),
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Say { message } => format!("say {message}"),
 			Self::Tell { target, message } => format!("tell {target:?} {message}"),

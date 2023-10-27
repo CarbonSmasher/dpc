@@ -9,6 +9,7 @@ use crate::linker::text::{
 	format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE, REG_STORAGE_LOCATION,
 };
 
+use super::t::macros::cgformat;
 use super::{Codegen, CodegenBlockCx};
 
 /// Returns a score and an optional score literal to add
@@ -141,6 +142,16 @@ impl IntoIterator for ScoreLiteral {
 	fn into_iter(self) -> Self::IntoIter {
 		self.0.into_iter()
 	}
+}
+
+/// Does codegen for the right side of a data modify
+pub fn cg_data_modify_rhs(cbcx: &mut CodegenBlockCx, val: &NBTValue) -> anyhow::Result<String> {
+	let string = match val {
+		NBTValue::Constant(data) => cgformat!(cbcx, "value ", data.get_literal_str())?,
+		NBTValue::Mutable(val) => cgformat!(cbcx, "from ", val)?,
+	};
+
+	Ok(string)
 }
 
 impl Codegen for ScoreValue {
