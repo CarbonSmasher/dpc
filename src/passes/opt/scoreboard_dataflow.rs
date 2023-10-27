@@ -111,7 +111,12 @@ fn run_scoreboard_dataflow_iter(
 				let MutableValue::Register(reg) = reg;
 				finished_flow_points.extend(flow_points.remove(reg).map(|x| x.1));
 			}
-			_ => {}
+			other => {
+				let regs = other.get_used_regs();
+				for reg in regs {
+					finished_flow_points.extend(flow_points.remove(reg).map(|x| x.1));
+				}
+			}
 		};
 	}
 

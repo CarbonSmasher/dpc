@@ -46,7 +46,11 @@ impl IRPass for ValidatePass {
 					| InstrKind::Div { left, right }
 					| InstrKind::Mod { left, right }
 					| InstrKind::Min { left, right }
-					| InstrKind::Max { left, right } => {
+					| InstrKind::Max { left, right }
+					| InstrKind::Merge { left, right }
+					| InstrKind::Push { left, right }
+					| InstrKind::PushFront { left, right }
+					| InstrKind::Insert { left, right, .. } => {
 						let (left_ty, right_ty) = get_op_tys(left, right, &regs)?;
 						if !right_ty.is_trivially_castable(&left_ty) {
 							bail!("Incompatible types in instruction");

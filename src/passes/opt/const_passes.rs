@@ -52,7 +52,11 @@ fn run_const_prop_iter(block: &mut MIRBlock) -> bool {
 			| MIRInstrKind::Div { right, .. }
 			| MIRInstrKind::Mod { right, .. }
 			| MIRInstrKind::Min { right, .. }
-			| MIRInstrKind::Max { right, .. } => {
+			| MIRInstrKind::Max { right, .. }
+			| MIRInstrKind::Merge { right, .. }
+			| MIRInstrKind::Push { right, .. }
+			| MIRInstrKind::PushFront { right, .. }
+			| MIRInstrKind::Insert { right, .. } => {
 				if let Value::Mutable(MutableValue::Register(reg)) = right.clone() {
 					if let Some(val) = an.vals.get(&reg) {
 						*right = Value::Constant(val.clone());
@@ -115,7 +119,11 @@ impl<'cont> ConstAnalyzer<'cont> {
 			| MIRInstrKind::Div { left, .. }
 			| MIRInstrKind::Mod { left, .. }
 			| MIRInstrKind::Min { left, .. }
-			| MIRInstrKind::Max { left, .. } => {
+			| MIRInstrKind::Max { left, .. }
+			| MIRInstrKind::Merge { left, .. }
+			| MIRInstrKind::Push { left, .. }
+			| MIRInstrKind::PushFront { left, .. }
+			| MIRInstrKind::Insert { left, .. } => {
 				let MutableValue::Register(reg) = left;
 				if self.store_self {
 					self.vals.remove(reg);
