@@ -2,6 +2,7 @@ use anyhow::Context;
 use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::target_selector::{SelectorType, TargetSelector};
 use dpc::common::{DeclareBinding, FunctionInterface, Identifier, MutableValue, Value};
+use dpc::def_compound;
 use dpc::ir::{Block, InstrKind, Instruction, IR};
 use dpc::linker::link;
 use dpc::lower::ir_to_mir::lower_ir;
@@ -15,13 +16,14 @@ use dpc::passes::{run_ir_passes, run_lir_passes, run_mir_passes};
 use rand::Rng;
 
 fn main() {
-	known();
+	fuzz();
 }
 
 #[allow(dead_code)]
 fn known() {
 	let mut ir = IR::new();
 	let mut block = Block::new();
+
 	let reg_id = Identifier::from("foo");
 	let reg2_id = Identifier::from("bar");
 	let reg3_id = Identifier::from("baz");
@@ -31,6 +33,26 @@ fn known() {
 	let reg7_id = Identifier::from("swapr");
 	let reg8_id = Identifier::from("arr");
 	let reg9_id = Identifier::from("arridx");
+	let reg10_id = Identifier::from("data");
+
+	let cmp1 = def_compound! {
+		foo: NBTType::Int,
+		bar: NBTType::Bool,
+	};
+
+	let cmp2 = def_compound! {
+		foo: NBTType::Compound(cmp1.clone()),
+		bar: NBTType::Short,
+	};
+
+	let cmp2_cont = def_compound! {
+		foo: NBTTypeContents::Compound(cmp1.clone(), def_compound! {
+			foo: NBTTypeContents::Int(5),
+			bar: NBTTypeContents::Bool(false),
+		}),
+		bar: NBTTypeContents::Short(123),
+	};
+
 	block.contents.push(Instruction::new(InstrKind::Declare {
 		left: reg_id.clone(),
 		ty: DataType::Score(ScoreType::Score),
@@ -140,6 +162,13 @@ fn known() {
 			index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::UScore(3))),
 		},
 	}));
+	block.contents.push(Instruction::new(InstrKind::Declare {
+		left: reg10_id.clone(),
+		ty: DataType::NBT(NBTType::Compound(cmp2.clone())),
+		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+			NBTTypeContents::Compound(cmp2, cmp2_cont),
+		))),
+	}));
 
 	let block = ir.blocks.add(block);
 	ir.functions
@@ -163,6 +192,7 @@ fn fuzz() {
 	for fn_i in 0..fn_count {
 		let instr_count = rng.gen_range(0..instr_count);
 		let mut reg_count = 0;
+		// let mut local_reg_count = 0;
 
 		let mut block = Block::new();
 
@@ -176,6 +206,16 @@ fn fuzz() {
 			))),
 		};
 		block.contents.push(Instruction::new(kind));
+		// let new_reg = local_reg_count;
+		// local_reg_count += 1;
+		// let kind = InstrKind::Declare {
+		// 	left: Identifier::from(format!("reg{new_reg}")),
+		// 	ty: DataType::NBT(NBTType::Long),
+		// 	right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+		// 		NBTTypeContents::Long(-249),
+		// 	))),
+		// };
+		// block.contents.push(Instruction::new(kind));
 
 		for _ in 0..instr_count {
 			let left_reg = rng.gen_range(0..reg_count);
@@ -187,7 +227,7 @@ fn fuzz() {
 					Value::Mutable(MutableValue::Register(reg))
 				}
 				1 => {
-					let val = rng.gen_range(0..128);
+					let val = rng.gen_range(-128..128);
 					Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(val)))
 				}
 				_ => continue,

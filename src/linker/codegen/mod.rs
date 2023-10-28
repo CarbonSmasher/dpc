@@ -81,8 +81,6 @@ pub fn codegen_instr(
 
 	let mut modifiers = Vec::new();
 
-	dbg!(&cbcx.ra);
-
 	let cmd = match &instr.kind {
 		LIRInstrKind::SetScore(left, right) => Some(match right {
 			ScoreValue::Constant(data) => {

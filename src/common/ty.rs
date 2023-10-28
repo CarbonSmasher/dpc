@@ -1,4 +1,5 @@
-use std::fmt::Debug;
+use std::fmt::Write;
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use super::{MutableValue, RegisterList, Value};
 
@@ -69,8 +70,10 @@ pub enum NBTType {
 	Short,
 	Int,
 	Long,
+	String,
 	Arr(NBTArrayType),
 	List(Box<NBTType>),
+	Compound(Arc<HashMap<String, NBTType>>),
 }
 
 impl NBTType {
@@ -84,20 +87,45 @@ impl NBTType {
 				self,
 				Self::Byte | Self::Bool | Self::Short | Self::Int | Self::Long
 			),
+			Self::String => matches!(self, Self::String),
 			Self::Arr(other_arr) => {
 				matches!(self, Self::Arr(this_arr) if this_arr.is_trivially_castable(other_arr))
 			}
 			Self::List(other_list) => {
 				matches!(self, Self::List(this_list) if this_list.is_trivially_castable(other_list))
 			}
+			Self::Compound(other_comp) => {
+				if let Self::Compound(this_comp) = self {
+					this_comp.iter().all(|(k, v)| {
+						if let Some(other) = other_comp.get(k) {
+							other.is_trivially_castable(v)
+						} else {
+							false
+						}
+					})
+				} else {
+					false
+				}
+			}
 		}
 	}
 
+	pub fn is_number_type(&self) -> bool {
+		matches!(
+			self,
+			Self::Byte | Self::Bool | Self::Short | Self::Int | Self::Long
+		)
+	}
+
 	pub fn is_castable_to_score(&self, other: &ScoreType) -> bool {
-		match other {
-			ScoreType::Score => true,
-			ScoreType::UScore => true,
-			ScoreType::Bool => true,
+		if self.is_number_type() {
+			match other {
+				ScoreType::Score => true,
+				ScoreType::UScore => true,
+				ScoreType::Bool => true,
+			}
+		} else {
+			false
 		}
 	}
 }
@@ -110,8 +138,10 @@ impl Debug for NBTType {
 			Self::Short => "nshort".to_string(),
 			Self::Int => "nint".to_string(),
 			Self::Long => "nlong".to_string(),
+			Self::String => "str".to_string(),
 			Self::Arr(arr) => format!("{arr:?}"),
 			Self::List(ty) => format!("{ty:?}[]"),
+			Self::Compound(tys) => format!("{tys:?}"),
 		};
 		write!(f, "{text}")
 	}
@@ -226,8 +256,13 @@ pub enum NBTTypeContents {
 	Short(Short),
 	Int(Int),
 	Long(Long),
+	String(Arc<str>),
 	Arr(NBTArrayTypeContents),
 	List(NBTType, Vec<NBTTypeContents>),
+	Compound(
+		Arc<HashMap<String, NBTType>>,
+		Arc<HashMap<String, NBTTypeContents>>,
+	),
 }
 
 impl NBTTypeContents {
@@ -238,8 +273,10 @@ impl NBTTypeContents {
 			Self::Short(..) => DataType::NBT(NBTType::Short),
 			Self::Int(..) => DataType::NBT(NBTType::Int),
 			Self::Long(..) => DataType::NBT(NBTType::Long),
+			Self::String(..) => DataType::NBT(NBTType::String),
 			Self::Arr(arr) => arr.get_ty(),
 			Self::List(ty, ..) => DataType::NBT(NBTType::List(Box::new(ty.clone()))),
+			Self::Compound(ty, ..) => DataType::NBT(NBTType::Compound(ty.clone())),
 		}
 	}
 
@@ -250,8 +287,16 @@ impl NBTTypeContents {
 			Self::Short(val) => format!("{val}s"),
 			Self::Int(val) => format!("{val}"),
 			Self::Long(val) => format!("{val}l"),
+			Self::String(string) => write_string(string.to_string()),
 			Self::Arr(arr) => arr.get_literal_str(),
 			Self::List(_, list) => fmt_arr(list.iter().map(|x| x.get_literal_str())),
+			Self::Compound(_, comp) => {
+				let mut string = String::new();
+				let _ = fmt_compound(&mut string, comp, |f, i| {
+					write!(f, "{}", i.get_literal_str())
+				});
+				string
+			}
 		}
 	}
 
@@ -262,22 +307,33 @@ impl NBTTypeContents {
 			|| matches!((self, other), (Self::Int(l), Self::Int(r)) if l == r)
 			|| matches!((self, other), (Self::Long(l), Self::Long(r)) if l == r)
 			|| matches!((self, other), (Self::Arr(l), Self::Arr(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::String(l), Self::String(r)) if l == r)
 			|| matches!((self, other), (Self::List(lt, l), Self::List(rt, r)) if lt == rt && l.iter().zip(r).all(|(l, r)| l.is_value_eq(r)))
+			|| matches!((self, other), (Self::Compound(lt, l), Self::Compound(rt, r)) if lt == rt && l.iter().all(|(k, v)| {
+				if let Some(other) = r.get(k) {
+					other.is_value_eq(v)
+				} else {
+					false
+				}
+			}))
 	}
 }
 
 impl Debug for NBTTypeContents {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let text = match self {
-			Self::Byte(val) => format!("{val}b"),
-			Self::Bool(val) => format!("{}B", *val as Byte),
-			Self::Short(val) => format!("{val}s"),
-			Self::Int(val) => format!("{val}i"),
-			Self::Long(val) => format!("{val}l"),
-			Self::Arr(val) => format!("{val:?}"),
-			Self::List(_, list) => format!("{}", fmt_arr(list.iter().map(|x| format!("{x:?}")))),
+		match self {
+			Self::Byte(val) => write!(f, "{val}b")?,
+			Self::Bool(val) => write!(f, "{}B", *val as Byte)?,
+			Self::Short(val) => write!(f, "{val}s")?,
+			Self::Int(val) => write!(f, "{val}i")?,
+			Self::Long(val) => write!(f, "{val}l")?,
+			Self::String(val) => write!(f, "\"{val}\"")?,
+			Self::Arr(val) => write!(f, "{val:?}")?,
+			Self::List(_, list) => write!(f, "{}", fmt_arr(list.iter().map(|x| format!("{x:?}"))))?,
+			Self::Compound(_, comp) => fmt_compound_dbg(f, comp)?,
 		};
-		write!(f, "{text}")
+
+		Ok(())
 	}
 }
 
@@ -366,6 +422,39 @@ fn fmt_arr<T: ToString>(arr: impl IntoIterator<Item = T>) -> String {
 		.map(|x| x.to_string())
 		.collect::<Vec<_>>()
 		.join(",")
+}
+
+fn fmt_compound_dbg<W: std::fmt::Write, I: Debug>(
+	f: &mut W,
+	vals: &HashMap<String, I>,
+) -> std::fmt::Result {
+	fmt_compound(f, vals, |f, i| {
+		write!(f, "{i:?}")?;
+		Ok(())
+	})
+}
+
+fn fmt_compound<W: std::fmt::Write, I, F: Fn(&mut W, &I) -> std::fmt::Result>(
+	f: &mut W,
+	vals: &HashMap<String, I>,
+	fun: F,
+) -> std::fmt::Result {
+	write!(f, "{{")?;
+	for (i, (k, v)) in vals.iter().enumerate() {
+		write!(f, "{k}:")?;
+		fun(f, v)?;
+		if i != vals.len() - 1 {
+			write!(f, ",")?;
+		}
+	}
+	write!(f, "}}")?;
+
+	Ok(())
+}
+
+fn write_string(string: String) -> String {
+	let escaped = string.replace("\"", "\\\"");
+	format!("\"{escaped}\"")
 }
 
 pub fn get_op_tys(
