@@ -11,7 +11,7 @@ use crate::common::mc::Score;
 use crate::common::modifier::{Modifier, StoreModLocation};
 use crate::common::ty::NBTTypeContents;
 use crate::common::{ty::DataTypeContents, Value};
-use crate::common::{RegisterList, ScoreValue};
+use crate::common::{NBTValue, RegisterList, ScoreValue};
 use crate::linker::codegen::util::cg_data_modify_rhs;
 use crate::linker::text::REG_STORAGE_LOCATION;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
@@ -170,8 +170,18 @@ pub fn codegen_instr(
 			Some(cgformat!(cbcx, "data modify ", left, " set ", rhs)?)
 		}
 		LIRInstrKind::MergeData(left, right) => {
-			let rhs = cg_data_modify_rhs(cbcx, right)?;
-			Some(cgformat!(cbcx, "data modify ", left, " merge ", rhs)?)
+			if let NBTValue::Constant(rhs) = right {
+				Some(cgformat!(
+					cbcx,
+					"data merge ",
+					left,
+					" ",
+					rhs.get_literal_str()
+				)?)
+			} else {
+				let rhs = cg_data_modify_rhs(cbcx, right)?;
+				Some(cgformat!(cbcx, "data modify ", left, " merge ", rhs)?)
+			}
 		}
 		LIRInstrKind::GetScore(val) => Some(cgformat!(cbcx, "scoreboard players get ", val)?),
 		LIRInstrKind::GetData(val) => Some(cgformat!(cbcx, "data get ", val)?),

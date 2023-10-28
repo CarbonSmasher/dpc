@@ -222,6 +222,7 @@ impl MIRInstrKind {
 			| Self::Insert { left, right, .. } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Swap { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Abs { val } => val.get_used_regs(),
+			Self::Pow { base, .. } => base.get_used_regs(),
 			Self::Get { value } => value.get_used_regs(),
 			Self::Use { val } => val.get_used_regs(),
 			_ => Vec::new(),

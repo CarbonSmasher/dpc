@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use dashmap::DashMap;
 
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
@@ -7,11 +7,51 @@ use crate::mir::{MIRBlock, MIRInstrKind, MIR};
 use crate::passes::{MIRPass, Pass};
 use crate::util::{remove_indices, DashSetEmptyTracker};
 
-pub struct ConstPropPass;
+/// Combines the ConstProp and ConstFold passes and runs them both
+/// until no changes are made
+pub struct ConstComboPass;
+
+impl Pass for ConstComboPass {
+	fn get_name(&self) -> &'static str {
+		"const_combo"
+	}
+}
+
+impl MIRPass for ConstComboPass {
+	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
+		loop {
+			let mut prop = ConstPropPass::new();
+			prop.run_pass(mir).context("ConstProp failed")?;
+			let mut fold = ConstFoldPass::new();
+			fold.run_pass(mir).context("ConstFold failed")?;
+			if !prop.made_changes() && !fold.made_changes {
+				break;
+			}
+		}
+
+		Ok(())
+	}
+}
+
+pub struct ConstPropPass {
+	made_changes: bool,
+}
+
+impl ConstPropPass {
+	pub fn new() -> Self {
+		Self {
+			made_changes: false,
+		}
+	}
+}
 
 impl Pass for ConstPropPass {
 	fn get_name(&self) -> &'static str {
 		"const_prop"
+	}
+
+	fn made_changes(&self) -> bool {
+		self.made_changes
 	}
 }
 
@@ -24,7 +64,9 @@ impl MIRPass for ConstPropPass {
 				.ok_or(anyhow!("Block does not exist"))?;
 			loop {
 				let run_again = run_const_prop_iter(block);
-				if !run_again {
+				if run_again {
+					self.made_changes = true;
+				} else {
 					break;
 				}
 			}
@@ -120,6 +162,7 @@ impl<'cont> ConstAnalyzer<'cont> {
 			| MIRInstrKind::Mod { left, .. }
 			| MIRInstrKind::Min { left, .. }
 			| MIRInstrKind::Max { left, .. }
+			| MIRInstrKind::Pow { base: left, .. }
 			| MIRInstrKind::Merge { left, .. }
 			| MIRInstrKind::Push { left, .. }
 			| MIRInstrKind::PushFront { left, .. }
@@ -157,7 +200,17 @@ enum ConstAnalyzerResult<'cont> {
 	Remove(Vec<Identifier>),
 }
 
-pub struct ConstFoldPass;
+pub struct ConstFoldPass {
+	made_changes: bool,
+}
+
+impl ConstFoldPass {
+	pub fn new() -> Self {
+		Self {
+			made_changes: false,
+		}
+	}
+}
 
 impl Pass for ConstFoldPass {
 	fn get_name(&self) -> &'static str {
@@ -176,7 +229,9 @@ impl MIRPass for ConstFoldPass {
 			let mut instrs_to_remove = DashSetEmptyTracker::new();
 			loop {
 				let run_again = run_const_fold_iter(block, &mut instrs_to_remove);
-				if !run_again {
+				if run_again {
+					self.made_changes = true;
+				} else {
 					break;
 				}
 			}
@@ -215,20 +270,6 @@ fn run_const_fold_iter(
 						run_again = true;
 					}
 				}
-				MIRInstrKind::Add {
-					left: MutableValue::Register(left),
-					right: Value::Mutable(MutableValue::Register(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if let Some(right) = an.vals.get(right) {
-							if let DataTypeContents::Score(right) = right.value() {
-								left.value = left.value.overflowing_add(right.get_i32()).0;
-								instrs_to_remove.insert(i);
-								run_again = true;
-							}
-						}
-					}
-				}
 				MIRInstrKind::Sub {
 					left: MutableValue::Register(left),
 					right: Value::Constant(DataTypeContents::Score(right)),
@@ -237,20 +278,6 @@ fn run_const_fold_iter(
 						left.value = left.value.overflowing_sub(right.get_i32()).0;
 						instrs_to_remove.insert(i);
 						run_again = true;
-					}
-				}
-				MIRInstrKind::Sub {
-					left: MutableValue::Register(left),
-					right: Value::Mutable(MutableValue::Register(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if let Some(right) = an.vals.get(right) {
-							if let DataTypeContents::Score(right) = right.value() {
-								left.value = left.value.overflowing_sub(right.get_i32()).0;
-								instrs_to_remove.insert(i);
-								run_again = true;
-							}
-						}
 					}
 				}
 				MIRInstrKind::Mul {
@@ -263,20 +290,6 @@ fn run_const_fold_iter(
 						run_again = true;
 					}
 				}
-				MIRInstrKind::Mul {
-					left: MutableValue::Register(left),
-					right: Value::Mutable(MutableValue::Register(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if let Some(right) = an.vals.get(right) {
-							if let DataTypeContents::Score(right) = right.value() {
-								left.value = left.value.overflowing_mul(right.get_i32()).0;
-								instrs_to_remove.insert(i);
-								run_again = true;
-							}
-						}
-					}
-				}
 				MIRInstrKind::Div {
 					left: MutableValue::Register(left),
 					right: Value::Constant(DataTypeContents::Score(right)),
@@ -286,22 +299,6 @@ fn run_const_fold_iter(
 							left.value = left.value / right.get_i32();
 							instrs_to_remove.insert(i);
 							run_again = true;
-						}
-					}
-				}
-				MIRInstrKind::Div {
-					left: MutableValue::Register(left),
-					right: Value::Mutable(MutableValue::Register(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if let Some(right) = an.vals.get(right) {
-							if let DataTypeContents::Score(right) = right.value() {
-								if right.get_i32() != 0 {
-									left.value = left.value / right.get_i32();
-									instrs_to_remove.insert(i);
-									run_again = true;
-								}
-							}
 						}
 					}
 				}
@@ -317,22 +314,6 @@ fn run_const_fold_iter(
 						}
 					}
 				}
-				MIRInstrKind::Mod {
-					left: MutableValue::Register(left),
-					right: Value::Mutable(MutableValue::Register(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if let Some(right) = an.vals.get(right) {
-							if let DataTypeContents::Score(right) = right.value() {
-								if right.get_i32() != 0 {
-									left.value = left.value % right.get_i32();
-									instrs_to_remove.insert(i);
-									run_again = true;
-								}
-							}
-						}
-					}
-				}
 				MIRInstrKind::Min {
 					left: MutableValue::Register(left),
 					right: Value::Constant(DataTypeContents::Score(right)),
@@ -343,20 +324,6 @@ fn run_const_fold_iter(
 						run_again = true;
 					}
 				}
-				MIRInstrKind::Min {
-					left: MutableValue::Register(left),
-					right: Value::Mutable(MutableValue::Register(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if let Some(right) = an.vals.get(right) {
-							if let DataTypeContents::Score(right) = right.value() {
-								left.value = std::cmp::min(left.value, right.get_i32());
-								instrs_to_remove.insert(i);
-								run_again = true;
-							}
-						}
-					}
-				}
 				MIRInstrKind::Max {
 					left: MutableValue::Register(left),
 					right: Value::Constant(DataTypeContents::Score(right)),
@@ -365,20 +332,6 @@ fn run_const_fold_iter(
 						left.value = std::cmp::max(left.value, right.get_i32());
 						instrs_to_remove.insert(i);
 						run_again = true;
-					}
-				}
-				MIRInstrKind::Max {
-					left: MutableValue::Register(left),
-					right: Value::Mutable(MutableValue::Register(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if let Some(right) = an.vals.get(right) {
-							if let DataTypeContents::Score(right) = right.value() {
-								left.value = std::cmp::max(left.value, right.get_i32());
-								instrs_to_remove.insert(i);
-								run_again = true;
-							}
-						}
 					}
 				}
 				MIRInstrKind::Abs {

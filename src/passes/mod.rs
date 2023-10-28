@@ -7,7 +7,7 @@ use crate::lir::LIRBlock;
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::ir::ValidatePass;
-use self::opt::const_passes::{ConstFoldPass, ConstPropPass};
+use self::opt::const_passes::{ConstFoldPass, ConstPropPass, ConstComboPass};
 use self::opt::dse::DSEPass;
 use self::opt::inst_combine::InstCombinePass;
 use self::opt::scoreboard_dataflow::ScoreboardDataflowPass;
@@ -43,14 +43,15 @@ pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn MIRPass>,
 		Box::new(MIRSimplifyPass),
-		Box::new(ConstPropPass),
-		Box::new(ConstFoldPass),
+		Box::new(ConstPropPass::new()),
+		Box::new(ConstFoldPass::new()),
 		Box::new(MIRSimplifyPass),
 		Box::new(DSEPass),
 		Box::new(InstCombinePass),
-		Box::new(ConstPropPass),
+		Box::new(ConstPropPass::new()),
 		Box::new(MIRSimplifyPass),
-		Box::new(ConstFoldPass),
+		Box::new(ConstFoldPass::new()),
+		Box::new(ConstComboPass),
 		Box::new(DSEPass),
 		Box::new(MIRSimplifyPass),
 	];
@@ -159,6 +160,10 @@ impl BlockPass for NullPass {
 
 pub trait Pass {
 	fn get_name(&self) -> &'static str;
+
+	fn made_changes(&self) -> bool {
+		false
+	}
 }
 
 pub trait BlockPass {
