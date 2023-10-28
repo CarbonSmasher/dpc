@@ -1,10 +1,11 @@
 pub mod block;
+pub mod function;
 pub mod mc;
 pub mod modifier;
 pub mod target_selector;
 pub mod ty;
 
-use std::{fmt::Debug, hash::Hash, sync::Arc};
+use std::{fmt::Debug, sync::Arc};
 
 use anyhow::{bail, Context};
 use dashmap::DashMap;
@@ -303,95 +304,5 @@ impl Debug for MutableNBTValue {
 			Self::Reg(reg) => format!("${reg}"),
 		};
 		write!(f, "{text}")
-	}
-}
-
-#[derive(Clone, Eq)]
-pub struct FunctionInterface {
-	pub id: ResourceLocation,
-	pub sig: FunctionSignature,
-}
-
-impl FunctionInterface {
-	pub fn new(id: ResourceLocation) -> Self {
-		Self::with_signature(id, FunctionSignature::new())
-	}
-
-	pub fn with_signature(id: ResourceLocation, sig: FunctionSignature) -> Self {
-		Self { id, sig }
-	}
-}
-
-impl Debug for FunctionInterface {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}{:?}", self.id, self.sig)
-	}
-}
-
-impl Hash for FunctionInterface {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-		self.id.hash(state)
-	}
-}
-
-impl PartialEq for FunctionInterface {
-	fn eq(&self, other: &Self) -> bool {
-		self.id.eq(&other.id)
-	}
-}
-
-pub type FunctionArgs = Vec<DataType>;
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct FunctionSignature {
-	pub args: FunctionArgs,
-	pub ret: ReturnType,
-}
-
-impl FunctionSignature {
-	pub fn new() -> Self {
-		Self::with_all(FunctionArgs::new(), ReturnType::Void)
-	}
-
-	pub fn with_args(args: FunctionArgs) -> Self {
-		Self::with_all(args, ReturnType::Void)
-	}
-
-	pub fn with_ret(ret: ReturnType) -> Self {
-		Self::with_all(FunctionArgs::new(), ret)
-	}
-
-	pub fn with_all(args: FunctionArgs, ret: ReturnType) -> Self {
-		Self { args, ret }
-	}
-}
-
-impl Debug for FunctionSignature {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "(")?;
-		for (i, arg) in self.args.iter().enumerate() {
-			arg.fmt(f)?;
-			if i != self.args.len() - 1 {
-				write!(f, ",")?;
-			}
-		}
-		write!(f, "): {:?}", self.ret)?;
-
-		Ok(())
-	}
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub enum ReturnType {
-	Void,
-	Standard(DataType),
-}
-
-impl Debug for ReturnType {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Void => write!(f, "void"),
-			Self::Standard(ty) => ty.fmt(f),
-		}
 	}
 }

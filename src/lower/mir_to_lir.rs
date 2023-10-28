@@ -77,10 +77,15 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 					lir_instrs.push(LIRInstruction::new(lower_push_front(left, right, &lbcx)?));
 				}
 				MIRInstrKind::Insert { left, right, index } => {
-					lir_instrs.push(LIRInstruction::new(lower_insert(left, right, index, &lbcx)?));
+					lir_instrs.push(LIRInstruction::new(lower_insert(
+						left, right, index, &lbcx,
+					)?));
 				}
 				MIRInstrKind::Use { val } => {
 					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Use(val)));
+				}
+				MIRInstrKind::Call { call } => {
+					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Call(call.function)));
 				}
 				MIRInstrKind::Say { message } => {
 					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Say(message)));

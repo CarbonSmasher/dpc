@@ -1,7 +1,8 @@
 use anyhow::Context;
+use dpc::common::function::{CallInterface, FunctionInterface};
 use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::target_selector::{SelectorType, TargetSelector};
-use dpc::common::{DeclareBinding, FunctionInterface, Identifier, MutableValue, Value};
+use dpc::common::{DeclareBinding, Identifier, MutableValue, Value};
 use dpc::def_compound;
 use dpc::ir::{Block, InstrKind, Instruction, IR};
 use dpc::linker::link;
@@ -192,7 +193,6 @@ fn fuzz() {
 	for fn_i in 0..fn_count {
 		let instr_count = rng.gen_range(0..instr_count);
 		let mut reg_count = 0;
-		// let mut local_reg_count = 0;
 
 		let mut block = Block::new();
 
@@ -206,16 +206,6 @@ fn fuzz() {
 			))),
 		};
 		block.contents.push(Instruction::new(kind));
-		// let new_reg = local_reg_count;
-		// local_reg_count += 1;
-		// let kind = InstrKind::Declare {
-		// 	left: Identifier::from(format!("reg{new_reg}")),
-		// 	ty: DataType::NBT(NBTType::Long),
-		// 	right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
-		// 		NBTTypeContents::Long(-249),
-		// 	))),
-		// };
-		// block.contents.push(Instruction::new(kind));
 
 		for _ in 0..instr_count {
 			let left_reg = rng.gen_range(0..reg_count);
@@ -233,7 +223,7 @@ fn fuzz() {
 				_ => continue,
 			};
 
-			let instr = rng.gen_range(0..11);
+			let instr = rng.gen_range(0..12);
 			let kind = match instr {
 				0 => {
 					let new_reg = reg_count;
@@ -285,6 +275,18 @@ fn fuzz() {
 						target: EntityTarget::Selector(TargetSelector::new(SelectorType::This)),
 						amount,
 						value: XPValue::Points,
+					}
+				}
+				11 => {
+					let func = rng.gen_range(0..fn_count);
+					if func == fn_i {
+						continue;
+					}
+					InstrKind::Call {
+						call: CallInterface {
+							function: format!("foo::{func}").into(),
+							args: Vec::new(),
+						},
 					}
 				}
 				_ => continue,

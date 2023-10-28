@@ -242,6 +242,7 @@ pub fn codegen_instr(
 			let amount = if amount < &0 { 0 } else { *amount };
 			Some(cgformat!(cbcx, "xp set ", target, " ", amount, " ", value)?)
 		}
+		LIRInstrKind::Call(fun) => Some(format!("function {fun}")),
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

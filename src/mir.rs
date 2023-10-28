@@ -1,9 +1,10 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
+use crate::common::function::{CallInterface, FunctionInterface};
 use crate::common::mc::{EntityTarget, XPValue};
 use crate::common::ty::DataType;
-use crate::common::{DeclareBinding, FunctionInterface, Identifier, MutableValue, Value};
+use crate::common::{DeclareBinding, Identifier, MutableValue, Value};
 
 #[derive(Debug, Clone)]
 pub struct MIR {
@@ -151,6 +152,9 @@ pub enum MIRInstrKind {
 	Use {
 		val: MutableValue,
 	},
+	Call {
+		call: CallInterface,
+	},
 	Say {
 		message: String,
 	},
@@ -190,6 +194,7 @@ impl Debug for MIRInstrKind {
 			Self::PushFront { left, right } => format!("pushf {left:?}, {right:?}"),
 			Self::Insert { left, right, index } => format!("ins {left:?}, {right:?}, {index}"),
 			Self::Use { val } => format!("use {val:?}"),
+			Self::Call { call } => format!("call {call:?}"),
 			Self::Say { message } => format!("say {message}"),
 			Self::Tell { target, message } => format!("tell {target:?} {message}"),
 			Self::Kill { target } => format!("kill {target:?}"),
@@ -225,6 +230,7 @@ impl MIRInstrKind {
 			Self::Pow { base, .. } => base.get_used_regs(),
 			Self::Get { value } => value.get_used_regs(),
 			Self::Use { val } => val.get_used_regs(),
+			Self::Call { call } => call.get_used_regs(),
 			_ => Vec::new(),
 		}
 	}

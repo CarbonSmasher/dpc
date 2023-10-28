@@ -71,6 +71,7 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 					lower!(mir_block, Insert, left, right, index)
 				}
 				InstrKind::Use { val } => lower!(mir_block, Use, val),
+				InstrKind::Call { call } => lower!(mir_block, Call, call),
 				InstrKind::Say { message } => lower!(mir_block, Say, message),
 				InstrKind::Tell { target, message } => {
 					lower!(mir_block, Tell, target, message)

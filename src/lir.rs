@@ -1,12 +1,13 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
+use crate::common::function::FunctionInterface;
 use crate::common::mc::{EntityTarget, XPValue};
 use crate::common::modifier::Modifier;
 use crate::common::ty::ArraySize;
 use crate::common::{
-	FunctionInterface, Identifier, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue,
-	RegisterList, ScoreValue, Value,
+	Identifier, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, RegisterList,
+	ResourceLocation, ScoreValue, Value,
 };
 
 #[derive(Debug, Clone)]
@@ -132,6 +133,7 @@ pub enum LIRInstrKind {
 	},
 	Use(MutableValue),
 	NoOp,
+	Call(ResourceLocation),
 	// Commands
 	Say(String),
 	Tell(EntityTarget, String),
@@ -198,6 +200,7 @@ impl Debug for LIRInstrKind {
 			} => format!("idxcs {score:?} {value:?} {index}"),
 			Self::Use(val) => format!("use {val:?}"),
 			Self::NoOp => "no".into(),
+			Self::Call(fun) => format!("call {fun}"),
 			Self::Say(text) => format!("say {text}"),
 			Self::Tell(target, text) => format!("tell {target:?} {text}"),
 			Self::Kill(target) => format!("kill {target:?}"),
