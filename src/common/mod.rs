@@ -37,6 +37,13 @@ impl Value {
 		}
 	}
 
+	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
+		match self {
+			Self::Mutable(val) => val.get_used_regs_mut(),
+			_ => Vec::new(),
+		}
+	}
+
 	pub fn to_score_value(self) -> anyhow::Result<ScoreValue> {
 		let out = match self {
 			Self::Constant(val) => {
@@ -100,6 +107,12 @@ impl MutableValue {
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
 			Self::Register(reg) => vec![&reg],
+		}
+	}
+
+	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
+		match self {
+			Self::Register(reg) => vec![reg],
 		}
 	}
 
@@ -201,6 +214,13 @@ impl ScoreValue {
 		}
 	}
 
+	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
+		match self {
+			Self::Constant(..) => Vec::new(),
+			Self::Mutable(val) => val.get_used_regs_mut(),
+		}
+	}
+
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Constant(l), Self::Constant(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::Mutable(l), Self::Mutable(r)) if l.is_value_eq(r))
@@ -225,6 +245,13 @@ pub enum MutableScoreValue {
 
 impl MutableScoreValue {
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+		match self {
+			Self::Score(..) => Vec::new(),
+			Self::Reg(reg) => vec![reg],
+		}
+	}
+
+	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
 		match self {
 			Self::Score(..) => Vec::new(),
 			Self::Reg(reg) => vec![reg],

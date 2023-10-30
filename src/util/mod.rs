@@ -97,6 +97,24 @@ pub fn insert_indices<T: Clone>(v: Vec<T>, values: &[(usize, T)]) -> Vec<T> {
 	out
 }
 
+#[allow(dead_code)]
+pub fn replace_and_expand_indices<T: Clone>(v: Vec<T>, values: &[(usize, Vec<T>)]) -> Vec<T> {
+	if values.is_empty() {
+		return v;
+	}
+
+	let mut out = Vec::with_capacity(v.len() + values.len());
+	for i in 0..=v.len() {
+		if let Some(insert) = values.iter().find(|x| x.0 == i) {
+			out.extend(insert.1.clone());
+		} else {
+			out.extend(v.get(i).cloned());
+		}
+	}
+
+	out
+}
+
 /// Wrapper around a DashSet that keeps track of whether any elements were inserted or not.
 /// This allows an efficient empty() implementation
 pub struct DashSetEmptyTracker<T> {

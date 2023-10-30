@@ -2,8 +2,8 @@ use crate::common::modifier::Modifier;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::{DeclareBinding, ScoreValue, Value};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
-use crate::mir::{MIRBlock, MIRInstrKind, MIR};
-use crate::passes::{LIRPass, MIRPass, Pass};
+use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::passes::{LIRPass, MIRPass, MIRPassData, Pass};
 use crate::util::remove_indices;
 
 use anyhow::anyhow;
@@ -18,9 +18,10 @@ impl Pass for MIRSimplifyPass {
 }
 
 impl MIRPass for MIRSimplifyPass {
-	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
-		for (_, block) in &mut mir.functions {
-			let block = mir
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		for (_, block) in &mut data.mir.functions {
+			let block = data
+				.mir
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;

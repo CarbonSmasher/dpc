@@ -1,5 +1,7 @@
 use anyhow::Context;
-use dpc::common::function::{CallInterface, FunctionInterface};
+use dpc::common::function::{
+	CallInterface, FunctionAnnotation, FunctionInterface, FunctionSignature,
+};
 use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::target_selector::{SelectorType, TargetSelector};
 use dpc::common::{DeclareBinding, Identifier, MutableValue, Value};
@@ -173,7 +175,35 @@ fn known() {
 
 	let block = ir.blocks.add(block);
 	ir.functions
-		.insert(FunctionInterface::new("foo::main".into()), block);
+		.insert(FunctionInterface::new("foo:bar".into()), block);
+
+	let mut block = Block::new();
+	block.contents.push(Instruction::new(InstrKind::Declare {
+		left: reg2_id.clone(),
+		ty: DataType::Score(ScoreType::Score),
+		right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+			ScoreTypeContents::Score(7),
+		))),
+	}));
+	block.contents.push(Instruction::new(InstrKind::Use {
+		val: MutableValue::Register(reg2_id.clone()),
+	}));
+	block.contents.push(Instruction::new(InstrKind::Call {
+		call: CallInterface {
+			function: "foo:bar".into(),
+			args: Vec::new(),
+		},
+	}));
+
+	let block = ir.blocks.add(block);
+	ir.functions.insert(
+		FunctionInterface::with_all(
+			"foo:main".into(),
+			FunctionSignature::new(),
+			vec![FunctionAnnotation::NoDiscard],
+		),
+		block,
+	);
 
 	let res = run(ir, true);
 	if let Err(e) = res {
@@ -284,7 +314,7 @@ fn fuzz() {
 					}
 					InstrKind::Call {
 						call: CallInterface {
-							function: format!("foo::{func}").into(),
+							function: format!("foo:{func}").into(),
 							args: Vec::new(),
 						},
 					}
@@ -297,7 +327,7 @@ fn fuzz() {
 
 		let block = ir.blocks.add(block);
 		ir.functions
-			.insert(FunctionInterface::new(format!("foo::{fn_i}").into()), block);
+			.insert(FunctionInterface::new(format!("foo:{fn_i}").into()), block);
 	}
 	let res = run(ir, debug);
 	if let Err(e) = res {

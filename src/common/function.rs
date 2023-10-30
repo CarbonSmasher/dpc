@@ -3,10 +3,11 @@ use super::{Identifier, Value};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Clone, Eq)]
+#[derive(Clone)]
 pub struct FunctionInterface {
 	pub id: ResourceLocation,
 	pub sig: FunctionSignature,
+	pub annotations: Vec<FunctionAnnotation>,
 }
 
 impl FunctionInterface {
@@ -15,7 +16,19 @@ impl FunctionInterface {
 	}
 
 	pub fn with_signature(id: ResourceLocation, sig: FunctionSignature) -> Self {
-		Self { id, sig }
+		Self::with_all(id, sig, Vec::new())
+	}
+
+	pub fn with_all(
+		id: ResourceLocation,
+		sig: FunctionSignature,
+		annotations: Vec<FunctionAnnotation>,
+	) -> Self {
+		Self {
+			id,
+			sig,
+			annotations,
+		}
 	}
 }
 
@@ -36,6 +49,8 @@ impl PartialEq for FunctionInterface {
 		self.id.eq(&other.id)
 	}
 }
+
+impl Eq for FunctionInterface {}
 
 pub type FunctionParams = Vec<DataType>;
 pub type FunctionArgs = Vec<Value>;
@@ -108,18 +123,31 @@ impl CallInterface {
 		}
 		out
 	}
+
+	pub fn iter_used_regs_mut(&mut self) -> impl Iterator<Item = &mut Identifier> {
+		self.args
+			.iter_mut()
+			.map(|x| x.get_used_regs_mut().into_iter())
+			.flatten()
+	}
 }
 
 impl Debug for CallInterface {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{} (", self.function)?;
+		write!(f, "{}(", self.function)?;
 		for (i, arg) in self.args.iter().enumerate() {
 			arg.fmt(f)?;
 			if i != self.args.len() - 1 {
 				write!(f, ",")?;
 			}
 		}
+		write!(f, ")")?;
 
 		Ok(())
 	}
+}
+
+#[derive(Debug, Clone)]
+pub enum FunctionAnnotation {
+	NoDiscard,
 }

@@ -4,8 +4,8 @@ use anyhow::anyhow;
 use dashmap::DashSet;
 
 use crate::common::MutableValue;
-use crate::mir::{MIRBlock, MIRInstrKind, MIR};
-use crate::passes::{MIRPass, Pass};
+use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::remove_indices;
 
 pub struct DSEPass;
@@ -17,10 +17,11 @@ impl Pass for DSEPass {
 }
 
 impl MIRPass for DSEPass {
-	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut instrs_to_remove = DashSet::new();
-		for (_, block) in &mut mir.functions {
-			let block = mir
+		for (_, block) in &mut data.mir.functions {
+			let block = data
+				.mir
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;

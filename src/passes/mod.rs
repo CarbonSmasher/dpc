@@ -1,14 +1,20 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use dashmap::{DashMap, DashSet};
 
 use crate::common::block::BlockID;
+use crate::common::ResourceLocation;
 use crate::lir::LIRBlock;
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
+use self::analysis::inline_candidates::InlineCandidatesPass;
 use self::analysis::ir::ValidatePass;
-use self::opt::const_passes::{ConstFoldPass, ConstPropPass, ConstComboPass};
+use self::analysis::util::PrintBlocksPass;
+use self::opt::const_passes::{ConstComboPass, ConstFoldPass, ConstPropPass};
+use self::opt::dce::DCEPass;
 use self::opt::dse::DSEPass;
+use self::opt::inline::SimpleInlinePass;
 use self::opt::inst_combine::InstCombinePass;
 use self::opt::scoreboard_dataflow::ScoreboardDataflowPass;
 use self::opt::simplify::{LIRSimplifyPass, MIRSimplifyPass};
@@ -36,12 +42,22 @@ pub fn run_ir_passes(ir: &mut IR) -> anyhow::Result<()> {
 }
 
 pub trait MIRPass: Pass {
-	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()>;
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()>;
+}
+
+pub struct MIRPassData<'mir> {
+	pub mir: &'mir mut MIR,
+	pub inline_candidates: HashSet<ResourceLocation>,
 }
 
 pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn MIRPass>,
+		Box::new(DCEPass),
+		Box::new(InlineCandidatesPass),
+		Box::new(SimpleInlinePass),
+		Box::new(PrintBlocksPass),
+		Box::new(DCEPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(ConstPropPass::new()),
 		Box::new(ConstFoldPass::new()),
@@ -54,11 +70,17 @@ pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 		Box::new(ConstComboPass),
 		Box::new(DSEPass),
 		Box::new(MIRSimplifyPass),
+		Box::new(DCEPass),
 	];
+
+	let mut data = MIRPassData {
+		mir,
+		inline_candidates: HashSet::new(),
+	};
 
 	for mut pass in passes {
 		println!("Running pass {}", pass.get_name());
-		pass.run_pass(mir)?;
+		pass.run_pass(&mut data)?;
 	}
 
 	Ok(())
@@ -119,8 +141,8 @@ impl IRPass for NullPass {
 }
 
 impl MIRPass for NullPass {
-	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
-		let _ = mir;
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		let _ = data;
 		Ok(())
 	}
 }

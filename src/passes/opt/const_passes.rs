@@ -3,8 +3,8 @@ use dashmap::DashMap;
 
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::{DeclareBinding, Identifier, MutableValue, Value};
-use crate::mir::{MIRBlock, MIRInstrKind, MIR};
-use crate::passes::{MIRPass, Pass};
+use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::{remove_indices, DashSetEmptyTracker};
 
 /// Combines the ConstProp and ConstFold passes and runs them both
@@ -18,12 +18,12 @@ impl Pass for ConstComboPass {
 }
 
 impl MIRPass for ConstComboPass {
-	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		loop {
 			let mut prop = ConstPropPass::new();
-			prop.run_pass(mir).context("ConstProp failed")?;
+			prop.run_pass(data).context("ConstProp failed")?;
 			let mut fold = ConstFoldPass::new();
-			fold.run_pass(mir).context("ConstFold failed")?;
+			fold.run_pass(data).context("ConstFold failed")?;
 			if !prop.made_changes() && !fold.made_changes {
 				break;
 			}
@@ -56,9 +56,10 @@ impl Pass for ConstPropPass {
 }
 
 impl MIRPass for ConstPropPass {
-	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
-		for (_, block) in &mut mir.functions {
-			let block = mir
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		for (_, block) in &mut data.mir.functions {
+			let block = data
+				.mir
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;
@@ -219,9 +220,10 @@ impl Pass for ConstFoldPass {
 }
 
 impl MIRPass for ConstFoldPass {
-	fn run_pass(&mut self, mir: &mut MIR) -> anyhow::Result<()> {
-		for (_, block) in &mut mir.functions {
-			let block = mir
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		for (_, block) in &mut data.mir.functions {
+			let block = data
+				.mir
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;

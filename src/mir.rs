@@ -212,7 +212,6 @@ impl Debug for MIRInstrKind {
 impl MIRInstrKind {
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
-			Self::Declare { .. } => Vec::new(),
 			Self::Assign { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Add { left, right }
 			| Self::Sub { left, right }
@@ -232,6 +231,71 @@ impl MIRInstrKind {
 			Self::Use { val } => val.get_used_regs(),
 			Self::Call { call } => call.get_used_regs(),
 			_ => Vec::new(),
+		}
+	}
+
+	pub fn replace_regs<F: Fn(&mut Identifier) -> ()>(&mut self, f: F) {
+		match self {
+			Self::Declare { left, .. } => {
+				f(left);
+			}
+			Self::Assign { left, right } => {
+				let right_regs: Box<dyn Iterator<Item = _>> = match right {
+					DeclareBinding::Null => Box::new(std::iter::empty()),
+					DeclareBinding::Value(val) => Box::new(val.get_used_regs_mut().into_iter()),
+					DeclareBinding::Cast(_, val) => Box::new(val.get_used_regs_mut().into_iter()),
+					DeclareBinding::Index { val, index, .. } => Box::new(
+						val.get_used_regs_mut()
+							.into_iter()
+							.chain(index.get_used_regs_mut()),
+					),
+				};
+				for reg in left.get_used_regs_mut().into_iter().chain(right_regs) {
+					f(reg);
+				}
+			}
+			Self::Add { left, right }
+			| Self::Sub { left, right }
+			| Self::Mul { left, right }
+			| Self::Div { left, right }
+			| Self::Mod { left, right }
+			| Self::Min { left, right }
+			| Self::Max { left, right }
+			| Self::Merge { left, right }
+			| Self::Push { left, right }
+			| Self::PushFront { left, right }
+			| Self::Insert { left, right, .. } => {
+				for reg in left
+					.get_used_regs_mut()
+					.into_iter()
+					.chain(right.get_used_regs_mut())
+				{
+					f(reg);
+				}
+			}
+			Self::Swap { left, right } => {
+				for reg in left
+					.get_used_regs_mut()
+					.into_iter()
+					.chain(right.get_used_regs_mut())
+				{
+					f(reg);
+				}
+			}
+			Self::Abs { val }
+			| Self::Pow { base: val, .. }
+			| Self::Get { value: val }
+			| Self::Use { val } => {
+				for reg in val.get_used_regs_mut() {
+					f(reg);
+				}
+			}
+			Self::Call { call } => {
+				for reg in call.iter_used_regs_mut() {
+					f(reg);
+				}
+			}
+			_ => {}
 		}
 	}
 }
