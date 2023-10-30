@@ -8,3 +8,12 @@ macro_rules! def_compound {
 		std::sync::Arc::new(out)
 	}};
 }
+
+#[macro_export]
+macro_rules! push_instrs {
+	($block:expr, $($instr:expr);* $(;)?) => {
+		$(
+			$block.contents.push(Instruction::new($instr));
+		)*
+	};
+}

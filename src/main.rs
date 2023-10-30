@@ -5,11 +5,11 @@ use dpc::common::function::{
 use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::target_selector::{SelectorType, TargetSelector};
 use dpc::common::{DeclareBinding, Identifier, MutableValue, Value};
-use dpc::def_compound;
 use dpc::ir::{Block, InstrKind, Instruction, IR};
 use dpc::linker::link;
 use dpc::lower::ir_to_mir::lower_ir;
 use dpc::lower::mir_to_lir::lower_mir;
+use dpc::{def_compound, push_instrs};
 
 use dpc::common::ty::{
 	create_nbyte_array, DataType, DataTypeContents, NBTArrayType, NBTType, NBTTypeContents,
@@ -56,144 +56,150 @@ fn known() {
 		bar: NBTTypeContents::Short(123),
 	};
 
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg_id.clone(),
-		ty: DataType::Score(ScoreType::Score),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
-			ScoreTypeContents::Score(15),
-		))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Assign {
-		left: MutableValue::Register(reg_id.clone()),
-		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(93))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg2_id.clone(),
-		ty: DataType::Score(ScoreType::Score),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
-			ScoreTypeContents::Score(-2139),
-		))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Add {
-		left: MutableValue::Register(reg_id.clone()),
-		right: Value::Mutable(MutableValue::Register(reg2_id.clone())),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Add {
-		left: MutableValue::Register(reg_id.clone()),
-		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(7))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Add {
-		left: MutableValue::Register(reg_id.clone()),
-		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-15))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Sub {
-		left: MutableValue::Register(reg_id.clone()),
-		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-1290))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg3_id.clone(),
-		ty: DataType::Score(ScoreType::UScore),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
-			ScoreTypeContents::Score(0),
-		))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg4_id.clone(),
-		ty: DataType::NBT(NBTType::Long),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
-			NBTTypeContents::Long(-9219209999023734623),
-		))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Assign {
-		left: MutableValue::Register(reg4_id.clone()),
-		right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Long(1289))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Abs {
-		val: MutableValue::Register(reg2_id.clone()),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Div {
-		left: MutableValue::Register(reg_id.clone()),
-		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Bool(true))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg5_id.clone(),
-		ty: DataType::Score(ScoreType::UScore),
-		right: DeclareBinding::Cast(
-			DataType::Score(ScoreType::UScore),
-			MutableValue::Register(reg4_id.clone()),
-		),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Mul {
-		left: MutableValue::Register(reg2_id.clone()),
-		right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(2))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Swap {
-		left: MutableValue::Register(reg5_id.clone()),
-		right: MutableValue::Register(reg2_id.clone()),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg6_id.clone(),
-		ty: DataType::NBT(NBTType::Int),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
-			NBTTypeContents::Int(-9046),
-		))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg7_id.clone(),
-		ty: DataType::NBT(NBTType::Int),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
-			NBTTypeContents::Int(1),
-		))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Swap {
-		left: MutableValue::Register(reg6_id.clone()),
-		right: MutableValue::Register(reg7_id.clone()),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg8_id.clone(),
-		ty: DataType::NBT(NBTType::Arr(NBTArrayType::Byte(6))),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
-			NBTTypeContents::Arr(create_nbyte_array(vec![5, 9, -2, 8, -121, 86])),
-		))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg9_id.clone(),
-		ty: DataType::NBT(NBTType::Byte),
-		right: DeclareBinding::Index {
+	push_instrs! {
+		block,
+		InstrKind::Declare {
+			left: reg_id.clone(),
+			ty: DataType::Score(ScoreType::Score),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+				ScoreTypeContents::Score(15),
+			))),
+		};
+		InstrKind::Assign {
+			left: MutableValue::Register(reg_id.clone()),
+			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(93))),
+		};
+		InstrKind::Declare {
+			left: reg2_id.clone(),
+			ty: DataType::Score(ScoreType::Score),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+				ScoreTypeContents::Score(-2139),
+			))),
+		};
+		InstrKind::Add {
+			left: MutableValue::Register(reg_id.clone()),
+			right: Value::Mutable(MutableValue::Register(reg2_id.clone())),
+		};
+		InstrKind::Add {
+			left: MutableValue::Register(reg_id.clone()),
+			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(7))),
+		};
+		InstrKind::Add {
+			left: MutableValue::Register(reg_id.clone()),
+			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-15))),
+		};
+		InstrKind::Sub {
+			left: MutableValue::Register(reg_id.clone()),
+			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-1290))),
+		};
+		InstrKind::Declare {
+			left: reg3_id.clone(),
+			ty: DataType::Score(ScoreType::UScore),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+				ScoreTypeContents::Score(0),
+			))),
+		};
+		InstrKind::Declare {
+			left: reg4_id.clone(),
+			ty: DataType::NBT(NBTType::Long),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+				NBTTypeContents::Long(-9219209999023734623),
+			))),
+		};
+		InstrKind::Assign {
+			left: MutableValue::Register(reg4_id.clone()),
+			right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Long(1289))),
+		};
+		InstrKind::Abs {
+			val: MutableValue::Register(reg2_id.clone()),
+		};
+		InstrKind::Div {
+			left: MutableValue::Register(reg_id.clone()),
+			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Bool(true))),
+		};
+		InstrKind::Declare {
+			left: reg5_id.clone(),
+			ty: DataType::Score(ScoreType::UScore),
+			right: DeclareBinding::Cast(
+				DataType::Score(ScoreType::UScore),
+				MutableValue::Register(reg4_id.clone()),
+			),
+		};
+		InstrKind::Mul {
+			left: MutableValue::Register(reg2_id.clone()),
+			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(2))),
+		};
+		InstrKind::Swap {
+			left: MutableValue::Register(reg5_id.clone()),
+			right: MutableValue::Register(reg2_id.clone()),
+		};
+		InstrKind::Declare {
+			left: reg6_id.clone(),
+			ty: DataType::NBT(NBTType::Int),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+				NBTTypeContents::Int(-9046),
+			))),
+		};
+		InstrKind::Declare {
+			left: reg7_id.clone(),
+			ty: DataType::NBT(NBTType::Int),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+				NBTTypeContents::Int(1),
+			))),
+		};
+		InstrKind::Swap {
+			left: MutableValue::Register(reg6_id.clone()),
+			right: MutableValue::Register(reg7_id.clone()),
+		};
+		InstrKind::Declare {
+			left: reg8_id.clone(),
+			ty: DataType::NBT(NBTType::Arr(NBTArrayType::Byte(6))),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+				NBTTypeContents::Arr(create_nbyte_array(vec![5, 9, -2, 8, -121, 86])),
+			))),
+		};
+		InstrKind::Declare {
+			left: reg9_id.clone(),
 			ty: DataType::NBT(NBTType::Byte),
-			val: Value::Mutable(MutableValue::Register(reg8_id.clone())),
-			index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::UScore(3))),
-		},
-	}));
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg10_id.clone(),
-		ty: DataType::NBT(NBTType::Compound(cmp2.clone())),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
-			NBTTypeContents::Compound(cmp2, cmp2_cont),
-		))),
-	}));
+			right: DeclareBinding::Index {
+				ty: DataType::NBT(NBTType::Byte),
+				val: Value::Mutable(MutableValue::Register(reg8_id.clone())),
+				index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::UScore(3))),
+			},
+		};
+		InstrKind::Declare {
+			left: reg10_id.clone(),
+			ty: DataType::NBT(NBTType::Compound(cmp2.clone())),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+				NBTTypeContents::Compound(cmp2, cmp2_cont),
+			))),
+		};
+	}
 
 	let block = ir.blocks.add(block);
 	ir.functions
 		.insert(FunctionInterface::new("foo:bar".into()), block);
 
 	let mut block = Block::new();
-	block.contents.push(Instruction::new(InstrKind::Declare {
-		left: reg2_id.clone(),
-		ty: DataType::Score(ScoreType::Score),
-		right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
-			ScoreTypeContents::Score(7),
-		))),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Use {
-		val: MutableValue::Register(reg2_id.clone()),
-	}));
-	block.contents.push(Instruction::new(InstrKind::Call {
-		call: CallInterface {
-			function: "foo:bar".into(),
-			args: Vec::new(),
-		},
-	}));
+	push_instrs! {
+		block,
+		InstrKind::Declare {
+			left: reg2_id.clone(),
+			ty: DataType::Score(ScoreType::Score),
+			right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+				ScoreTypeContents::Score(7),
+			))),
+		};
+		InstrKind::Use {
+			val: MutableValue::Register(reg2_id.clone()),
+		};
+		InstrKind::Call {
+			call: CallInterface {
+				function: "foo:bar".into(),
+				args: Vec::new(),
+			},
+		};
+	}
 
 	let block = ir.blocks.add(block);
 	ir.functions.insert(
