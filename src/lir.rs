@@ -7,7 +7,7 @@ use crate::common::modifier::Modifier;
 use crate::common::ty::ArraySize;
 use crate::common::{
 	Identifier, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, RegisterList,
-	ResourceLocation, ScoreValue, Value,
+	ResourceLocation, ScoreValue
 };
 
 #[derive(Debug, Clone)]
@@ -128,7 +128,7 @@ pub enum LIRInstrKind {
 	InsertData(MutableNBTValue, NBTValue, i32),
 	ConstIndexToScore {
 		score: MutableScoreValue,
-		value: Value,
+		value: NBTValue,
 		index: ArraySize,
 	},
 	Use(MutableValue),

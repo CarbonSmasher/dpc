@@ -53,7 +53,7 @@ impl Value {
 					bail!("Expected value to be a score");
 				}
 			}
-			Self::Mutable(val) => ScoreValue::Mutable(val.to_mutable_score_value()),
+			Self::Mutable(val) => ScoreValue::Mutable(val.to_mutable_score_value()?),
 		};
 
 		Ok(out)
@@ -68,7 +68,7 @@ impl Value {
 					bail!("Expected value to be NBT");
 				}
 			}
-			Self::Mutable(val) => NBTValue::Mutable(val.to_mutable_nbt_value()),
+			Self::Mutable(val) => NBTValue::Mutable(val.to_mutable_nbt_value()?),
 		};
 
 		Ok(out)
@@ -88,6 +88,8 @@ impl Debug for Value {
 #[derive(Clone)]
 pub enum MutableValue {
 	Register(Identifier),
+	Score(Score),
+	Data(FullDataLocation),
 }
 
 impl MutableValue {
@@ -99,6 +101,8 @@ impl MutableValue {
 					.with_context(|| format!("Failed to get register ${id}"))?;
 				reg.ty.clone()
 			}
+			Self::Score(..) => DataType::Score(ty::ScoreType::Score),
+			Self::Data(..) => DataType::NBT(ty::NBTType::Any),
 		};
 
 		Ok(out)
@@ -107,12 +111,14 @@ impl MutableValue {
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
 			Self::Register(reg) => vec![&reg],
+			_ => Vec::new(),
 		}
 	}
 
 	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
 		match self {
 			Self::Register(reg) => vec![reg],
+			_ => Vec::new(),
 		}
 	}
 
@@ -120,15 +126,19 @@ impl MutableValue {
 		matches!((self, other), (Self::Register(left), Self::Register(right)) if left == right)
 	}
 
-	pub fn to_mutable_score_value(self) -> MutableScoreValue {
+	pub fn to_mutable_score_value(self) -> anyhow::Result<MutableScoreValue> {
 		match self {
-			Self::Register(reg) => MutableScoreValue::Reg(reg),
+			Self::Register(reg) => Ok(MutableScoreValue::Reg(reg)),
+			Self::Score(score) => Ok(MutableScoreValue::Score(score)),
+			_ => bail!("Value cannot be converted to a score value"),
 		}
 	}
 
-	pub fn to_mutable_nbt_value(self) -> MutableNBTValue {
+	pub fn to_mutable_nbt_value(self) -> anyhow::Result<MutableNBTValue> {
 		match self {
-			Self::Register(reg) => MutableNBTValue::Reg(reg),
+			Self::Register(reg) => Ok(MutableNBTValue::Reg(reg)),
+			Self::Data(data) => Ok(MutableNBTValue::Data(data)),
+			_ => bail!("Value cannot be converted to a NBT value"),
 		}
 	}
 }
@@ -137,6 +147,8 @@ impl Debug for MutableValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
 			Self::Register(reg) => format!("${reg}"),
+			Self::Score(score) => format!("${score:?}"),
+			Self::Data(data) => format!("${data:?}"),
 		};
 		write!(f, "{text}")
 	}

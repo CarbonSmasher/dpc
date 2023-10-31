@@ -1,9 +1,7 @@
-use anyhow::{anyhow, bail};
+use anyhow::anyhow;
 
 use crate::common::mc::{DataLocation, EntityTarget, FullDataLocation, Score};
-use crate::common::ty::DataTypeContents;
-use crate::common::{ty::DataType, MutableValue, RegisterList};
-use crate::common::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue, Value};
+use crate::common::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::linker::ra::RegAllocResult;
 use crate::linker::text::{
 	format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE, REG_STORAGE_LOCATION,
@@ -11,33 +9,6 @@ use crate::linker::text::{
 
 use super::t::macros::cgformat;
 use super::{Codegen, CodegenBlockCx};
-
-/// Returns a score and an optional score literal to add
-#[allow(dead_code)]
-pub fn get_val_score(
-	val: &Value,
-	ra: &RegAllocResult,
-	regs: &RegisterList,
-) -> anyhow::Result<(Score, ScoreLiteral)> {
-	let out = match val {
-		Value::Constant(val) => match val {
-			DataTypeContents::Score(score) => {
-				let num = score.get_i32();
-				(create_lit_score(num), ScoreLiteral(Some(num)))
-			}
-			_ => bail!("LIR instruction given wrong type"),
-		},
-		Value::Mutable(val) => {
-			let score = Score::new(
-				EntityTarget::Player(get_mut_val_reg(val, ra, regs)?.clone()),
-				REG_OBJECTIVE.into(),
-			);
-			(score, ScoreLiteral(None))
-		}
-	};
-
-	Ok(out)
-}
 
 /// Returns a score and an optional score literal to add
 #[allow(dead_code)]
@@ -105,24 +76,24 @@ pub fn get_mut_nbt_val_loc(
 	Ok(out)
 }
 
-pub fn get_mut_val_reg<'ra>(
-	val: &MutableValue,
-	ra: &'ra RegAllocResult,
-	regs: &RegisterList,
-) -> anyhow::Result<&'ra String> {
-	match val {
-		MutableValue::Register(reg) => match val.get_ty(regs)? {
-			DataType::Score(..) => ra
-				.regs
-				.get(reg)
-				.ok_or(anyhow!("Register {reg} not allocated")),
-			DataType::NBT(..) => ra
-				.locals
-				.get(reg)
-				.ok_or(anyhow!("Register {reg} not allocated")),
-		},
-	}
-}
+// pub fn get_mut_val_reg<'ra>(
+// 	val: &MutableValue,
+// 	ra: &'ra RegAllocResult,
+// 	regs: &RegisterList,
+// ) -> anyhow::Result<&'ra String> {
+// 	match val {
+// 		MutableValue::Register(reg) => match val.get_ty(regs)? {
+// 			DataType::Score(..) => ra
+// 				.regs
+// 				.get(reg)
+// 				.ok_or(anyhow!("Register {reg} not allocated")),
+// 			DataType::NBT(..) => ra
+// 				.locals
+// 				.get(reg)
+// 				.ok_or(anyhow!("Register {reg} not allocated")),
+// 		},
+// 	}
+// }
 
 pub fn create_lit_score(num: i32) -> Score {
 	Score::new(

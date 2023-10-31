@@ -10,14 +10,11 @@ use anyhow::{anyhow, bail, Context};
 use crate::common::mc::Score;
 use crate::common::modifier::{Modifier, StoreModLocation};
 use crate::common::ty::NBTTypeContents;
-use crate::common::{ty::DataTypeContents, Value};
 use crate::common::{NBTValue, RegisterList, ScoreValue};
 use crate::linker::codegen::util::cg_data_modify_rhs;
-use crate::linker::text::REG_STORAGE_LOCATION;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 
 use self::modifier::codegen_modifier;
-use self::util::get_mut_val_reg;
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 
@@ -210,8 +207,8 @@ pub fn codegen_instr(
 			value,
 			index,
 		} => Some(match value {
-			Value::Constant(val) => match val {
-				DataTypeContents::NBT(NBTTypeContents::Arr(arr)) => {
+			NBTValue::Constant(val) => match val {
+				NBTTypeContents::Arr(arr) => {
 					let lit = arr
 						.const_index(*index)
 						.ok_or(anyhow!("Const index out of range"))?;
@@ -219,12 +216,11 @@ pub fn codegen_instr(
 				}
 				_ => bail!("Cannot index non-array type"),
 			},
-			Value::Mutable(val) => {
-				let loc = get_mut_val_reg(val, &cbcx.ra, &cbcx.regs)?.clone();
+			NBTValue::Mutable(val) => {
 				modifiers.push(Modifier::StoreResult(StoreModLocation::from_mut_score_val(
 					score,
 				)));
-				cgformat!(cbcx, "data get storage ", REG_STORAGE_LOCATION, loc)?
+				cgformat!(cbcx, "data get storage ", val)?
 			}
 		}),
 		LIRInstrKind::Say(message) => Some(format!("say {message}")),

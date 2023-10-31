@@ -74,11 +74,14 @@ pub enum NBTType {
 	Arr(NBTArrayType),
 	List(Box<NBTType>),
 	Compound(Arc<HashMap<String, NBTType>>),
+	Any,
 }
 
 impl NBTType {
 	pub fn is_trivially_castable(&self, other: &NBTType) -> bool {
 		match other {
+			// Anything can be trivially cast to NBT any
+			Self::Any => true,
 			Self::Byte => matches!(self, Self::Byte | Self::Bool),
 			Self::Bool => matches!(self, Self::Bool),
 			Self::Short => matches!(self, Self::Byte | Self::Bool | Self::Short),
@@ -142,6 +145,7 @@ impl Debug for NBTType {
 			Self::Arr(arr) => format!("{arr:?}"),
 			Self::List(ty) => format!("{ty:?}[]"),
 			Self::Compound(tys) => format!("{tys:?}"),
+			Self::Any => "any".to_string(),
 		};
 		write!(f, "{text}")
 	}

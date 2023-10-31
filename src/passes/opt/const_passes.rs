@@ -168,23 +168,31 @@ impl<'cont> ConstAnalyzer<'cont> {
 			| MIRInstrKind::Push { left, .. }
 			| MIRInstrKind::PushFront { left, .. }
 			| MIRInstrKind::Insert { left, .. } => {
-				let MutableValue::Register(reg) = left;
-				if self.store_self {
-					self.vals.remove(reg);
+				if let MutableValue::Register(reg) = left {
+					if self.store_self {
+						self.vals.remove(reg);
+					}
+					ConstAnalyzerResult::Remove(vec![reg.clone()])
+				} else {
+					ConstAnalyzerResult::Other
 				}
-				ConstAnalyzerResult::Remove(vec![reg.clone()])
 			}
-			MIRInstrKind::Swap { left, right } => {
-				let MutableValue::Register(left_reg) = left;
-				let MutableValue::Register(right_reg) = right;
+			MIRInstrKind::Swap {
+				left: MutableValue::Register(left_reg),
+				right: MutableValue::Register(right_reg),
+			} => {
 				if self.store_self {
 					self.vals.remove(left_reg);
 					self.vals.remove(right_reg);
 				}
 				ConstAnalyzerResult::Remove(vec![left_reg.clone(), right_reg.clone()])
 			}
-			MIRInstrKind::Abs { val } | MIRInstrKind::Use { val } => {
-				let MutableValue::Register(reg) = val;
+			MIRInstrKind::Abs {
+				val: MutableValue::Register(reg),
+			}
+			| MIRInstrKind::Use {
+				val: MutableValue::Register(reg),
+			} => {
 				if self.store_self {
 					self.vals.remove(reg);
 				}

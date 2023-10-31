@@ -107,8 +107,7 @@ fn run_scoreboard_dataflow_iter(
 					finished_flow_points.extend(flow_points.remove(reg).map(|x| x.1));
 				}
 			}
-			LIRInstrKind::Use(reg) => {
-				let MutableValue::Register(reg) = reg;
+			LIRInstrKind::Use(MutableValue::Register(reg)) => {
 				finished_flow_points.extend(flow_points.remove(reg).map(|x| x.1));
 			}
 			other => {

@@ -109,14 +109,14 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 				MIRInstrKind::Pow { base, exp } => {
 					if exp == 0 {
 						lir_instrs.push(LIRInstruction::new(LIRInstrKind::SetScore(
-							base.clone().to_mutable_score_value(),
+							base.clone().to_mutable_score_value()?,
 							ScoreValue::Constant(ScoreTypeContents::Score(1)),
 						)));
 					} else {
 						for _ in 0..(exp - 1) {
 							lir_instrs.push(LIRInstruction::new(LIRInstrKind::MulScore(
-								base.clone().to_mutable_score_value(),
-								ScoreValue::Mutable(base.clone().to_mutable_score_value()),
+								base.clone().to_mutable_score_value()?,
+								ScoreValue::Mutable(base.clone().to_mutable_score_value()?),
 							)));
 						}
 					}
@@ -175,19 +175,19 @@ fn lower_assign(
 			} else {
 				// Run the cast
 				let store_loc = match ty {
-					DataType::Score(..) => {
-						StoreModLocation::from_mut_score_val(&left.clone().to_mutable_score_value())
-					}
+					DataType::Score(..) => StoreModLocation::from_mut_score_val(
+						&left.clone().to_mutable_score_value()?,
+					),
 					DataType::NBT(..) => {
-						StoreModLocation::from_mut_nbt_val(&left.clone().to_mutable_nbt_value())
+						StoreModLocation::from_mut_nbt_val(&left.clone().to_mutable_nbt_value()?)
 					}
 				};
 
 				let get_instr = match val_ty {
 					DataType::Score(..) => {
-						LIRInstrKind::GetScore(val.clone().to_mutable_score_value())
+						LIRInstrKind::GetScore(val.clone().to_mutable_score_value()?)
 					}
-					DataType::NBT(..) => LIRInstrKind::GetData(val.clone().to_mutable_nbt_value()),
+					DataType::NBT(..) => LIRInstrKind::GetData(val.clone().to_mutable_nbt_value()?),
 				};
 				out.push(LIRInstruction::with_modifiers(
 					get_instr,
@@ -217,7 +217,7 @@ fn lower_assign(
 					};
 					out.push(LIRInstruction::new(LIRInstrKind::ConstIndexToScore {
 						score: MutableScoreValue::Reg(new_reg.clone()),
-						value: val.clone(),
+						value: val.clone().to_nbt_value()?,
 						index,
 					}));
 				}
@@ -230,10 +230,10 @@ fn lower_assign(
 	if let Some(right_val) = right_val {
 		let kind = match left_ty {
 			DataType::Score(..) => {
-				LIRInstrKind::SetScore(left.to_mutable_score_value(), right_val.to_score_value()?)
+				LIRInstrKind::SetScore(left.to_mutable_score_value()?, right_val.to_score_value()?)
 			}
 			DataType::NBT(..) => {
-				LIRInstrKind::SetData(left.to_mutable_nbt_value(), right_val.to_nbt_value()?)
+				LIRInstrKind::SetData(left.to_mutable_nbt_value()?, right_val.to_nbt_value()?)
 			}
 		};
 		out.push(LIRInstruction::new(kind));
@@ -250,7 +250,7 @@ fn lower_add(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
-			LIRInstrKind::AddScore(left.to_mutable_score_value(), right.to_score_value()?)
+			LIRInstrKind::AddScore(left.to_mutable_score_value()?, right.to_score_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -266,7 +266,7 @@ fn lower_sub(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
-			LIRInstrKind::SubScore(left.to_mutable_score_value(), right.to_score_value()?)
+			LIRInstrKind::SubScore(left.to_mutable_score_value()?, right.to_score_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -282,7 +282,7 @@ fn lower_mul(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
-			LIRInstrKind::MulScore(left.to_mutable_score_value(), right.to_score_value()?)
+			LIRInstrKind::MulScore(left.to_mutable_score_value()?, right.to_score_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -298,7 +298,7 @@ fn lower_div(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
-			LIRInstrKind::DivScore(left.to_mutable_score_value(), right.to_score_value()?)
+			LIRInstrKind::DivScore(left.to_mutable_score_value()?, right.to_score_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -314,7 +314,7 @@ fn lower_mod(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
-			LIRInstrKind::ModScore(left.to_mutable_score_value(), right.to_score_value()?)
+			LIRInstrKind::ModScore(left.to_mutable_score_value()?, right.to_score_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -330,7 +330,7 @@ fn lower_min(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
-			LIRInstrKind::MinScore(left.to_mutable_score_value(), right.to_score_value()?)
+			LIRInstrKind::MinScore(left.to_mutable_score_value()?, right.to_score_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -346,7 +346,7 @@ fn lower_max(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
-			LIRInstrKind::MaxScore(left.to_mutable_score_value(), right.to_score_value()?)
+			LIRInstrKind::MaxScore(left.to_mutable_score_value()?, right.to_score_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -367,8 +367,8 @@ fn lower_swap(
 	) {
 		(DataType::Score(..), DataType::Score(..)) => {
 			out.push(LIRInstruction::new(LIRInstrKind::SwapScore(
-				left.to_mutable_score_value(),
-				right.to_mutable_score_value(),
+				left.to_mutable_score_value()?,
+				right.to_mutable_score_value()?,
 			)))
 		}
 		(DataType::NBT(left_ty), DataType::NBT(..)) => {
@@ -381,8 +381,8 @@ fn lower_swap(
 			lbcx.registers.insert(temp_reg.clone(), reg);
 			// Create the three assignments that represent the swap.
 			// This is equal to: temp = a; a = b; b = temp;
-			let left = left.clone().to_mutable_nbt_value();
-			let right = right.clone().to_mutable_nbt_value();
+			let left = left.clone().to_mutable_nbt_value()?;
+			let right = right.clone().to_mutable_nbt_value()?;
 			out.push(LIRInstruction::new(LIRInstrKind::SetData(
 				MutableNBTValue::Reg(temp_reg.clone()),
 				NBTValue::Mutable(left.clone()),
@@ -405,7 +405,7 @@ fn lower_swap(
 fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstruction> {
 	let kind = match val.get_ty(&lbcx.registers)? {
 		DataType::Score(..) => LIRInstrKind::MulScore(
-			val.clone().to_mutable_score_value(),
+			val.clone().to_mutable_score_value()?,
 			ScoreValue::Constant(ScoreTypeContents::Score(-1)),
 		),
 		_ => bail!("Instruction does not allow this type"),
@@ -413,7 +413,7 @@ fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstru
 
 	let modifier = Modifier::If {
 		condition: Box::new(IfModCondition::Score(IfScoreCondition::Range {
-			score: val.to_mutable_score_value(),
+			score: val.to_mutable_score_value()?,
 			left: IfScoreRangeEnd::Infinite,
 			right: IfScoreRangeEnd::Fixed {
 				value: ScoreValue::Constant(ScoreTypeContents::Score(-1)),
@@ -430,8 +430,8 @@ fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstru
 
 fn lower_get(value: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {
 	let kind = match value.get_ty(&lbcx.registers)? {
-		DataType::Score(..) => LIRInstrKind::GetScore(value.to_mutable_score_value()),
-		DataType::NBT(..) => LIRInstrKind::GetData(value.to_mutable_nbt_value()),
+		DataType::Score(..) => LIRInstrKind::GetScore(value.to_mutable_score_value()?),
+		DataType::NBT(..) => LIRInstrKind::GetData(value.to_mutable_nbt_value()?),
 	};
 
 	Ok(kind)
@@ -445,7 +445,7 @@ fn lower_merge(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::NBT(..), DataType::NBT(..)) => {
-			LIRInstrKind::MergeData(left.to_mutable_nbt_value(), right.to_nbt_value()?)
+			LIRInstrKind::MergeData(left.to_mutable_nbt_value()?, right.to_nbt_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -461,7 +461,7 @@ fn lower_push(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::NBT(..), DataType::NBT(..)) => {
-			LIRInstrKind::PushData(left.to_mutable_nbt_value(), right.to_nbt_value()?)
+			LIRInstrKind::PushData(left.to_mutable_nbt_value()?, right.to_nbt_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -477,7 +477,7 @@ fn lower_push_front(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::NBT(..), DataType::NBT(..)) => {
-			LIRInstrKind::PushFrontData(left.to_mutable_nbt_value(), right.to_nbt_value()?)
+			LIRInstrKind::PushFrontData(left.to_mutable_nbt_value()?, right.to_nbt_value()?)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
@@ -494,7 +494,7 @@ fn lower_insert(
 	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
 	let kind = match tys {
 		(DataType::NBT(..), DataType::NBT(..)) => {
-			LIRInstrKind::InsertData(left.to_mutable_nbt_value(), right.to_nbt_value()?, index)
+			LIRInstrKind::InsertData(left.to_mutable_nbt_value()?, right.to_nbt_value()?, index)
 		}
 		_ => bail!("Instruction does not allow this type"),
 	};
