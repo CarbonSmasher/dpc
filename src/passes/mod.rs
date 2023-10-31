@@ -10,6 +10,7 @@ use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::inline_candidates::InlineCandidatesPass;
 use self::analysis::ir::ValidatePass;
+use self::analysis::util::PrintInstrCountPass;
 use self::opt::const_passes::{ConstComboPass, ConstFoldPass, ConstPropPass};
 use self::opt::dce::DCEPass;
 use self::opt::dse::DSEPass;
@@ -54,21 +55,28 @@ pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 		Box::new(NullPass) as Box<dyn MIRPass>,
 		Box::new(DCEPass),
 		Box::new(InlineCandidatesPass),
+		Box::new(PrintInstrCountPass),
 		Box::new(SimpleInlinePass),
+		Box::new(PrintInstrCountPass),
 		Box::new(DCEPass),
+		Box::new(PrintInstrCountPass),
 		Box::new(MIRSimplifyPass),
+		Box::new(PrintInstrCountPass),
 		Box::new(ConstPropPass::new()),
 		Box::new(ConstFoldPass::new()),
 		Box::new(MIRSimplifyPass),
 		Box::new(DSEPass),
 		Box::new(InstCombinePass),
+		Box::new(PrintInstrCountPass),
 		Box::new(ConstPropPass::new()),
 		Box::new(MIRSimplifyPass),
 		Box::new(ConstFoldPass::new()),
 		Box::new(ConstComboPass),
+		Box::new(PrintInstrCountPass),
 		Box::new(DSEPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(DCEPass),
+		Box::new(PrintInstrCountPass),
 	];
 
 	let mut data = MIRPassData {
