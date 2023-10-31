@@ -10,7 +10,6 @@ use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::inline_candidates::InlineCandidatesPass;
 use self::analysis::ir::ValidatePass;
-use self::analysis::util::PrintBlocksPass;
 use self::opt::const_passes::{ConstComboPass, ConstFoldPass, ConstPropPass};
 use self::opt::dce::DCEPass;
 use self::opt::dse::DSEPass;
@@ -56,7 +55,6 @@ pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 		Box::new(DCEPass),
 		Box::new(InlineCandidatesPass),
 		Box::new(SimpleInlinePass),
-		Box::new(PrintBlocksPass),
 		Box::new(DCEPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(ConstPropPass::new()),

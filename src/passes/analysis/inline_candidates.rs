@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 
 use crate::common::ResourceLocation;
 use crate::mir::{MIRInstrKind, MIR};
@@ -16,14 +16,19 @@ impl Pass for InlineCandidatesPass {
 
 impl MIRPass for InlineCandidatesPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		let mut call_stack = CallStack {
+			set: HashSet::new(),
+		};
+		let mut checked = HashSet::new();
 		for (fun, _) in &data.mir.functions {
+			checked.clear();
 			data.inline_candidates.insert(fun.id.clone());
-			let mut call_stack = VecDeque::new();
 			check_recursion(
 				&fun.id,
 				&data.mir,
 				&mut data.inline_candidates,
 				&mut call_stack,
+				&mut checked,
 			)?;
 		}
 
@@ -31,37 +36,45 @@ impl MIRPass for InlineCandidatesPass {
 	}
 }
 
-fn check_recursion(
-	func: &ResourceLocation,
-	mir: &MIR,
+fn check_recursion<'fun>(
+	func: &'fun ResourceLocation,
+	mir: &'fun MIR,
 	candidates: &mut HashSet<ResourceLocation>,
-	call_stack: &mut VecDeque<ResourceLocation>,
+	call_stack: &mut CallStack,
+	checked: &mut HashSet<&'fun ResourceLocation>,
 ) -> anyhow::Result<()> {
-	call_stack.push_back(func.clone());
+	checked.insert(func);
+	call_stack.set.insert(func.clone());
 
 	let func_item = mir
-		.functions
-		.iter()
-		.find(|x| &x.0.id == func)
+		.get_fn(func)
 		.ok_or(anyhow!("Called function does not exist"))?;
 	let block = mir
 		.blocks
-		.get(func_item.1)
+		.get(func_item)
 		.ok_or(anyhow!("Block does not exist"))?;
 
 	for instr in &block.contents {
 		if let MIRInstrKind::Call { call } = &instr.kind {
 			// Recursion!
-			if call_stack.contains(&call.function) {
+			if call_stack.set.contains(&call.function) {
 				candidates.remove(&call.function);
 				continue;
 			}
+			// Don't check functions that we have already determined
+			if checked.contains(&call.function) {
+				continue;
+			}
 
-			check_recursion(&call.function, mir, candidates, call_stack)?;
+			check_recursion(&call.function, mir, candidates, call_stack, checked)?;
 		}
 	}
 
-	call_stack.pop_back();
+	call_stack.set.remove(func);
 
 	Ok(())
+}
+
+struct CallStack {
+	set: HashSet<ResourceLocation>,
 }

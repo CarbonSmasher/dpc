@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use anyhow::anyhow;
 
 use crate::common::block::{BlockAllocator, BlockID};
-use crate::common::function::FunctionInterface;
+use crate::common::function::{FunctionInterface, FunctionSignature};
 use crate::common::{Identifier, ResourceLocation};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
@@ -20,6 +20,7 @@ impl Pass for SimpleInlinePass {
 impl MIRPass for SimpleInlinePass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut instrs_to_remove = Vec::new();
+		let mut instrs_to_remove_set = HashSet::new();
 		let cloned_funcs = data.mir.functions.clone();
 		let cloned_blocks = data.mir.blocks.clone();
 		for (func, block) in &mut data.mir.functions {
@@ -35,12 +36,14 @@ impl MIRPass for SimpleInlinePass {
 					&func.id,
 					block,
 					&mut instrs_to_remove,
+					&mut instrs_to_remove_set,
 					&data.inline_candidates,
 					&cloned_funcs,
 					&cloned_blocks,
 				)?;
 
-				block.contents = replace_and_expand_indices(block.contents.clone(), &instrs_to_remove);
+				block.contents =
+					replace_and_expand_indices(block.contents.clone(), &instrs_to_remove);
 				if !run_again {
 					break;
 				}
@@ -55,6 +58,7 @@ fn run_simple_inline_iter(
 	func_id: &Identifier,
 	block: &mut MIRBlock,
 	instrs_to_remove: &mut Vec<(usize, Vec<MIRInstruction>)>,
+	instrs_to_remove_set: &mut HashSet<usize>,
 	inline_candidates: &HashSet<ResourceLocation>,
 	cloned_funcs: &HashMap<FunctionInterface, BlockID>,
 	cloned_blocks: &BlockAllocator<MIRBlock>,
@@ -62,7 +66,7 @@ fn run_simple_inline_iter(
 	let mut run_again = false;
 
 	for (i, instr) in block.contents.iter().enumerate() {
-		if instrs_to_remove.iter().any(|x| x.0 == i) {
+		if instrs_to_remove_set.contains(&i) {
 			continue;
 		}
 		if let MIRInstrKind::Call { call } = &instr.kind {
@@ -74,16 +78,21 @@ fn run_simple_inline_iter(
 				continue;
 			}
 			let func = cloned_funcs
-				.iter()
-				.find(|x| x.0.id == call.function)
+				.get(&FunctionInterface {
+					id: call.function.clone(),
+					sig: FunctionSignature::new(),
+					annotations: Vec::new(),
+				})
 				.ok_or(anyhow!("Called function does not exist"))?;
 			let inlined_block = cloned_blocks
-				.get(func.1)
+				.get(func)
 				.ok_or(anyhow!("Inlined block does not exist"))?;
+
 			// Inline the block
 			let mut inlined_contents = inlined_block.contents.clone();
 			cleanup_fn(&call.function, &mut inlined_contents);
 			instrs_to_remove.push((i, inlined_contents));
+			instrs_to_remove_set.insert(i);
 			run_again = true;
 		}
 	}

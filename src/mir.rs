@@ -1,10 +1,10 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
-use crate::common::function::{CallInterface, FunctionInterface};
+use crate::common::function::{CallInterface, FunctionInterface, FunctionSignature};
 use crate::common::mc::{EntityTarget, XPValue};
 use crate::common::ty::DataType;
-use crate::common::{DeclareBinding, Identifier, MutableValue, Value};
+use crate::common::{DeclareBinding, Identifier, MutableValue, ResourceLocation, Value};
 
 #[derive(Debug, Clone)]
 pub struct MIR {
@@ -25,6 +25,15 @@ impl MIR {
 			functions: HashMap::with_capacity(function_capacity),
 			blocks: BlockAllocator::with_capacity(block_capacity),
 		}
+	}
+
+	/// Get the block of a function with an ID
+	pub fn get_fn(&self, id: &ResourceLocation) -> Option<&BlockID> {
+		self.functions.get(&FunctionInterface {
+			id: id.clone(),
+			sig: FunctionSignature::new(),
+			annotations: Vec::new(),
+		})
 	}
 }
 

@@ -25,6 +25,28 @@ fn main() {
 #[allow(dead_code)]
 fn known() {
 	let mut ir = IR::new();
+
+	let mut block = Block::new();
+	push_instrs! {
+		block,
+		InstrKind::Call {
+			call: CallInterface {
+				function: "foo:bar".into(),
+				args: Vec::new(),
+			},
+		};
+	}
+
+	let block = ir.blocks.add(block);
+	ir.functions.insert(
+		FunctionInterface::with_all(
+			"foo:baz".into(),
+			FunctionSignature::new(),
+			vec![FunctionAnnotation::NoDiscard],
+		),
+		block,
+	);
+
 	let mut block = Block::new();
 
 	let reg_id = Identifier::from("foo");
@@ -167,6 +189,12 @@ fn known() {
 				index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::UScore(3))),
 			},
 		};
+		InstrKind::Call {
+			call: CallInterface {
+				function: "foo:baz".into(),
+				args: Vec::new(),
+			},
+		};
 		InstrKind::Declare {
 			left: reg10_id.clone(),
 			ty: DataType::NBT(NBTType::Compound(cmp2.clone())),
@@ -220,8 +248,8 @@ fn known() {
 #[allow(dead_code)]
 fn fuzz() {
 	let instr_count = 35;
-	let fn_count = 10;
-	let debug = true;
+	let fn_count = 10000;
+	let debug = false;
 
 	let mut rng = rand::thread_rng();
 
@@ -332,8 +360,14 @@ fn fuzz() {
 		}
 
 		let block = ir.blocks.add(block);
+		let func_id = format!("foo:{fn_i}");
+		let func = if fn_i == 0 {
+			FunctionInterface::with_all(func_id.into(), FunctionSignature::new(), vec![FunctionAnnotation::NoDiscard])
+		} else {
+			FunctionInterface::new(func_id.into())
+		};
 		ir.functions
-			.insert(FunctionInterface::new(format!("foo:{fn_i}").into()), block);
+			.insert(func, block);
 	}
 	let res = run(ir, debug);
 	if let Err(e) = res {
@@ -343,6 +377,8 @@ fn fuzz() {
 
 fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 	if debug {
+		println!("Functions:");
+		dbg!(&ir.functions);
 		println!("IR:");
 		dbg!(&ir.blocks);
 	}
