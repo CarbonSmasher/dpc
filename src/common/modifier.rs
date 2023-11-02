@@ -46,7 +46,7 @@ impl Debug for Modifier {
 				if *negate {
 					write!(f, "if !{condition:?}")
 				} else {
-					write!(f, "if !{condition:?}")
+					write!(f, "if {condition:?}")
 				}
 			}
 			Self::Anchored(loc) => write!(f, "anc {loc:?}"),
