@@ -11,6 +11,21 @@ use crate::common::{
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
 use crate::mir::{MIRInstrKind, MIR};
 
+macro_rules! lower {
+	($instrs:expr, $kind:ident) => {
+		lower!($instrs, LIRInstrKind::$kind)
+	};
+
+	($instrs:expr, $kind:ident, $($arg:expr),+) => {
+		lower!($instrs, LIRInstrKind::$kind($($arg),+))
+	};
+
+	($instrs:expr, $val:expr) => {
+		$instrs
+			.push(LIRInstruction::new($val))
+	};
+}
+
 /// Lower IR to LIR
 pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 	let mut lir = LIR::with_capacity(mir.functions.len(), mir.blocks.count());
@@ -81,45 +96,87 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 						left, right, index, &lbcx,
 					)?));
 				}
-				MIRInstrKind::Use { val } => {
-					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Use(val)));
-				}
-				MIRInstrKind::Call { call } => {
-					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Call(call.function)));
-				}
-				MIRInstrKind::Say { message } => {
-					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Say(message)));
-				}
-				MIRInstrKind::Tell { target, message } => {
-					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Tell(target, message)));
-				}
-				MIRInstrKind::Kill { target } => {
-					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Kill(target)))
-				}
-				MIRInstrKind::Reload => {
-					lir_instrs.push(LIRInstruction::new(LIRInstrKind::Reload));
-				}
+				MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
+				MIRInstrKind::Call { call } => lower!(lir_instrs, Call, call.function),
+				MIRInstrKind::Say { message } => lower!(lir_instrs, Say, message),
+				MIRInstrKind::Tell { target, message } => lower!(lir_instrs, Tell, target, message),
+				MIRInstrKind::Kill { target } => lower!(lir_instrs, Kill, target),
+				MIRInstrKind::Reload => lower!(lir_instrs, Reload),
 				MIRInstrKind::SetXP {
 					target,
 					amount,
 					value,
-				} => lir_instrs.push(LIRInstruction::new(LIRInstrKind::SetXP(
-					target, amount, value,
-				))),
+				} => {
+					lower!(lir_instrs, SetXP, target, amount, value)
+				}
 				MIRInstrKind::Pow { base, exp } => {
 					if exp == 0 {
-						lir_instrs.push(LIRInstruction::new(LIRInstrKind::SetScore(
+						lower!(
+							lir_instrs,
+							SetScore,
 							base.clone().to_mutable_score_value()?,
-							ScoreValue::Constant(ScoreTypeContents::Score(1)),
-						)));
+							ScoreValue::Constant(ScoreTypeContents::Score(1))
+						);
 					} else {
 						for _ in 0..(exp - 1) {
-							lir_instrs.push(LIRInstruction::new(LIRInstrKind::MulScore(
+							lower!(
+								lir_instrs,
+								MulScore,
 								base.clone().to_mutable_score_value()?,
-								ScoreValue::Mutable(base.clone().to_mutable_score_value()?),
-							)));
+								ScoreValue::Mutable(base.clone().to_mutable_score_value()?)
+							);
 						}
 					}
+				}
+				MIRInstrKind::Publish => lower!(lir_instrs, Publish),
+				MIRInstrKind::Seed => lower!(lir_instrs, Seed),
+				MIRInstrKind::GetDifficulty => lower!(lir_instrs, GetDifficulty),
+				MIRInstrKind::StopServer => lower!(lir_instrs, StopServer),
+				MIRInstrKind::StopSound => lower!(lir_instrs, StopSound),
+				MIRInstrKind::Banlist => lower!(lir_instrs, Banlist),
+				MIRInstrKind::WhitelistList => lower!(lir_instrs, WhitelistList),
+				MIRInstrKind::WhitelistReload => lower!(lir_instrs, WhitelistReload),
+				MIRInstrKind::WhitelistOn => lower!(lir_instrs, WhitelistOn),
+				MIRInstrKind::WhitelistOff => lower!(lir_instrs, WhitelistOff),
+				MIRInstrKind::ListPlayers => lower!(lir_instrs, ListPlayers),
+				MIRInstrKind::Me { message } => lower!(lir_instrs, Me, message),
+				MIRInstrKind::TeamMessage { message } => lower!(lir_instrs, TeamMessage, message),
+				MIRInstrKind::BanPlayers { targets, reason } => {
+					lower!(lir_instrs, BanPlayers, targets, reason)
+				}
+				MIRInstrKind::BanIP { target, reason } => {
+					lower!(lir_instrs, BanIP, target, reason)
+				}
+				MIRInstrKind::PardonPlayers { targets } => {
+					lower!(lir_instrs, PardonPlayers, targets)
+				}
+				MIRInstrKind::PardonIP { target } => {
+					lower!(lir_instrs, PardonIP, target)
+				}
+				MIRInstrKind::Op { targets } => {
+					lower!(lir_instrs, Op, targets)
+				}
+				MIRInstrKind::Deop { targets } => {
+					lower!(lir_instrs, Deop, targets)
+				}
+				MIRInstrKind::WhitelistAdd { targets } => {
+					lower!(lir_instrs, WhitelistAdd, targets)
+				}
+				MIRInstrKind::WhitelistRemove { targets } => {
+					lower!(lir_instrs, WhitelistRemove, targets)
+				}
+				MIRInstrKind::Kick { targets, reason } => {
+					lower!(lir_instrs, Kick, targets, reason)
+				}
+				MIRInstrKind::SetDifficulty { difficulty } => {
+					lower!(lir_instrs, SetDifficulty, difficulty)
+				}
+				MIRInstrKind::Enchant {
+					target,
+					enchantment,
+					level,
+				} => {
+					lower!(lir_instrs, Enchant, target, enchantment, level)
 				}
 			}
 		}

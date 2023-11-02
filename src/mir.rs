@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::{CallInterface, FunctionInterface, FunctionSignature};
-use crate::common::mc::{EntityTarget, XPValue};
+use crate::common::mc::{Difficulty, EntityTarget, XPValue};
 use crate::common::ty::DataType;
 use crate::common::{DeclareBinding, Identifier, MutableValue, ResourceLocation, Value};
 
@@ -171,15 +171,70 @@ pub enum MIRInstrKind {
 		target: EntityTarget,
 		message: String,
 	},
+	Me {
+		message: String,
+	},
+	TeamMessage {
+		message: String,
+	},
+	ListPlayers,
+	StopServer,
+	BanPlayers {
+		targets: Vec<EntityTarget>,
+		reason: Option<String>,
+	},
+	BanIP {
+		target: String,
+		reason: Option<String>,
+	},
+	PardonPlayers {
+		targets: Vec<EntityTarget>,
+	},
+	PardonIP {
+		target: String,
+	},
+	Banlist,
+	Op {
+		targets: Vec<EntityTarget>,
+	},
+	Deop {
+		targets: Vec<EntityTarget>,
+	},
+	WhitelistAdd {
+		targets: Vec<EntityTarget>,
+	},
+	WhitelistRemove {
+		targets: Vec<EntityTarget>,
+	},
+	WhitelistOn,
+	WhitelistOff,
+	WhitelistReload,
+	WhitelistList,
+	Publish,
+	Kick {
+		targets: Vec<EntityTarget>,
+		reason: Option<String>,
+	},
 	Kill {
 		target: EntityTarget,
 	},
-	Reload,
 	SetXP {
 		target: EntityTarget,
 		amount: i32,
 		value: XPValue,
 	},
+	Enchant {
+		target: EntityTarget,
+		enchantment: ResourceLocation,
+		level: i32,
+	},
+	Seed,
+	GetDifficulty,
+	SetDifficulty {
+		difficulty: Difficulty,
+	},
+	Reload,
+	StopSound,
 }
 
 impl Debug for MIRInstrKind {
@@ -206,8 +261,36 @@ impl Debug for MIRInstrKind {
 			Self::Call { call } => format!("call {call:?}"),
 			Self::Say { message } => format!("say {message}"),
 			Self::Tell { target, message } => format!("tell {target:?} {message}"),
+			Self::Me { message } => format!("me {message}"),
+			Self::TeamMessage { message } => format!("tm {message}"),
+			Self::Banlist => "banl".into(),
+			Self::BanPlayers { targets, reason } => format!("ban {targets:?} {reason:?}"),
+			Self::BanIP { target, reason } => format!("bani {target} {reason:?}"),
+			Self::PardonPlayers { targets } => format!("par {targets:?}"),
+			Self::PardonIP { target } => format!("pari {target}"),
+			Self::Op { targets } => format!("op {targets:?}"),
+			Self::Deop { targets } => format!("deop {targets:?}"),
+			Self::WhitelistAdd { targets } => format!("wla {targets:?}"),
+			Self::WhitelistRemove { targets } => format!("wlr {targets:?}"),
+			Self::WhitelistOn => "wlon".into(),
+			Self::WhitelistOff => "wloff".into(),
+			Self::WhitelistReload => "wlrl".into(),
+			Self::WhitelistList => "wll".into(),
+			Self::Kick { targets, reason } => format!("kick {targets:?} {reason:?}"),
+			Self::ListPlayers => "lsp".into(),
+			Self::Publish => "pub".into(),
 			Self::Kill { target } => format!("kill {target:?}"),
-			Self::Reload => "reload".into(),
+			Self::Reload => "rl".into(),
+			Self::Seed => "seed".into(),
+			Self::StopServer => "stop".into(),
+			Self::StopSound => "stops".into(),
+			Self::GetDifficulty => "diffg".into(),
+			Self::SetDifficulty { difficulty } => format!("diffs {difficulty}"),
+			Self::Enchant {
+				target,
+				enchantment,
+				level,
+			} => format!("ench {target:?} {enchantment} {level}"),
 			Self::SetXP {
 				target,
 				amount,

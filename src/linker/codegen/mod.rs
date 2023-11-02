@@ -15,6 +15,7 @@ use crate::linker::codegen::util::cg_data_modify_rhs;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 
 use self::modifier::codegen_modifier;
+use self::util::SpaceSepListCG;
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 
@@ -224,6 +225,8 @@ pub fn codegen_instr(
 			}
 		}),
 		LIRInstrKind::Say(message) => Some(format!("say {message}")),
+		LIRInstrKind::Me(message) => Some(format!("me {message}")),
+		LIRInstrKind::TeamMessage(message) => Some(format!("tm {message}")),
 		LIRInstrKind::Tell(target, message) => Some(cgformat!(cbcx, "w ", target, " ", message)?),
 		LIRInstrKind::Kill(target) => {
 			if target.is_blank_this() {
@@ -239,6 +242,63 @@ pub fn codegen_instr(
 			Some(cgformat!(cbcx, "xp set ", target, " ", amount, " ", value)?)
 		}
 		LIRInstrKind::Call(fun) => Some(format!("function {fun}")),
+		LIRInstrKind::BanPlayers(targets, reason) => {
+			let list = SpaceSepListCG(targets);
+			if let Some(reason) = reason {
+				Some(cgformat!(cbcx, "ban ", list, " ", reason)?)
+			} else {
+				Some(cgformat!(cbcx, "ban ", list)?)
+			}
+		}
+		LIRInstrKind::BanIP(target, reason) => {
+			if let Some(reason) = reason {
+				Some(cgformat!(cbcx, "ban ", target, " ", reason)?)
+			} else {
+				Some(cgformat!(cbcx, "ban ", target)?)
+			}
+		}
+		LIRInstrKind::PardonPlayers(targets) => {
+			let list = SpaceSepListCG(targets);
+			Some(cgformat!(cbcx, "pardon ", list)?)
+		}
+		LIRInstrKind::PardonIP(target) => Some(format!("pardon-ip {target}")),
+		LIRInstrKind::Op(targets) => Some(cgformat!(cbcx, "op ", SpaceSepListCG(targets))?),
+		LIRInstrKind::Deop(targets) => Some(cgformat!(cbcx, "deop ", SpaceSepListCG(targets))?),
+		LIRInstrKind::WhitelistAdd(targets) => {
+			Some(cgformat!(cbcx, "whitelist add ", SpaceSepListCG(targets))?)
+		}
+		LIRInstrKind::WhitelistRemove(targets) => Some(cgformat!(
+			cbcx,
+			"whitelist remove ",
+			SpaceSepListCG(targets)
+		)?),
+		LIRInstrKind::WhitelistOn => Some("whitelist on".into()),
+		LIRInstrKind::WhitelistOff => Some("whitelist off".into()),
+		LIRInstrKind::WhitelistReload => Some("whitelist reload".into()),
+		LIRInstrKind::WhitelistList => Some("whitelist list".into()),
+		LIRInstrKind::Kick(targets, reason) => {
+			let list = SpaceSepListCG(targets);
+			if let Some(reason) = reason {
+				Some(cgformat!(cbcx, "kick ", list, " ", reason)?)
+			} else {
+				Some(cgformat!(cbcx, "kick ", list)?)
+			}
+		}
+		LIRInstrKind::Banlist => Some("banlist".into()),
+		LIRInstrKind::StopSound => Some("stopsound".into()),
+		LIRInstrKind::StopServer => Some("stop".into()),
+		LIRInstrKind::ListPlayers => Some("list".into()),
+		LIRInstrKind::Publish => Some("publish".into()),
+		LIRInstrKind::Seed => Some("seed".into()),
+		LIRInstrKind::GetDifficulty => Some("difficulty".into()),
+		LIRInstrKind::SetDifficulty(diff) => Some(cgformat!(cbcx, "difficulty ", diff)?),
+		LIRInstrKind::Enchant(target, ench, lvl) => {
+			if lvl == &1 {
+				Some(cgformat!(cbcx, "enchant ", target, " ", ench)?)
+			} else {
+				Some(cgformat!(cbcx, "enchant ", target, " ", ench, " ", lvl)?)
+			}
+		}
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

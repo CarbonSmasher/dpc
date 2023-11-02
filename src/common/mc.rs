@@ -264,3 +264,38 @@ impl Codegen for XPValue {
 		Ok(())
 	}
 }
+
+
+#[derive(Debug, Clone)]
+pub enum Difficulty {
+	Peaceful,
+	Easy,
+	Normal,
+	Hard,
+}
+
+impl Display for Difficulty {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Peaceful => "peaceful",
+				Self::Easy => "easy",
+				Self::Normal => "normal",
+				Self::Hard => "hard",
+			}
+		)
+	}
+}
+
+impl Codegen for Difficulty {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+		write!(f, "{self}")?;
+		Ok(())
+	}
+}

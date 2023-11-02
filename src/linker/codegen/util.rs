@@ -76,25 +76,6 @@ pub fn get_mut_nbt_val_loc(
 	Ok(out)
 }
 
-// pub fn get_mut_val_reg<'ra>(
-// 	val: &MutableValue,
-// 	ra: &'ra RegAllocResult,
-// 	regs: &RegisterList,
-// ) -> anyhow::Result<&'ra String> {
-// 	match val {
-// 		MutableValue::Register(reg) => match val.get_ty(regs)? {
-// 			DataType::Score(..) => ra
-// 				.regs
-// 				.get(reg)
-// 				.ok_or(anyhow!("Register {reg} not allocated")),
-// 			DataType::NBT(..) => ra
-// 				.locals
-// 				.get(reg)
-// 				.ok_or(anyhow!("Register {reg} not allocated")),
-// 		},
-// 	}
-// }
-
 pub fn create_lit_score(num: i32) -> Score {
 	Score::new(
 		EntityTarget::Player(format_lit_fake_player(num)),
@@ -167,6 +148,23 @@ impl Codegen for MutableNBTValue {
 		let loc = get_mut_nbt_val_loc(self, &cbcx.ra)?;
 		loc.gen_writer(f, cbcx)?;
 
+		Ok(())
+	}
+}
+
+pub struct SpaceSepListCG<'v, CG: Codegen>(pub &'v Vec<CG>);
+
+impl<'v, CG: Codegen> Codegen for SpaceSepListCG<'v, CG> {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		for (i, elem) in self.0.iter().enumerate() {
+			elem.gen_writer(f, cbcx)?;
+			if i != self.0.len() - 1 {
+				write!(f, " ")?;
+			}
+		}
 		Ok(())
 	}
 }

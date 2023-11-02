@@ -76,6 +76,60 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 				InstrKind::Tell { target, message } => {
 					lower!(mir_block, Tell, target, message)
 				}
+				InstrKind::Me { message } => {
+					lower!(mir_block, Me, message)
+				}
+				InstrKind::TeamMessage { message } => {
+					lower!(mir_block, TeamMessage, message)
+				}
+				InstrKind::BanPlayers { targets, reason } => {
+					lower!(mir_block, BanPlayers, targets, reason)
+				}
+				InstrKind::BanIP { target, reason } => {
+					lower!(mir_block, BanIP, target, reason)
+				}
+				InstrKind::PardonPlayers { targets } => {
+					lower!(mir_block, PardonPlayers, targets)
+				}
+				InstrKind::PardonIP { target } => {
+					lower!(mir_block, PardonIP, target)
+				}
+				InstrKind::Op { targets } => {
+					lower!(mir_block, Op, targets)
+				}
+				InstrKind::Deop { targets } => {
+					lower!(mir_block, Deop, targets)
+				}
+				InstrKind::WhitelistAdd { targets } => {
+					lower!(mir_block, WhitelistAdd, targets)
+				}
+				InstrKind::WhitelistRemove { targets } => {
+					lower!(mir_block, WhitelistRemove, targets)
+				}
+				InstrKind::Kick { targets, reason } => {
+					lower!(mir_block, Kick, targets, reason)
+				}
+				InstrKind::SetDifficulty { difficulty } => {
+					lower!(mir_block, SetDifficulty, difficulty)
+				}
+				InstrKind::ListPlayers => lower!(mir_block, ListPlayers),
+				InstrKind::Seed => lower!(mir_block, Seed),
+				InstrKind::Banlist => lower!(mir_block, Banlist),
+				InstrKind::WhitelistList => lower!(mir_block, WhitelistList),
+				InstrKind::WhitelistOn => lower!(mir_block, WhitelistOn),
+				InstrKind::WhitelistOff => lower!(mir_block, WhitelistOff),
+				InstrKind::WhitelistReload => lower!(mir_block, WhitelistReload),
+				InstrKind::StopServer => lower!(mir_block, StopServer),
+				InstrKind::StopSound => lower!(mir_block, StopSound),
+				InstrKind::GetDifficulty => lower!(mir_block, GetDifficulty),
+				InstrKind::Publish => lower!(mir_block, Publish),
+				InstrKind::Enchant {
+					target,
+					enchantment,
+					level,
+				} => {
+					lower!(mir_block, Enchant, target, enchantment, level)
+				}
 				InstrKind::Kill { target } => lower!(mir_block, Kill, target),
 				InstrKind::Reload => lower!(mir_block, Reload),
 				InstrKind::SetXP {

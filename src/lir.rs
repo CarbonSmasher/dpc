@@ -2,12 +2,12 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::FunctionInterface;
-use crate::common::mc::{EntityTarget, XPValue};
+use crate::common::mc::{Difficulty, EntityTarget, XPValue};
 use crate::common::modifier::Modifier;
 use crate::common::ty::ArraySize;
 use crate::common::{
 	Identifier, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, RegisterList,
-	ResourceLocation, ScoreValue
+	ResourceLocation, ScoreValue,
 };
 
 #[derive(Debug, Clone)]
@@ -134,12 +134,41 @@ pub enum LIRInstrKind {
 	Use(MutableValue),
 	NoOp,
 	Call(ResourceLocation),
-	// Commands
+	// Chat
 	Say(String),
 	Tell(EntityTarget, String),
+	Me(String),
+	TeamMessage(String),
+	// Multiplayer
+	ListPlayers,
+	StopServer,
+	BanPlayers(Vec<EntityTarget>, Option<String>),
+	BanIP(String, Option<String>),
+	PardonPlayers(Vec<EntityTarget>),
+	PardonIP(String),
+	Banlist,
+	Op(Vec<EntityTarget>),
+	Deop(Vec<EntityTarget>),
+	WhitelistAdd(Vec<EntityTarget>),
+	WhitelistRemove(Vec<EntityTarget>),
+	WhitelistOn,
+	WhitelistOff,
+	WhitelistReload,
+	WhitelistList,
+	Kick(Vec<EntityTarget>, Option<String>),
+	Publish,
+	// Entities
 	Kill(EntityTarget),
-	Reload,
 	SetXP(EntityTarget, i32, XPValue),
+	// Items
+	Enchant(EntityTarget, ResourceLocation, i32),
+	// World
+	Seed,
+	GetDifficulty,
+	SetDifficulty(Difficulty),
+	// Misc
+	Reload,
+	StopSound,
 }
 
 impl LIRInstrKind {
@@ -203,9 +232,33 @@ impl Debug for LIRInstrKind {
 			Self::Call(fun) => format!("call {fun}"),
 			Self::Say(text) => format!("say {text}"),
 			Self::Tell(target, text) => format!("tell {target:?} {text}"),
+			Self::Me(text) => format!("me {text}"),
+			Self::TeamMessage(text) => format!("tm {text}"),
 			Self::Kill(target) => format!("kill {target:?}"),
 			Self::Reload => "reload".into(),
 			Self::SetXP(target, amount, value) => format!("xps {target:?} {amount} {value}"),
+			Self::ListPlayers => "lsp".into(),
+			Self::StopSound => "stops".into(),
+			Self::StopServer => "stop".into(),
+			Self::BanPlayers(targets, reason) => format!("ban {targets:?} {reason:?}"),
+			Self::BanIP(target, reason) => format!("bani {target} {reason:?}"),
+			Self::PardonPlayers(targets) => format!("par {targets:?}"),
+			Self::PardonIP(target) => format!("pari {target}"),
+			Self::Banlist => "banl".into(),
+			Self::Op(targets) => format!("op {targets:?}"),
+			Self::Deop(targets) => format!("deop {targets:?}"),
+			Self::WhitelistAdd(targets) => format!("wla {targets:?}"),
+			Self::WhitelistRemove(targets) => format!("wlr {targets:?}"),
+			Self::WhitelistOn => "wlon".into(),
+			Self::WhitelistOff => "wloff".into(),
+			Self::WhitelistReload => "wlrl".into(),
+			Self::WhitelistList => "wll".into(),
+			Self::Kick(targets, reason) => format!("kick {targets:?} {reason:?}"),
+			Self::Publish => "pub".into(),
+			Self::Seed => "seed".into(),
+			Self::GetDifficulty => "diffg".into(),
+			Self::SetDifficulty(diff) => format!("diffs {diff}"),
+			Self::Enchant(target, ench, lvl) => format!("ench {target:?} {ench} {lvl}"),
 		};
 		write!(f, "{text}")
 	}
