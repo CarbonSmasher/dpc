@@ -1,10 +1,8 @@
 use anyhow::anyhow;
 
-use crate::common::mc::EntityTarget;
 use crate::common::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier,
 };
-use crate::common::target_selector::{SelectorType, TargetSelector};
 use crate::common::{MutableScoreValue, ScoreValue};
 use crate::lir::{LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
@@ -39,12 +37,6 @@ impl LIRPass for SimplifyModifiersPass {
 					}
 
 					match modifier {
-						Modifier::As(EntityTarget::Selector(TargetSelector {
-							selector: SelectorType::This,
-							params,
-						})) if params.is_empty() => {
-							mods_to_remove.insert(i);
-						}
 						Modifier::Positioned(coords) if coords.are_zero() => {
 							mods_to_remove.insert(i);
 						}

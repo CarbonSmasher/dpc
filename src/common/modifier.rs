@@ -2,7 +2,10 @@ use std::fmt::Debug;
 
 use super::mc::{DoubleCoordinates, EntityTarget, FullDataLocation, Score};
 
-use super::{Identifier, MutableNBTValue, MutableScoreValue, ScoreValue};
+use super::{
+	Identifier, MutableNBTValue, MutableScoreValue, ResourceLocation, ResourceLocationTag,
+	ScoreValue,
+};
 
 /// A modifier to the context of a command
 #[derive(Clone)]
@@ -121,6 +124,9 @@ pub enum EntityRelation {
 #[derive(Clone)]
 pub enum IfModCondition {
 	Score(IfScoreCondition),
+	Entity(EntityTarget),
+	Predicate(ResourceLocation),
+	Function(ResourceLocationTag),
 }
 
 impl IfModCondition {
@@ -137,6 +143,7 @@ impl IfModCondition {
 				]
 				.concat(),
 			},
+			Self::Entity(..) | Self::Predicate(..) | Self::Function(..) => Vec::new(),
 		}
 	}
 }
@@ -145,6 +152,9 @@ impl Debug for IfModCondition {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Score(condition) => write!(f, "sco {condition:?}"),
+			Self::Entity(target) => write!(f, "ent {target:?}"),
+			Self::Predicate(pred) => write!(f, "pred {pred}"),
+			Self::Function(fun) => write!(f, "func {fun}"),
 		}
 	}
 }

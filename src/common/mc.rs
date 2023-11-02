@@ -119,7 +119,7 @@ pub enum Coordinates<T> {
 
 impl<T: Num> Coordinates<T> {
 	pub fn are_zero(&self) -> bool {
-		matches!(self, Self::XYZ(x, y, z) if x.is_zero() && y.is_zero() && z.is_zero())
+		matches!(self, Self::XYZ(x, y, z) if x.is_relative_zero() && y.is_relative_zero() && z.is_relative_zero())
 			|| matches!(self, Self::Local(a, b, c) if a.is_zero() && b.is_zero() && c.is_zero())
 	}
 }
@@ -178,7 +178,7 @@ pub enum AbsOrRelCoord<T> {
 
 impl<T: Num> AbsOrRelCoord<T> {
 	/// Checks if this coordinate is relatively zero. Absolute zero will return false
-	pub fn is_zero(&self) -> bool {
+	pub fn is_relative_zero(&self) -> bool {
 		matches!(self, Self::Rel(val) if val.is_zero())
 	}
 }
@@ -265,7 +265,6 @@ impl Codegen for XPValue {
 	}
 }
 
-
 #[derive(Debug, Clone)]
 pub enum Difficulty {
 	Peaceful,
@@ -290,6 +289,40 @@ impl Display for Difficulty {
 }
 
 impl Codegen for Difficulty {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+		write!(f, "{self}")?;
+		Ok(())
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Gamemode {
+	Survival,
+	Creative,
+	Adventure,
+	Spectator,
+}
+
+impl Display for Gamemode {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Survival => "survival",
+				Self::Creative => "creative",
+				Self::Adventure => "adventure",
+				Self::Spectator => "spectator",
+			}
+		)
+	}
+}
+
+impl Codegen for Gamemode {
 	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
 	where
 		F: std::fmt::Write,

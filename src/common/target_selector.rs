@@ -1,4 +1,6 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
+
+use super::{mc::Gamemode, ty::NBTCompoundTypeContents};
 
 #[derive(Clone)]
 pub struct TargetSelector {
@@ -21,6 +23,18 @@ impl TargetSelector {
 
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		self.selector == other.selector && self.params == other.params
+	}
+
+	/// Checks if this selector is in single type
+	pub fn is_single_type(&self) -> bool {
+		self.selector.is_single_type()
+			|| matches!(self.selector, SelectorType::AllEntities | SelectorType::AllPlayers if self.params.contains(&SelectorParameter::Limit(1)))
+	}
+
+	/// Checks if this selector is in player type
+	pub fn is_player_type(&self) -> bool {
+		self.selector.is_player_type()
+			|| matches!(self.selector, SelectorType::AllEntities if self.params.contains(&SelectorParameter::Type { ty: "player".into(), invert: false }))
 	}
 }
 
@@ -60,12 +74,71 @@ impl SelectorType {
 			Self::AllEntities => "@e",
 		}
 	}
+
+	/// Checks if this selector type is in single type
+	pub fn is_single_type(&self) -> bool {
+		matches!(self, Self::This | Self::NearestPlayer | Self::RandomPlayer)
+	}
+
+	/// Checks if this selector type is in player type
+	pub fn is_player_type(&self) -> bool {
+		matches!(
+			self,
+			Self::NearestPlayer | Self::AllPlayers | Self::RandomPlayer
+		)
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SelectorParameter {
-	Type { ty: String, invert: bool },
-	Tag { tag: String, invert: bool },
+	Type {
+		ty: String,
+		invert: bool,
+	},
+	Tag {
+		tag: String,
+		invert: bool,
+	},
 	NoTags,
-	Predicate { predicate: String, invert: bool },
+	Predicate {
+		predicate: String,
+		invert: bool,
+	},
+	Gamemode {
+		gamemode: Gamemode,
+		invert: bool,
+	},
+	Name {
+		name: String,
+		invert: bool,
+	},
+	NBT {
+		nbt: NBTCompoundTypeContents,
+		invert: bool,
+	},
+	Limit(u32),
+	Sort(SelectorSort),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SelectorSort {
+	Nearest,
+	Furthest,
+	Random,
+	Arbitrary,
+}
+
+impl Display for SelectorSort {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Nearest => "nearest",
+				Self::Furthest => "furthest",
+				Self::Random => "random",
+				Self::Arbitrary => "arbitrary",
+			}
+		)
+	}
 }

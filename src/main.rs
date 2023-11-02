@@ -74,7 +74,7 @@ fn known() {
 		foo: NBTTypeContents::Compound(cmp1.clone(), def_compound! {
 			foo: NBTTypeContents::Int(5),
 			bar: NBTTypeContents::Bool(false),
-		}),
+		}.into()),
 		bar: NBTTypeContents::Short(123),
 	};
 
@@ -199,7 +199,7 @@ fn known() {
 			left: reg10_id.clone(),
 			ty: DataType::NBT(NBTType::Compound(cmp2.clone())),
 			right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
-				NBTTypeContents::Compound(cmp2, cmp2_cont),
+				NBTTypeContents::Compound(cmp2, cmp2_cont.into()),
 			))),
 		};
 	}
@@ -362,12 +362,15 @@ fn fuzz() {
 		let block = ir.blocks.add(block);
 		let func_id = format!("foo:{fn_i}");
 		let func = if fn_i == 0 {
-			FunctionInterface::with_all(func_id.into(), FunctionSignature::new(), vec![FunctionAnnotation::NoDiscard])
+			FunctionInterface::with_all(
+				func_id.into(),
+				FunctionSignature::new(),
+				vec![FunctionAnnotation::NoDiscard],
+			)
 		} else {
 			FunctionInterface::new(func_id.into())
 		};
-		ir.functions
-			.insert(func, block);
+		ir.functions.insert(func, block);
 	}
 	let res = run(ir, debug);
 	if let Err(e) = res {

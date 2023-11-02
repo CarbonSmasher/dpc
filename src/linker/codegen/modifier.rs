@@ -116,6 +116,15 @@ pub fn codegen_modifier(
 						Some(out)
 					}
 				},
+				IfModCondition::Entity(target) => {
+					Some(cgformat!(cbcx, keyword, " entity ", target)?)
+				}
+				IfModCondition::Predicate(pred) => {
+					Some(cgformat!(cbcx, keyword, " predicate ", pred)?)
+				}
+				IfModCondition::Function(fun) => {
+					Some(cgformat!(cbcx, keyword, " function ", fun)?)
+				}
 			};
 
 			out

@@ -1,6 +1,7 @@
 use crate::common::mc::EntityTarget;
 use crate::common::target_selector::{SelectorParameter, TargetSelector};
 
+use super::t::macros::cgwrite;
 use super::{Codegen, CodegenBlockCx};
 
 impl Codegen for EntityTarget {
@@ -22,7 +23,6 @@ impl Codegen for TargetSelector {
 	where
 		F: std::fmt::Write,
 	{
-		let _ = cbcx;
 		write!(f, "{}", self.selector.codegen_str())?;
 
 		if !self.params.is_empty() {
@@ -43,6 +43,24 @@ impl Codegen for TargetSelector {
 					SelectorParameter::Predicate { predicate, invert } => {
 						let invert = gen_invert_char(*invert);
 						write!(f, "predicate={invert}{predicate}")?;
+					}
+					SelectorParameter::Gamemode { gamemode, invert } => {
+						let invert = gen_invert_char(*invert);
+						write!(f, "gamemode={invert}{gamemode}")?;
+					}
+					SelectorParameter::Name { name, invert } => {
+						let invert = gen_invert_char(*invert);
+						write!(f, "gamemode={invert}\"{name}\"")?;
+					}
+					SelectorParameter::NBT { nbt, invert } => {
+						let invert = gen_invert_char(*invert);
+						cgwrite!(f, cbcx, "nbt=", invert, nbt.get_literal_str())?;
+					}
+					SelectorParameter::Limit(limit) => {
+						write!(f, "limit={limit}")?;
+					}
+					SelectorParameter::Sort(sort) => {
+						write!(f, "sort={sort}")?;
 					}
 				}
 

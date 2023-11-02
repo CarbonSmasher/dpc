@@ -2,6 +2,7 @@ pub mod block;
 pub mod function;
 pub mod mc;
 pub mod modifier;
+pub mod range;
 pub mod target_selector;
 pub mod ty;
 
@@ -211,6 +212,7 @@ pub struct Register {
 pub type RegisterList = DashMap<Identifier, Register>;
 
 pub type ResourceLocation = Identifier;
+pub type ResourceLocationTag = Identifier;
 
 #[derive(Clone)]
 pub enum ScoreValue {

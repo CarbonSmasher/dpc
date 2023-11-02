@@ -77,6 +77,8 @@ pub enum NBTType {
 	Any,
 }
 
+pub type NBTCompoundType = Arc<HashMap<String, NBTType>>;
+
 impl NBTType {
 	pub fn is_trivially_castable(&self, other: &NBTType) -> bool {
 		match other {
@@ -263,10 +265,7 @@ pub enum NBTTypeContents {
 	String(Arc<str>),
 	Arr(NBTArrayTypeContents),
 	List(NBTType, Vec<NBTTypeContents>),
-	Compound(
-		Arc<HashMap<String, NBTType>>,
-		Arc<HashMap<String, NBTTypeContents>>,
-	),
+	Compound(Arc<HashMap<String, NBTType>>, NBTCompoundTypeContents),
 }
 
 impl NBTTypeContents {
@@ -294,13 +293,7 @@ impl NBTTypeContents {
 			Self::String(string) => write_string(string.to_string()),
 			Self::Arr(arr) => arr.get_literal_str(),
 			Self::List(_, list) => fmt_arr(list.iter().map(|x| x.get_literal_str())),
-			Self::Compound(_, comp) => {
-				let mut string = String::new();
-				let _ = fmt_compound(&mut string, comp, |f, i| {
-					write!(f, "{}", i.get_literal_str())
-				});
-				string
-			}
+			Self::Compound(_, comp) => comp.get_literal_str(),
 		}
 	}
 
@@ -313,13 +306,7 @@ impl NBTTypeContents {
 			|| matches!((self, other), (Self::Arr(l), Self::Arr(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::String(l), Self::String(r)) if l == r)
 			|| matches!((self, other), (Self::List(lt, l), Self::List(rt, r)) if lt == rt && l.iter().zip(r).all(|(l, r)| l.is_value_eq(r)))
-			|| matches!((self, other), (Self::Compound(lt, l), Self::Compound(rt, r)) if lt == rt && l.iter().all(|(k, v)| {
-				if let Some(other) = r.get(k) {
-					other.is_value_eq(v)
-				} else {
-					false
-				}
-			}))
+			|| matches!((self, other), (Self::Compound(lt, l), Self::Compound(rt, r)) if lt == rt && l == r)
 	}
 }
 
@@ -334,7 +321,7 @@ impl Debug for NBTTypeContents {
 			Self::String(val) => write!(f, "\"{val}\"")?,
 			Self::Arr(val) => write!(f, "{val:?}")?,
 			Self::List(_, list) => write!(f, "{}", fmt_arr(list.iter().map(|x| format!("{x:?}"))))?,
-			Self::Compound(_, comp) => fmt_compound_dbg(f, comp)?,
+			Self::Compound(_, comp) => write!(f, "{comp:?}")?,
 		};
 
 		Ok(())
@@ -393,6 +380,45 @@ impl Debug for NBTArrayTypeContents {
 			Self::Long(val, ..) => format!("[L;{}]", fmt_arr(val)),
 		};
 		write!(f, "{text}")
+	}
+}
+
+#[derive(Clone)]
+pub struct NBTCompoundTypeContents(pub Arc<HashMap<String, NBTTypeContents>>);
+
+impl PartialEq for NBTCompoundTypeContents {
+	fn eq(&self, other: &Self) -> bool {
+		self.0.iter().all(|(k, v)| {
+			if let Some(other) = other.0.get(k) {
+				other.is_value_eq(v)
+			} else {
+				false
+			}
+		})
+	}
+}
+
+impl Eq for NBTCompoundTypeContents {}
+
+impl From<Arc<HashMap<String, NBTTypeContents>>> for NBTCompoundTypeContents {
+	fn from(value: Arc<HashMap<String, NBTTypeContents>>) -> Self {
+		Self(value)
+	}
+}
+
+impl Debug for NBTCompoundTypeContents {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		fmt_compound_dbg(f, &self.0)
+	}
+}
+
+impl NBTCompoundTypeContents {
+	pub fn get_literal_str(&self) -> String {
+		let mut string = String::new();
+		let _ = fmt_compound(&mut string, &self.0, |f, i| {
+			write!(f, "{}", i.get_literal_str())
+		});
+		string
 	}
 }
 
