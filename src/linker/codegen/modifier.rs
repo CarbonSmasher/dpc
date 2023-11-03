@@ -39,11 +39,7 @@ pub fn codegen_modifier(
 						let score = get_mut_score_val_score(&score, &cbcx.ra)?.gen_str(cbcx)?;
 						let out = match (left, right) {
 							(IfScoreRangeEnd::Infinite, IfScoreRangeEnd::Infinite) => {
-								format!(
-									"{keyword} score {score} matches {}..{}",
-									-i32::MAX,
-									i32::MAX
-								)
+								format!("{keyword} score {score} matches ..{}", i32::MAX)
 							}
 							(
 								IfScoreRangeEnd::Fixed {
@@ -310,12 +306,9 @@ mod tests {
 		let code = codegen_modifier(modifier, &mut cbcx)
 			.expect("Failed to codegen modifier")
 			.expect("Modifier missing");
-		let lit_fmt = create_lit_score(219)
-			.gen_str(&mut cbcx)
-			.expect("Failed to format literal");
 		assert_eq!(
 			code,
-			format!("unless score foo bar > {lit_fmt} unless score foo bar matches ..2980")
+			format!("unless score foo bar matches 220.. unless score foo bar matches ..2980")
 		);
 	}
 }
