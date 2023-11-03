@@ -16,14 +16,26 @@ pub trait Codegen {
 
 macro_rules! cg_impl {
 	($name:ty) => {
-		impl Codegen for $name {
-			fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-			where
-				F: std::fmt::Write,
-			{
+		cg_impl!(
+			$name,
+			self,
+			f,
+			cbcx,
+			(|| {
 				let _ = cbcx;
 				write!(f, "{self}")?;
 				Ok(())
+			})
+		);
+	};
+
+	($name:ty, $self:ident, $f:ident, $cbcx:ident, $b:tt) => {
+		impl Codegen for $name {
+			fn gen_writer<F>(&$self, $f: &mut F, $cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+			where
+				F: std::fmt::Write,
+			{
+				$b()
 			}
 		}
 	};
