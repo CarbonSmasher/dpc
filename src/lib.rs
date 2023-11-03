@@ -5,5 +5,6 @@ pub mod lir;
 pub mod lower;
 pub mod macros;
 pub mod mir;
+// pub mod parse;
 pub mod passes;
 mod util;
