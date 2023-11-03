@@ -1,8 +1,7 @@
 use anyhow::anyhow;
 
 use crate::common::modifier::{
-	AnchorModLocation, EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier,
-	StoreModLocation,
+	EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
 use crate::common::{MutableNBTValue, ScoreValue};
 use crate::linker::text::REG_OBJECTIVE;
@@ -122,17 +121,21 @@ pub fn codegen_modifier(
 				IfModCondition::Predicate(pred) => {
 					Some(cgformat!(cbcx, keyword, " predicate ", pred)?)
 				}
-				IfModCondition::Function(fun) => {
-					Some(cgformat!(cbcx, keyword, " function ", fun)?)
+				IfModCondition::Function(fun) => Some(cgformat!(cbcx, keyword, " function ", fun)?),
+				IfModCondition::Biome(pos, biome) => {
+					Some(cgformat!(cbcx, keyword, " biome ", pos, " ", biome)?)
 				}
+				IfModCondition::Dimension(dim) => {
+					Some(cgformat!(cbcx, keyword, " dimension ", dim)?)
+				}
+				IfModCondition::Loaded(pos) => Some(cgformat!(cbcx, keyword, " loaded ", pos)?),
+				IfModCondition::DataExists(loc) => Some(cgformat!(cbcx, keyword, " data ", loc)?),
 			};
 
 			out
 		}
-		Modifier::Anchored(location) => match location {
-			AnchorModLocation::Eyes => Some("anchored eyes".into()),
-			AnchorModLocation::Feet => Some("anchored feet".into()),
-		},
+		Modifier::Anchored(location) => Some(format!("anchored {location:?}")),
+		Modifier::Align(axes) => Some(format!("align {axes:?}")),
 		Modifier::As(target) => Some(cgformat!(cbcx, "as ", target)?),
 		Modifier::At(target) => Some(cgformat!(cbcx, "at ", target)?),
 		Modifier::In(dimension) => Some(format!("in {dimension}")),
@@ -151,6 +154,20 @@ pub fn codegen_modifier(
 			Some(format!("on {string}"))
 		}
 		Modifier::Positioned(pos) => Some(cgformat!(cbcx, "positioned ", pos)?),
+		Modifier::PositionedAs(target) => Some(cgformat!(cbcx, "positioned as ", target)?),
+		Modifier::PositionedOver(hm) => {
+			Some(cgformat!(cbcx, "positioned over ", format!("{hm:?}"))?)
+		}
+		Modifier::Rotated(rot) => Some(cgformat!(cbcx, "rotated ", rot)?),
+		Modifier::RotatedAs(target) => Some(cgformat!(cbcx, "rotated as ", target)?),
+		Modifier::FacingPosition(pos) => Some(cgformat!(cbcx, "facing ", pos)?),
+		Modifier::FacingEntity(target, anchor) => Some(cgformat!(
+			cbcx,
+			"facing entity ",
+			target,
+			format!("{anchor:?}")
+		)?),
+		Modifier::Summon(entity) => Some(format!("summon {entity}")),
 	};
 
 	Ok(out)
@@ -247,8 +264,9 @@ impl StoreModLocation {
 				Ok(format!("score {reg} {REG_OBJECTIVE}"))
 			}
 			Self::LocalReg(reg) => MutableNBTValue::Reg(reg).gen_str(cbcx),
-			Self::Score(score) => Ok(format!("score {}", score.gen_str(cbcx)?)),
+			Self::Score(score) => Ok(cgformat!(cbcx, "score {}", score)?),
 			Self::Data(data) => data.gen_str(cbcx),
+			Self::Bossbar(bar, mode) => Ok(format!("bossbar {bar} {mode:?}")),
 		}
 	}
 }

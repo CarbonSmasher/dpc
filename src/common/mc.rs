@@ -171,6 +171,41 @@ pub type DoubleCoordinates = Coordinates<f64>;
 pub type IntCoordinates = Coordinates<i64>;
 
 #[derive(Clone)]
+pub struct Rotation<T>(AbsOrRelCoord<T>, AbsOrRelCoord<T>);
+
+impl<T: Num> Rotation<T> {
+	pub fn are_zero(&self) -> bool {
+		self.0.is_relative_zero() && self.1.is_relative_zero()
+	}
+}
+
+impl<T: Num + PartialEq + Eq> Rotation<T> {
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		self.0.is_value_eq(&other.0) && self.1.is_value_eq(&other.1)
+	}
+}
+
+impl<T: Debug + Num> Debug for Rotation<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{:?} {:?}", self.0, self.1)
+	}
+}
+
+impl<T: Debug + Num> Codegen for Rotation<T> {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+		write!(f, "{self:?}")?;
+		Ok(())
+	}
+}
+
+pub type DoubleRotation = Rotation<f64>;
+pub type IntRotation = Rotation<i64>;
+
+#[derive(Clone)]
 pub enum AbsOrRelCoord<T> {
 	Abs(T),
 	Rel(T),
@@ -330,5 +365,24 @@ impl Codegen for Gamemode {
 		let _ = cbcx;
 		write!(f, "{self}")?;
 		Ok(())
+	}
+}
+
+#[derive(Clone)]
+pub enum Heightmap {
+	WorldSurface,
+	MotionBlocking,
+	MotionBlockingNoLeaves,
+	OceanFloor,
+}
+
+impl Debug for Heightmap {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::WorldSurface => write!(f, "world_surface"),
+			Self::MotionBlocking => write!(f, "motion_blocking"),
+			Self::MotionBlockingNoLeaves => write!(f, "motion_blocking_no_leaves"),
+			Self::OceanFloor => write!(f, "ocean_floor"),
+		}
 	}
 }
