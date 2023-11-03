@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use super::{mc::Gamemode, ty::NBTCompoundTypeContents};
+use super::{super::ty::NBTCompoundTypeContents, Gamemode};
 
 #[derive(Clone)]
 pub struct TargetSelector {

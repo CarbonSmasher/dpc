@@ -2,13 +2,11 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::FunctionInterface;
+use crate::common::mc::modifier::Modifier;
 use crate::common::mc::{Difficulty, EntityTarget, XPValue};
-use crate::common::modifier::Modifier;
 use crate::common::ty::ArraySize;
-use crate::common::{
-	Identifier, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, RegisterList,
-	ResourceLocation, ScoreValue,
-};
+use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
+use crate::common::{Identifier, RegisterList, ResourceLocation};
 
 #[derive(Debug, Clone)]
 pub struct LIR {

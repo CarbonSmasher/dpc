@@ -4,7 +4,7 @@ use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::{CallInterface, FunctionInterface, FunctionSignature};
 use crate::common::mc::{Difficulty, EntityTarget, XPValue};
 use crate::common::ty::DataType;
-use crate::common::{DeclareBinding, Identifier, MutableValue, ResourceLocation, Value};
+use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 
 #[derive(Debug, Clone)]
 pub struct MIR {

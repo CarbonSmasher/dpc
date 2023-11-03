@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context};
 use dashmap::DashMap;
 
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
-use crate::common::{DeclareBinding, Identifier, MutableValue, Value};
+use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::{remove_indices, DashSetEmptyTracker};

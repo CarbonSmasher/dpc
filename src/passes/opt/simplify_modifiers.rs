@@ -1,9 +1,7 @@
 use anyhow::anyhow;
 
-use crate::common::modifier::{
-	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier,
-};
-use crate::common::{MutableScoreValue, ScoreValue};
+use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
+use crate::common::val::{MutableScoreValue, ScoreValue};
 use crate::lir::{LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
 use crate::util::{remove_indices, DashSetEmptyTracker};

@@ -7,10 +7,10 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, bail, Context};
 
+use crate::common::mc::modifier::{Modifier, StoreModLocation};
 use crate::common::mc::Score;
-use crate::common::modifier::{Modifier, StoreModLocation};
 use crate::common::ty::NBTTypeContents;
-use crate::common::{NBTValue, RegisterList, ScoreValue};
+use crate::common::{val::NBTValue, val::ScoreValue, RegisterList};
 use crate::linker::codegen::util::cg_data_modify_rhs;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 

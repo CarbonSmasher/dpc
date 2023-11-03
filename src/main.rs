@@ -2,9 +2,10 @@ use anyhow::Context;
 use dpc::common::function::{
 	CallInterface, FunctionAnnotation, FunctionInterface, FunctionSignature,
 };
+use dpc::common::mc::entity::{SelectorType, TargetSelector};
 use dpc::common::mc::{EntityTarget, XPValue};
-use dpc::common::target_selector::{SelectorType, TargetSelector};
-use dpc::common::{DeclareBinding, Identifier, MutableValue, Value};
+use dpc::common::val::{MutableValue, Value};
+use dpc::common::{DeclareBinding, Identifier};
 use dpc::ir::{Block, InstrKind, Instruction, IR};
 use dpc::linker::link;
 use dpc::lower::ir_to_mir::lower_ir;

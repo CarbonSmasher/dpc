@@ -1,4 +1,4 @@
-use crate::common::{DeclareBinding, MutableValue};
+use crate::common::{val::MutableValue, DeclareBinding};
 use crate::ir::{InstrKind, IR};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction, MIR};
 

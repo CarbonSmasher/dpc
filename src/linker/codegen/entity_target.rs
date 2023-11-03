@@ -1,5 +1,5 @@
+use crate::common::mc::entity::{SelectorParameter, TargetSelector};
 use crate::common::mc::EntityTarget;
-use crate::common::target_selector::{SelectorParameter, TargetSelector};
 
 use super::t::macros::cgwrite;
 use super::{Codegen, CodegenBlockCx};

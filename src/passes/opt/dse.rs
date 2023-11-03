@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use dashmap::DashSet;
 
-use crate::common::MutableValue;
+use crate::common::val::MutableValue;
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::remove_indices;

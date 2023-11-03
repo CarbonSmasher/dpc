@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 
 use crate::common::mc::{DataLocation, EntityTarget, FullDataLocation, Score};
-use crate::common::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
+use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::linker::ra::RegAllocResult;
 use crate::linker::text::{
 	format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE, REG_STORAGE_LOCATION,

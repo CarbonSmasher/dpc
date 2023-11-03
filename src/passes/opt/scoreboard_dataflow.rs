@@ -1,8 +1,8 @@
 use anyhow::anyhow;
 use dashmap::{DashMap, DashSet};
 
-use crate::common::modifier::{Modifier, StoreModLocation};
-use crate::common::{Identifier, MutableScoreValue, MutableValue, ScoreValue};
+use crate::common::mc::modifier::{Modifier, StoreModLocation};
+use crate::common::{val::MutableScoreValue, val::MutableValue, val::ScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
 use crate::util::remove_indices;

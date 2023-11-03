@@ -1,9 +1,9 @@
 use anyhow::anyhow;
 
-use crate::common::modifier::{
+use crate::common::mc::modifier::{
 	EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
-use crate::common::{MutableNBTValue, ScoreValue};
+use crate::common::val::{MutableNBTValue, ScoreValue};
 use crate::linker::text::REG_OBJECTIVE;
 
 use super::t::macros::cgformat;
@@ -277,7 +277,7 @@ mod tests {
 
 	use crate::common::mc::{EntityTarget, Score};
 	use crate::common::RegisterList;
-	use crate::common::{ty::ScoreTypeContents, MutableScoreValue};
+	use crate::common::{ty::ScoreTypeContents, val::MutableScoreValue};
 	use crate::linker::{codegen::CodegenCx, ra::RegAllocResult};
 
 	#[test]

@@ -1,12 +1,12 @@
 use anyhow::{anyhow, bail};
 
-use crate::common::modifier::{
+use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
 use crate::common::ty::{get_op_tys, ArraySize, DataType, DataTypeContents, ScoreTypeContents};
 use crate::common::{
-	DeclareBinding, Identifier, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue,
-	Register, RegisterList, ScoreValue, Value,
+	val::MutableNBTValue, val::MutableScoreValue, val::MutableValue, val::NBTValue,
+	val::ScoreValue, val::Value, DeclareBinding, Identifier, Register, RegisterList,
 };
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
 use crate::mir::{MIRInstrKind, MIR};

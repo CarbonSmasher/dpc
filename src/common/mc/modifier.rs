@@ -1,14 +1,12 @@
 use std::fmt::Debug;
 
-use super::mc::{
-	DoubleCoordinates, DoubleRotation, EntityTarget, FullDataLocation, Heightmap, IntCoordinates,
-	Score,
-};
+use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
+use crate::common::ResourceLocationTag;
 
-use super::{
-	Identifier, MutableNBTValue, MutableScoreValue, NBTValue, ResourceLocation,
-	ResourceLocationTag, ScoreValue,
-};
+use super::pos::{DoubleCoordinates, DoubleRotation};
+use super::{EntityTarget, FullDataLocation, Heightmap, IntCoordinates, Score};
+
+use super::{Identifier, ResourceLocation};
 
 /// A modifier to the context of a command
 #[derive(Clone)]

@@ -1,6 +1,6 @@
-use crate::common::modifier::Modifier;
+use crate::common::mc::modifier::Modifier;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
-use crate::common::{DeclareBinding, ScoreValue, Value};
+use crate::common::{val::ScoreValue, val::Value, DeclareBinding};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{LIRPass, MIRPass, MIRPassData, Pass};

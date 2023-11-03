@@ -3,9 +3,9 @@ use dashmap::DashMap;
 use tinyvec::TinyVec;
 
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
-use crate::common::{Identifier, MutableValue, Value};
+use crate::common::{val::MutableValue, val::Value, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind};
-use crate::passes::{MIRPass, Pass, MIRPassData};
+use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::{remove_indices, DashSetEmptyTracker};
 
 pub struct InstCombinePass;
@@ -19,7 +19,8 @@ impl Pass for InstCombinePass {
 impl MIRPass for InstCombinePass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		for (_, block) in &mut data.mir.functions {
-			let block = data.mir
+			let block = data
+				.mir
 				.blocks
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;
