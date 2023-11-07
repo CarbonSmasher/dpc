@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
 use crate::common::function::{CallInterface, FunctionInterface};
+use crate::common::mc::block::{SetBlockData, FillData};
 use crate::common::mc::{Difficulty, EntityTarget, XPValue};
 use crate::common::ty::DataType;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
@@ -214,6 +215,12 @@ pub enum InstrKind {
 	},
 	Reload,
 	StopSound,
+	SetBlock {
+		data: SetBlockData,
+	},
+	Fill {
+		data: FillData,
+	},
 }
 
 impl Debug for InstrKind {
@@ -275,6 +282,8 @@ impl Debug for InstrKind {
 				amount,
 				value,
 			} => format!("xps {target:?} {amount} {value}"),
+			Self::SetBlock { data } => format!("sb {data:?}"),
+			Self::Fill { data } => format!("fill {data:?}"),
 		};
 		write!(f, "{text}")
 	}

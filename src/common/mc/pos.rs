@@ -11,6 +11,36 @@ pub enum Coordinates<T> {
 }
 
 impl<T: Num> Coordinates<T> {
+	/// Creates absolute coordinates at 0 0 0
+	pub fn origin() -> Self {
+		Self::absolute(T::zero(), T::zero(), T::zero())
+	}
+
+	/// Creates fully absolute coordinates
+	pub fn absolute(x: T, y: T, z: T) -> Self {
+		Self::XYZ(
+			AbsOrRelCoord::Abs(x),
+			AbsOrRelCoord::Abs(y),
+			AbsOrRelCoord::Abs(z),
+		)
+	}
+
+	/// Creates relative coordinates at ~ ~ ~
+	pub fn here() -> Self {
+		Self::relative(T::zero(), T::zero(), T::zero())
+	}
+
+	/// Creates fully relative coordinates
+	pub fn relative(x: T, y: T, z: T) -> Self {
+		Self::XYZ(
+			AbsOrRelCoord::Rel(x),
+			AbsOrRelCoord::Rel(y),
+			AbsOrRelCoord::Rel(z),
+		)
+	}
+}
+
+impl<T: Num> Coordinates<T> {
 	pub fn are_zero(&self) -> bool {
 		matches!(self, Self::XYZ(x, y, z) if x.is_relative_zero() && y.is_relative_zero() && z.is_relative_zero())
 			|| matches!(self, Self::Local(a, b, c) if a.is_zero() && b.is_zero() && c.is_zero())

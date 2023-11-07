@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::FunctionInterface;
+use crate::common::mc::block::{FillData, SetBlockData};
 use crate::common::mc::modifier::Modifier;
 use crate::common::mc::{Difficulty, EntityTarget, XPValue};
 use crate::common::ty::ArraySize;
@@ -160,6 +161,9 @@ pub enum LIRInstrKind {
 	SetXP(EntityTarget, i32, XPValue),
 	// Items
 	Enchant(EntityTarget, ResourceLocation, i32),
+	// Blocks
+	SetBlock(SetBlockData),
+	Fill(FillData),
 	// World
 	Seed,
 	GetDifficulty,
@@ -253,6 +257,8 @@ impl Debug for LIRInstrKind {
 			Self::WhitelistList => "wll".into(),
 			Self::Kick(targets, reason) => format!("kick {targets:?} {reason:?}"),
 			Self::Publish => "pub".into(),
+			Self::SetBlock(data) => format!("sb {data:?}"),
+			Self::Fill(data) => format!("fill {data:?}"),
 			Self::Seed => "seed".into(),
 			Self::GetDifficulty => "diffg".into(),
 			Self::SetDifficulty(diff) => format!("diffs {diff}"),

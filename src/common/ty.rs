@@ -386,6 +386,16 @@ impl Debug for NBTArrayTypeContents {
 #[derive(Clone)]
 pub struct NBTCompoundTypeContents(pub Arc<HashMap<String, NBTTypeContents>>);
 
+impl NBTCompoundTypeContents {
+	pub fn new() -> Self {
+		Self(Arc::new(HashMap::new()))
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.0.is_empty()
+	}
+}
+
 impl PartialEq for NBTCompoundTypeContents {
 	fn eq(&self, other: &Self) -> bool {
 		self.0.iter().all(|(k, v)| {

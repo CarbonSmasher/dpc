@@ -7,6 +7,7 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, bail, Context};
 
+use crate::common::mc::block::SetBlockMode;
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
 use crate::common::mc::Score;
 use crate::common::ty::NBTTypeContents;
@@ -15,6 +16,7 @@ use crate::linker::codegen::util::cg_data_modify_rhs;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 
 use self::modifier::codegen_modifier;
+use self::t::macros::cgwrite;
 use self::util::SpaceSepListCG;
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
@@ -298,6 +300,19 @@ pub fn codegen_instr(
 			} else {
 				Some(cgformat!(cbcx, "enchant ", target, " ", ench, " ", lvl)?)
 			}
+		}
+		LIRInstrKind::SetBlock(data) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "setblock ", data.pos, " ", data.block)?;
+
+			cgwrite!(&mut out, cbcx, data.block)?;
+
+			// Replace mode is default and can be omitted
+			if let SetBlockMode::Replace = data.mode {
+			} else {
+				cgwrite!(&mut out, cbcx, " ", data.mode)?;
+			}
+			Some(out)
 		}
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};

@@ -178,6 +178,8 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 				} => {
 					lower!(lir_instrs, Enchant, target, enchantment, level)
 				}
+				MIRInstrKind::SetBlock { data } => lower!(lir_instrs, SetBlock, data),
+				MIRInstrKind::Fill { data } => lower!(lir_instrs, Fill, data),
 			}
 		}
 

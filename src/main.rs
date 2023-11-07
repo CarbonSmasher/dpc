@@ -2,7 +2,9 @@ use anyhow::Context;
 use dpc::common::function::{
 	CallInterface, FunctionAnnotation, FunctionInterface, FunctionSignature,
 };
+use dpc::common::mc::block::{BlockData, BlockProperties, SetBlockData, SetBlockMode};
 use dpc::common::mc::entity::{SelectorType, TargetSelector};
+use dpc::common::mc::pos::Coordinates;
 use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::val::{MutableValue, Value};
 use dpc::common::{DeclareBinding, Identifier};
@@ -249,8 +251,8 @@ fn known() {
 #[allow(dead_code)]
 fn fuzz() {
 	let instr_count = 35;
-	let fn_count = 10000;
-	let debug = false;
+	let fn_count = 10;
+	let debug = true;
 
 	let mut rng = rand::thread_rng();
 
@@ -288,7 +290,7 @@ fn fuzz() {
 				_ => continue,
 			};
 
-			let instr = rng.gen_range(0..12);
+			let instr = rng.gen_range(0..13);
 			let kind = match instr {
 				0 => {
 					let new_reg = reg_count;
@@ -354,6 +356,13 @@ fn fuzz() {
 						},
 					}
 				}
+				12 => InstrKind::SetBlock {
+					data: SetBlockData {
+						pos: Coordinates::here(),
+						block: BlockData::new("stone".into(), BlockProperties::new()),
+						mode: SetBlockMode::Replace,
+					},
+				},
 				_ => continue,
 			};
 

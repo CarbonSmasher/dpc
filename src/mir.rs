@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::{CallInterface, FunctionInterface, FunctionSignature};
+use crate::common::mc::block::{FillData, SetBlockData};
 use crate::common::mc::{Difficulty, EntityTarget, XPValue};
 use crate::common::ty::DataType;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
@@ -235,6 +236,12 @@ pub enum MIRInstrKind {
 	},
 	Reload,
 	StopSound,
+	SetBlock {
+		data: SetBlockData,
+	},
+	Fill {
+		data: FillData,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -296,6 +303,8 @@ impl Debug for MIRInstrKind {
 				amount,
 				value,
 			} => format!("xps {target:?} {amount} {value}"),
+			Self::SetBlock { data } => format!("sb {data:?}"),
+			Self::Fill { data } => format!("fill {data:?}"),
 		};
 		write!(f, "{text}")
 	}

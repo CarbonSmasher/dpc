@@ -137,6 +137,8 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 					amount,
 					value,
 				} => lower!(mir_block, SetXP, target, amount, value),
+				InstrKind::SetBlock { data } => lower!(mir_block, SetBlock, data),
+				InstrKind::Fill { data } => lower!(mir_block, Fill, data),
 			}
 		}
 
