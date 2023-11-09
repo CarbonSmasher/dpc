@@ -1,4 +1,4 @@
-use num_traits::Num;
+use num_traits::{Num, Zero};
 
 use std::fmt::Debug;
 
@@ -190,5 +190,46 @@ impl Axis {
 			Self::Y => "y",
 			Self::Z => "z",
 		}
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct Angle {
+	pub relative: bool,
+	pub value: f32,
+}
+
+impl Angle {
+	pub fn new_absolute(value: f32) -> Self {
+		Self::new(false, value)
+	}
+
+	pub fn new_relative(value: f32) -> Self {
+		Self::new(true, value)
+	}
+
+	pub fn new(relative: bool, value: f32) -> Self {
+		Self { relative, value }
+	}
+}
+
+impl Codegen for Angle {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+
+		if self.relative {
+			write!(f, "~")?;
+
+			if !self.value.is_zero() {
+				write!(f, "{}", self.value)?;
+			}
+		} else {
+			write!(f, "{}", self.value)?;
+		}
+
+		Ok(())
 	}
 }
