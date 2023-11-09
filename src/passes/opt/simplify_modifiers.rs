@@ -159,6 +159,6 @@ enum OptimizeConditionResult {
 
 /// Checks if a constant range's size is greater than the integer limit
 fn check_constant_range_size(left: i32, right: i32) -> bool {
-	let range = (left - right).abs();
-	range > i32::MAX
+	let range = (left as i64 - right as i64).abs();
+	range > i32::MAX as i64
 }
