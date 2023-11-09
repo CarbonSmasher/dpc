@@ -7,9 +7,6 @@ pub mod time;
 use std::fmt::{Debug, Display};
 
 use crate::common::Identifier;
-use crate::linker::codegen::t::macros::cgwrite;
-use crate::linker::codegen::Codegen;
-use crate::linker::codegen::CodegenBlockCx;
 
 use self::pos::IntCoordinates;
 
@@ -81,20 +78,6 @@ impl DataLocation {
 	}
 }
 
-impl Codegen for DataLocation {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		match self {
-			Self::Block(pos) => cgwrite!(f, cbcx, "block ", pos)?,
-			Self::Entity(target) => cgwrite!(f, cbcx, "entity ", target)?,
-			Self::Storage(loc) => cgwrite!(f, cbcx, "storage ", loc)?,
-		}
-		Ok(())
-	}
-}
-
 #[derive(Debug, Clone)]
 pub struct FullDataLocation {
 	pub loc: DataLocation,
@@ -104,16 +87,6 @@ pub struct FullDataLocation {
 impl FullDataLocation {
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		self.loc.is_value_eq(&other.loc) && self.path == other.path
-	}
-}
-
-impl Codegen for FullDataLocation {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		cgwrite!(f, cbcx, self.loc, " ", self.path)?;
-		Ok(())
 	}
 }
 
@@ -133,17 +106,6 @@ impl Display for XPValue {
 				Self::Levels => "levels",
 			}
 		)
-	}
-}
-
-impl Codegen for XPValue {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self}")?;
-		Ok(())
 	}
 }
 
@@ -170,17 +132,6 @@ impl Display for Difficulty {
 	}
 }
 
-impl Codegen for Difficulty {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self}")?;
-		Ok(())
-	}
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Gamemode {
 	Survival,
@@ -201,17 +152,6 @@ impl Display for Gamemode {
 				Self::Spectator => "spectator",
 			}
 		)
-	}
-}
-
-impl Codegen for Gamemode {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self}")?;
-		Ok(())
 	}
 }
 
@@ -252,16 +192,5 @@ impl Display for Weather {
 				Self::Thunder => "thunder",
 			}
 		)
-	}
-}
-
-impl Codegen for Weather {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self}")?;
-		Ok(())
 	}
 }

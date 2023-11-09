@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use super::CodegenBlockCx;
 
 pub trait Codegen {
@@ -13,38 +11,6 @@ pub trait Codegen {
 		Ok(out)
 	}
 }
-
-macro_rules! cg_impl {
-	($name:ty) => {
-		cg_impl!(
-			$name,
-			self,
-			f,
-			cbcx,
-			(|| {
-				let _ = cbcx;
-				write!(f, "{self}")?;
-				Ok(())
-			})
-		);
-	};
-
-	($name:ty, $self:ident, $f:ident, $cbcx:ident, $b:tt) => {
-		impl Codegen for $name {
-			fn gen_writer<F>(&$self, $f: &mut F, $cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-			where
-				F: std::fmt::Write,
-			{
-				$b()
-			}
-		}
-	};
-}
-
-cg_impl!(&str);
-cg_impl!(String);
-cg_impl!(i32);
-cg_impl!(Arc<str>);
 
 pub mod macros {
 	macro_rules! cgwrite {

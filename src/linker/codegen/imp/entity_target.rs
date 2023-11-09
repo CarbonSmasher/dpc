@@ -1,7 +1,7 @@
 use crate::common::mc::entity::{SelectorParameter, TargetSelector};
 use crate::common::mc::EntityTarget;
 
-use super::t::macros::cgwrite;
+use super::super::t::macros::cgwrite;
 use super::{Codegen, CodegenBlockCx};
 
 impl Codegen for EntityTarget {

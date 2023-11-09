@@ -106,52 +106,6 @@ pub fn cg_data_modify_rhs(cbcx: &mut CodegenBlockCx, val: &NBTValue) -> anyhow::
 	Ok(string)
 }
 
-impl Codegen for ScoreValue {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let (score, lit) = get_score_val_score(self, &cbcx.ra)?;
-		cbcx.ccx.score_literals.extend(lit);
-		score.gen_writer(f, cbcx)
-	}
-}
-
-impl Codegen for MutableScoreValue {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let score = get_mut_score_val_score(self, &cbcx.ra)?;
-		score.gen_writer(f, cbcx)
-	}
-}
-
-impl Codegen for NBTValue {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		match self {
-			Self::Constant(val) => write!(f, "{}", val.get_literal_str())?,
-			Self::Mutable(val) => val.gen_writer(f, cbcx)?,
-		}
-		Ok(())
-	}
-}
-
-impl Codegen for MutableNBTValue {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let loc = get_mut_nbt_val_loc(self, &cbcx.ra)?;
-		loc.gen_writer(f, cbcx)?;
-
-		Ok(())
-	}
-}
-
 pub struct SpaceSepListCG<'v, CG: Codegen>(pub &'v Vec<CG>);
 
 impl<'v, CG: Codegen> Codegen for SpaceSepListCG<'v, CG> {

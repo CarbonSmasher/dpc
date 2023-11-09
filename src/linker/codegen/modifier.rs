@@ -133,8 +133,8 @@ pub fn codegen_modifier(
 
 			out
 		}
-		Modifier::Anchored(location) => Some(format!("anchored {location:?}")),
-		Modifier::Align(axes) => Some(format!("align {axes:?}")),
+		Modifier::Anchored(location) => Some(cgformat!(cbcx, "anchored ", location)?),
+		Modifier::Align(axes) => Some(cgformat!(cbcx, "align ", axes)?),
 		Modifier::As(target) => Some(cgformat!(cbcx, "as ", target)?),
 		Modifier::At(target) => Some(cgformat!(cbcx, "at ", target)?),
 		Modifier::In(dimension) => Some(format!("in {dimension}")),
@@ -154,18 +154,13 @@ pub fn codegen_modifier(
 		}
 		Modifier::Positioned(pos) => Some(cgformat!(cbcx, "positioned ", pos)?),
 		Modifier::PositionedAs(target) => Some(cgformat!(cbcx, "positioned as ", target)?),
-		Modifier::PositionedOver(hm) => {
-			Some(cgformat!(cbcx, "positioned over ", format!("{hm:?}"))?)
-		}
+		Modifier::PositionedOver(hm) => Some(cgformat!(cbcx, "positioned over ", hm)?),
 		Modifier::Rotated(rot) => Some(cgformat!(cbcx, "rotated ", rot)?),
 		Modifier::RotatedAs(target) => Some(cgformat!(cbcx, "rotated as ", target)?),
 		Modifier::FacingPosition(pos) => Some(cgformat!(cbcx, "facing ", pos)?),
-		Modifier::FacingEntity(target, anchor) => Some(cgformat!(
-			cbcx,
-			"facing entity ",
-			target,
-			format!("{anchor:?}")
-		)?),
+		Modifier::FacingEntity(target, anchor) => {
+			Some(cgformat!(cbcx, "facing entity ", target, " ", anchor)?)
+		}
 		Modifier::Summon(entity) => Some(format!("summon {entity}")),
 	};
 

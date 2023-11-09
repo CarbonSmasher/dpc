@@ -2,8 +2,6 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::{ty::NBTCompoundTypeContents, Identifier};
 use crate::common::{ResourceLocation, ResourceLocationTag};
-use crate::linker::codegen::t::macros::cgwrite;
-use crate::linker::codegen::Codegen;
 
 use super::pos::IntCoordinates;
 
@@ -54,7 +52,7 @@ impl Debug for CloneData {
 		if let Some(source) = &self.source_dimension {
 			write!(f, "{source} ")?;
 		}
-		
+
 		write!(f, "{:?} {:?}", self.start, self.end)?;
 
 		if let Some(target) = &self.target_dimension {
@@ -89,21 +87,6 @@ impl Debug for BlockData {
 	}
 }
 
-impl Codegen for BlockData {
-	fn gen_writer<F>(
-		&self,
-		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
-	) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		write!(f, "{}", self.block)?;
-		cgwrite!(f, cbcx, self.props)?;
-		Ok(())
-	}
-}
-
 #[derive(Clone)]
 pub struct BlockFilter {
 	pub block: ResourceLocationTag,
@@ -113,21 +96,6 @@ pub struct BlockFilter {
 impl Debug for BlockFilter {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}{:?}", self.block, self.props)
-	}
-}
-
-impl Codegen for BlockFilter {
-	fn gen_writer<F>(
-		&self,
-		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
-	) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		write!(f, "{}", self.block)?;
-		cgwrite!(f, cbcx, self.props)?;
-		Ok(())
 	}
 }
 
@@ -152,27 +120,6 @@ impl Debug for BlockProperties {
 	}
 }
 
-impl Codegen for BlockProperties {
-	fn gen_writer<F>(
-		&self,
-		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
-	) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		if !self.states.is_empty() {
-			cgwrite!(f, cbcx, self.states)?;
-		}
-
-		if !self.data.is_empty() {
-			cgwrite!(f, cbcx, self.data.get_literal_str())?;
-		}
-
-		Ok(())
-	}
-}
-
 #[derive(Clone)]
 pub enum SetBlockMode {
 	Destroy,
@@ -187,21 +134,6 @@ impl Debug for SetBlockMode {
 			Self::Keep => write!(f, "keep"),
 			Self::Replace => write!(f, "replace"),
 		}
-	}
-}
-
-impl Codegen for SetBlockMode {
-	fn gen_writer<F>(
-		&self,
-		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
-	) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self:?}")?;
-		Ok(())
 	}
 }
 
@@ -232,21 +164,6 @@ impl Debug for FillMode {
 	}
 }
 
-impl Codegen for FillMode {
-	fn gen_writer<F>(
-		&self,
-		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
-	) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self:?}")?;
-		Ok(())
-	}
-}
-
 #[derive(Clone)]
 pub enum CloneMaskMode {
 	Replace,
@@ -261,25 +178,6 @@ impl Debug for CloneMaskMode {
 			Self::Masked => write!(f, "masked"),
 			Self::Filtered(filter) => write!(f, "filtered {filter:?}"),
 		}
-	}
-}
-
-impl Codegen for CloneMaskMode {
-	fn gen_writer<F>(
-		&self,
-		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
-	) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		if let Self::Filtered(filter) = self {
-			cgwrite!(f, cbcx, "filtered ", filter)?;
-		} else {
-			write!(f, "{self:?}")?;
-		}
-		Ok(())
 	}
 }
 
@@ -300,27 +198,16 @@ impl Debug for CloneMode {
 	}
 }
 
-impl Codegen for CloneMode {
-	fn gen_writer<F>(
-		&self,
-		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
-	) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self:?}")?;
-		Ok(())
-	}
-}
-
 #[derive(Clone)]
 pub struct BlockStates(HashMap<String, BlockStateValue>);
 
 impl BlockStates {
 	pub fn new(values: HashMap<String, BlockStateValue>) -> Self {
 		Self(values)
+	}
+
+	pub fn get(&self) -> &HashMap<String, BlockStateValue> {
+		&self.0
 	}
 
 	pub fn is_empty(&self) -> bool {
@@ -331,33 +218,6 @@ impl BlockStates {
 impl Debug for BlockStates {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		self.0.fmt(f)
-	}
-}
-
-impl Codegen for BlockStates {
-	fn gen_writer<F>(
-		&self,
-		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
-	) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "[")?;
-
-		for (i, (k, v)) in self.0.iter().enumerate() {
-			write!(f, "\"{k}\"=")?;
-			match v {
-				BlockStateValue::String(string) => write!(f, "{string}")?,
-			}
-			if i != self.0.len() - 1 {
-				write!(f, ",")?;
-			}
-		}
-
-		write!(f, "]")?;
-		Ok(())
 	}
 }
 
