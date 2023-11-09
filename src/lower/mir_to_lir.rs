@@ -110,13 +110,53 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 					lower!(lir_instrs, SetXP, target, amount, value)
 				}
 				MIRInstrKind::Pow { base, exp } => {
+					match exp {
+						// x ^ 0 == 1
+						0 => {
+							lower!(
+								lir_instrs,
+								SetScore,
+								base.clone().to_mutable_score_value()?,
+								ScoreValue::Constant(ScoreTypeContents::Score(1))
+							);
+						}
+						// x ^ 1 == x
+						1 => {}
+						// x ^ 2 == x * x
+						2 => {
+							let base = base.clone().to_mutable_score_value()?;
+							lower!(
+								lir_instrs,
+								MulScore,
+								base.clone(),
+								ScoreValue::Mutable(base)
+							);
+						}
+						// Now we have to use a temp register because just multiplying x by
+						// itself multiple times will yield incorrect results
+						exp => {
+							let base = base.clone().to_mutable_score_value()?;
+							let new_reg = lbcx.new_additional_reg();
+							let new_reg = MutableScoreValue::Reg(new_reg);
+							// Set the temp reg to the base
+							lower!(
+								lir_instrs,
+								SetScore,
+								new_reg.clone(),
+								ScoreValue::Mutable(base.clone())
+							);
+							// Do the multiplications
+							for _ in 0..exp - 1 {
+								lower!(
+									lir_instrs,
+									MulScore,
+									base.clone(),
+									ScoreValue::Mutable(new_reg.clone())
+								);
+							}
+						}
+					}
 					if exp == 0 {
-						lower!(
-							lir_instrs,
-							SetScore,
-							base.clone().to_mutable_score_value()?,
-							ScoreValue::Constant(ScoreTypeContents::Score(1))
-						);
 					} else {
 						for _ in 0..(exp - 1) {
 							lower!(
