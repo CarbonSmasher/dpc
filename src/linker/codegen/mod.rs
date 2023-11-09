@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, bail, Context};
 
-use crate::common::mc::block::SetBlockMode;
+use crate::common::mc::block::{CloneMaskMode, CloneMode, FillMode, SetBlockMode};
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
 use crate::common::mc::Score;
 use crate::common::ty::NBTTypeContents;
@@ -305,8 +305,6 @@ pub fn codegen_instr(
 			let mut out = String::new();
 			cgwrite!(&mut out, cbcx, "setblock ", data.pos, " ", data.block)?;
 
-			cgwrite!(&mut out, cbcx, data.block)?;
-
 			// Replace mode is default and can be omitted
 			if let SetBlockMode::Replace = data.mode {
 			} else {
@@ -314,6 +312,81 @@ pub fn codegen_instr(
 			}
 			Some(out)
 		}
+		LIRInstrKind::Fill(data) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "fill ", data.start, " ", data.block)?;
+
+			// Replace mode is default and can be omitted if there is no filter
+			if let FillMode::Replace(filter) = &data.mode {
+				cgwrite!(&mut out, cbcx, "replace")?;
+				if let Some(filter) = filter {
+					cgwrite!(&mut out, cbcx, " ", filter)?;
+				}
+			} else {
+				cgwrite!(&mut out, cbcx, " ", data.mode)?;
+			}
+			Some(out)
+		}
+		LIRInstrKind::Clone(data) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "clone ")?;
+
+			if let Some(source) = &data.source_dimension {
+				cgwrite!(&mut out, cbcx, "from ", source)?;
+			}
+
+			cgwrite!(&mut out, cbcx, data.start, " ", data.end)?;
+
+			if let Some(target) = &data.target_dimension {
+				cgwrite!(&mut out, cbcx, "to ", target)?;
+			}
+
+			cgwrite!(&mut out, cbcx, " ", data.destination, " ")?;
+
+			// Replace mode is default and can be omitted if there is no filter
+			match &data.mask_mode {
+				CloneMaskMode::Filtered(filter) => {
+					cgwrite!(&mut out, cbcx, "filter ", filter)?;
+				}
+				CloneMaskMode::Replace => {}
+				other => cgwrite!(&mut out, cbcx, " ", other)?,
+			}
+
+			// Normal mode is default and can be omitted
+			if let CloneMode::Normal = data.mode {
+			} else {
+				cgwrite!(&mut out, cbcx, " ", data.mode)?;
+			}
+
+			Some(out)
+		}
+		LIRInstrKind::SetWeather(weather, duration) => {
+			if let Some(duration) = duration {
+				Some(cgformat!(cbcx, "weather ", weather, " ", duration)?)
+			} else {
+				Some(cgformat!(cbcx, "weather ", weather)?)
+			}
+		}
+		LIRInstrKind::AddTime(time) => Some(cgformat!(cbcx, "time add ", time)?),
+		LIRInstrKind::SetTime(time) => {
+			// Using the day preset is shorter than the time it represents
+			if time.amount == 1000.0 {
+				Some("tmie set day".into())
+			} else {
+				Some(cgformat!(cbcx, "time set ", time)?)
+			}
+		}
+		LIRInstrKind::SetTimePreset(time) => Some(cgformat!(cbcx, "time set ", time)?),
+		LIRInstrKind::GetTime(query) => Some(cgformat!(cbcx, "time get ", query)?),
+		LIRInstrKind::AddTag(target, tag) => Some(cgformat!(cbcx, "tag ", target, " add ", tag)?),
+		LIRInstrKind::RemoveTag(target, tag) => {
+			Some(cgformat!(cbcx, "tag ", target, " remove ", tag)?)
+		}
+		LIRInstrKind::ListTags(target) => Some(cgformat!(cbcx, "tag ", target, " list")?),
+		LIRInstrKind::RideMount(target, vehicle) => {
+			Some(cgformat!(cbcx, "ride ", target, " mount ", vehicle)?)
+		}
+		LIRInstrKind::RideDismount(target) => Some(cgformat!(cbcx, "ride ", target, " dismount")?),
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

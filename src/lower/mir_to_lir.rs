@@ -180,6 +180,23 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 				}
 				MIRInstrKind::SetBlock { data } => lower!(lir_instrs, SetBlock, data),
 				MIRInstrKind::Fill { data } => lower!(lir_instrs, Fill, data),
+				MIRInstrKind::Clone { data } => lower!(lir_instrs, Clone, data),
+				MIRInstrKind::SetWeather { weather, duration } => {
+					lower!(lir_instrs, SetWeather, weather, duration)
+				}
+				MIRInstrKind::AddTime { time } => lower!(lir_instrs, AddTime, time),
+				MIRInstrKind::SetTime { time } => lower!(lir_instrs, SetTime, time),
+				MIRInstrKind::SetTimePreset { time } => lower!(lir_instrs, SetTimePreset, time),
+				MIRInstrKind::GetTime { query } => lower!(lir_instrs, GetTime, query),
+				MIRInstrKind::AddTag { target, tag } => lower!(lir_instrs, AddTag, target, tag),
+				MIRInstrKind::RemoveTag { target, tag } => {
+					lower!(lir_instrs, RemoveTag, target, tag)
+				}
+				MIRInstrKind::ListTags { target } => lower!(lir_instrs, ListTags, target),
+				MIRInstrKind::RideMount { target, vehicle } => {
+					lower!(lir_instrs, RideMount, target, vehicle)
+				}
+				MIRInstrKind::RideDismount { target } => lower!(lir_instrs, RideDismount, target),
 			}
 		}
 

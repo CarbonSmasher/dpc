@@ -8,6 +8,7 @@ use crate::util::remove_indices;
 
 use anyhow::anyhow;
 use dashmap::DashSet;
+use num_traits::Zero;
 
 pub struct MIRSimplifyPass;
 
@@ -80,6 +81,7 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				left: _,
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if score.get_i32() == 0 => true,
+			MIRInstrKind::AddTime { time } if time.amount.is_zero() => true,
 			_ => false,
 		};
 

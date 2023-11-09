@@ -2,6 +2,7 @@ pub mod block;
 pub mod entity;
 pub mod modifier;
 pub mod pos;
+pub mod time;
 
 use std::fmt::{Debug, Display};
 
@@ -230,5 +231,37 @@ impl Debug for Heightmap {
 			Self::MotionBlockingNoLeaves => write!(f, "motion_blocking_no_leaves"),
 			Self::OceanFloor => write!(f, "ocean_floor"),
 		}
+	}
+}
+
+#[derive(Debug, Clone)]
+pub enum Weather {
+	Clear,
+	Rain,
+	Thunder,
+}
+
+impl Display for Weather {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Clear => "clear",
+				Self::Rain => "rain",
+				Self::Thunder => "thunder",
+			}
+		)
+	}
+}
+
+impl Codegen for Weather {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+		write!(f, "{self}")?;
+		Ok(())
 	}
 }

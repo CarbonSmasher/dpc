@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::common::ResourceLocationTag;
 
+use super::block::BlockFilter;
 use super::pos::{DoubleCoordinates, DoubleRotation};
 use super::{EntityTarget, FullDataLocation, Heightmap, IntCoordinates, Score};
 
@@ -199,6 +200,7 @@ pub enum IfModCondition {
 	Dimension(ResourceLocation),
 	Loaded(IntCoordinates),
 	DataExists(NBTValue),
+	Block(IntCoordinates, BlockFilter),
 }
 
 impl IfModCondition {
@@ -221,7 +223,8 @@ impl IfModCondition {
 			| Self::Function(..)
 			| Self::Biome(..)
 			| Self::Dimension(..)
-			| Self::Loaded(..) => Vec::new(),
+			| Self::Loaded(..)
+			| Self::Block(..) => Vec::new(),
 		}
 	}
 }
@@ -237,6 +240,7 @@ impl Debug for IfModCondition {
 			Self::Dimension(dim) => write!(f, "dim {dim}"),
 			Self::Loaded(pos) => write!(f, "load {pos:?}"),
 			Self::DataExists(loc) => write!(f, "data {loc:?}"),
+			Self::Block(loc, block) => write!(f, "blo {loc:?} {block:?}"),
 		}
 	}
 }

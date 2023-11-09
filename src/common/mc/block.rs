@@ -39,6 +39,39 @@ impl Debug for FillData {
 }
 
 #[derive(Clone)]
+pub struct CloneData {
+	pub source_dimension: Option<ResourceLocation>,
+	pub start: IntCoordinates,
+	pub end: IntCoordinates,
+	pub target_dimension: Option<ResourceLocation>,
+	pub destination: IntCoordinates,
+	pub mask_mode: CloneMaskMode,
+	pub mode: CloneMode,
+}
+
+impl Debug for CloneData {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		if let Some(source) = &self.source_dimension {
+			write!(f, "{source} ")?;
+		}
+		
+		write!(f, "{:?} {:?}", self.start, self.end)?;
+
+		if let Some(target) = &self.target_dimension {
+			write!(f, "{target}")?;
+		}
+
+		write!(
+			f,
+			"{:?} {:?} {:?}",
+			self.destination, self.mask_mode, self.mode
+		)?;
+
+		Ok(())
+	}
+}
+
+#[derive(Clone)]
 pub struct BlockData {
 	pub block: ResourceLocation,
 	pub props: BlockProperties,
@@ -80,6 +113,21 @@ pub struct BlockFilter {
 impl Debug for BlockFilter {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}{:?}", self.block, self.props)
+	}
+}
+
+impl Codegen for BlockFilter {
+	fn gen_writer<F>(
+		&self,
+		f: &mut F,
+		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
+	) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		write!(f, "{}", self.block)?;
+		cgwrite!(f, cbcx, self.props)?;
+		Ok(())
 	}
 }
 
@@ -199,7 +247,75 @@ impl Codegen for FillMode {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+pub enum CloneMaskMode {
+	Replace,
+	Masked,
+	Filtered(BlockFilter),
+}
+
+impl Debug for CloneMaskMode {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Replace => write!(f, "replace"),
+			Self::Masked => write!(f, "masked"),
+			Self::Filtered(filter) => write!(f, "filtered {filter:?}"),
+		}
+	}
+}
+
+impl Codegen for CloneMaskMode {
+	fn gen_writer<F>(
+		&self,
+		f: &mut F,
+		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
+	) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+		if let Self::Filtered(filter) = self {
+			cgwrite!(f, cbcx, "filtered ", filter)?;
+		} else {
+			write!(f, "{self:?}")?;
+		}
+		Ok(())
+	}
+}
+
+#[derive(Clone)]
+pub enum CloneMode {
+	Force,
+	Move,
+	Normal,
+}
+
+impl Debug for CloneMode {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Force => write!(f, "force"),
+			Self::Move => write!(f, "move"),
+			Self::Normal => write!(f, "normal"),
+		}
+	}
+}
+
+impl Codegen for CloneMode {
+	fn gen_writer<F>(
+		&self,
+		f: &mut F,
+		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
+	) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+		write!(f, "{self:?}")?;
+		Ok(())
+	}
+}
+
+#[derive(Clone)]
 pub struct BlockStates(HashMap<String, BlockStateValue>);
 
 impl BlockStates {
@@ -209,6 +325,12 @@ impl BlockStates {
 
 	pub fn is_empty(&self) -> bool {
 		self.0.is_empty()
+	}
+}
+
+impl Debug for BlockStates {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.0.fmt(f)
 	}
 }
 

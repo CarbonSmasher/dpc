@@ -139,6 +139,21 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 				} => lower!(mir_block, SetXP, target, amount, value),
 				InstrKind::SetBlock { data } => lower!(mir_block, SetBlock, data),
 				InstrKind::Fill { data } => lower!(mir_block, Fill, data),
+				InstrKind::Clone { data } => lower!(mir_block, Clone, data),
+				InstrKind::SetWeather { weather, duration } => {
+					lower!(mir_block, SetWeather, weather, duration)
+				}
+				InstrKind::AddTime { time } => lower!(mir_block, AddTime, time),
+				InstrKind::SetTime { time } => lower!(mir_block, SetTime, time),
+				InstrKind::SetTimePreset { time } => lower!(mir_block, SetTimePreset, time),
+				InstrKind::GetTime { query } => lower!(mir_block, GetTime, query),
+				InstrKind::AddTag { target, tag } => lower!(mir_block, AddTag, target, tag),
+				InstrKind::RemoveTag { target, tag } => lower!(mir_block, RemoveTag, target, tag),
+				InstrKind::ListTags { target } => lower!(mir_block, ListTags, target),
+				InstrKind::RideMount { target, vehicle } => {
+					lower!(mir_block, RideMount, target, vehicle)
+				}
+				InstrKind::RideDismount { target } => lower!(mir_block, RideDismount, target),
 			}
 		}
 

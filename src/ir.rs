@@ -2,8 +2,9 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
 use crate::common::function::{CallInterface, FunctionInterface};
-use crate::common::mc::block::{SetBlockData, FillData};
-use crate::common::mc::{Difficulty, EntityTarget, XPValue};
+use crate::common::mc::block::{CloneData, FillData, SetBlockData};
+use crate::common::mc::time::{Time, TimePreset, TimeQuery};
+use crate::common::mc::{Difficulty, EntityTarget, Weather, XPValue};
 use crate::common::ty::DataType;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 
@@ -221,6 +222,43 @@ pub enum InstrKind {
 	Fill {
 		data: FillData,
 	},
+	Clone {
+		data: CloneData,
+	},
+	SetWeather {
+		weather: Weather,
+		duration: Option<Time>,
+	},
+	AddTime {
+		time: Time,
+	},
+	SetTime {
+		time: Time,
+	},
+	SetTimePreset {
+		time: TimePreset,
+	},
+	GetTime {
+		query: TimeQuery,
+	},
+	AddTag {
+		target: EntityTarget,
+		tag: Identifier,
+	},
+	RemoveTag {
+		target: EntityTarget,
+		tag: Identifier,
+	},
+	ListTags {
+		target: EntityTarget,
+	},
+	RideMount {
+		target: EntityTarget,
+		vehicle: EntityTarget,
+	},
+	RideDismount {
+		target: EntityTarget,
+	},
 }
 
 impl Debug for InstrKind {
@@ -284,6 +322,17 @@ impl Debug for InstrKind {
 			} => format!("xps {target:?} {amount} {value}"),
 			Self::SetBlock { data } => format!("sb {data:?}"),
 			Self::Fill { data } => format!("fill {data:?}"),
+			Self::Clone { data } => format!("cln {data:?}"),
+			Self::SetWeather { weather, duration } => format!("setw {weather} {duration:?}"),
+			Self::AddTime { time } => format!("addt {time:?}"),
+			Self::SetTime { time } => format!("sett {time:?}"),
+			Self::SetTimePreset { time } => format!("settp {time:?}"),
+			Self::GetTime { query } => format!("gett {query:?}"),
+			Self::AddTag { target, tag } => format!("taga {target:?} {tag}"),
+			Self::RemoveTag { target, tag } => format!("tagr {target:?} {tag}"),
+			Self::ListTags { target } => format!("tagl {target:?}"),
+			Self::RideMount { target, vehicle } => format!("mnt {target:?} {vehicle:?}"),
+			Self::RideDismount { target } => format!("dmnt {target:?}"),
 		};
 		write!(f, "{text}")
 	}
