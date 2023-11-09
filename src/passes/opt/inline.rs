@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use anyhow::anyhow;
 
 use crate::common::block::{BlockAllocator, BlockID};
-use crate::common::function::{FunctionInterface, FunctionSignature};
+use crate::common::function::{FunctionAnnotations, FunctionInterface, FunctionSignature};
 use crate::common::{Identifier, ResourceLocation};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
@@ -81,7 +81,7 @@ fn run_simple_inline_iter(
 				.get(&FunctionInterface {
 					id: call.function.clone(),
 					sig: FunctionSignature::new(),
-					annotations: Vec::new(),
+					annotations: FunctionAnnotations::new(),
 				})
 				.ok_or(anyhow!("Called function does not exist"))?;
 			let inlined_block = cloned_blocks

@@ -7,7 +7,7 @@ use std::hash::Hash;
 pub struct FunctionInterface {
 	pub id: ResourceLocation,
 	pub sig: FunctionSignature,
-	pub annotations: Vec<FunctionAnnotation>,
+	pub annotations: FunctionAnnotations,
 }
 
 impl FunctionInterface {
@@ -16,13 +16,13 @@ impl FunctionInterface {
 	}
 
 	pub fn with_signature(id: ResourceLocation, sig: FunctionSignature) -> Self {
-		Self::with_all(id, sig, Vec::new())
+		Self::with_all(id, sig, FunctionAnnotations::new())
 	}
 
 	pub fn with_all(
 		id: ResourceLocation,
 		sig: FunctionSignature,
-		annotations: Vec<FunctionAnnotation>,
+		annotations: FunctionAnnotations,
 	) -> Self {
 		Self {
 			id,
@@ -148,6 +148,16 @@ impl Debug for CallInterface {
 }
 
 #[derive(Debug, Clone)]
-pub enum FunctionAnnotation {
-	NoDiscard,
+pub struct FunctionAnnotations {
+	pub preserve: bool,
+	pub no_inline: bool,
+}
+
+impl FunctionAnnotations {
+	pub fn new() -> Self {
+		Self {
+			preserve: false,
+			no_inline: false,
+		}
+	}
 }

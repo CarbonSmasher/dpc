@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use dashmap::DashSet;
 
-use crate::common::function::FunctionAnnotation;
 use crate::mir::MIRInstrKind;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
@@ -34,11 +33,7 @@ impl MIRPass for DCEPass {
 		// Remove unused functions
 		let unused = DashSet::new();
 		for (func, block) in &data.mir.functions {
-			if func
-				.annotations
-				.iter()
-				.any(|x| matches!(x, FunctionAnnotation::NoDiscard))
-			{
+			if func.annotations.preserve {
 				continue;
 			}
 			if !used.contains(&func.id) {

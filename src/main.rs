@@ -1,6 +1,6 @@
 use anyhow::Context;
 use dpc::common::function::{
-	CallInterface, FunctionAnnotation, FunctionInterface, FunctionSignature,
+	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
 };
 use dpc::common::mc::block::{BlockData, BlockProperties, SetBlockData, SetBlockMode};
 use dpc::common::mc::entity::{SelectorType, TargetSelector};
@@ -41,12 +41,10 @@ fn known() {
 	}
 
 	let block = ir.blocks.add(block);
+	let mut annotations = FunctionAnnotations::new();
+	annotations.preserve = true;
 	ir.functions.insert(
-		FunctionInterface::with_all(
-			"foo:baz".into(),
-			FunctionSignature::new(),
-			vec![FunctionAnnotation::NoDiscard],
-		),
+		FunctionInterface::with_all("foo:baz".into(), FunctionSignature::new(), annotations),
 		block,
 	);
 
@@ -233,11 +231,12 @@ fn known() {
 	}
 
 	let block = ir.blocks.add(block);
+
 	ir.functions.insert(
 		FunctionInterface::with_all(
 			"foo:main".into(),
 			FunctionSignature::new(),
-			vec![FunctionAnnotation::NoDiscard],
+			FunctionAnnotations::new(),
 		),
 		block,
 	);
@@ -371,12 +370,10 @@ fn fuzz() {
 
 		let block = ir.blocks.add(block);
 		let func_id = format!("foo:{fn_i}");
+		let mut annotations = FunctionAnnotations::new();
+		annotations.preserve = true;
 		let func = if fn_i == 0 {
-			FunctionInterface::with_all(
-				func_id.into(),
-				FunctionSignature::new(),
-				vec![FunctionAnnotation::NoDiscard],
-			)
+			FunctionInterface::with_all(func_id.into(), FunctionSignature::new(), annotations)
 		} else {
 			FunctionInterface::new(func_id.into())
 		};

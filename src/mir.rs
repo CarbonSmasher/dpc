@@ -1,7 +1,9 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
-use crate::common::function::{CallInterface, FunctionInterface, FunctionSignature};
+use crate::common::function::{
+	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
+};
 use crate::common::mc::block::{CloneData, FillData, SetBlockData};
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{Difficulty, EntityTarget, Weather, XPValue};
@@ -29,12 +31,12 @@ impl MIR {
 		}
 	}
 
-	/// Get the block of a function with an ID
-	pub fn get_fn(&self, id: &ResourceLocation) -> Option<&BlockID> {
-		self.functions.get(&FunctionInterface {
+	/// Get the data and block of a function with an ID
+	pub fn get_fn(&self, id: &ResourceLocation) -> Option<(&FunctionInterface, &BlockID)> {
+		self.functions.get_key_value(&FunctionInterface {
 			id: id.clone(),
 			sig: FunctionSignature::new(),
-			annotations: Vec::new(),
+			annotations: FunctionAnnotations::new(),
 		})
 	}
 }

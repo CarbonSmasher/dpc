@@ -49,9 +49,12 @@ fn check_recursion<'fun>(
 	let func_item = mir
 		.get_fn(func)
 		.ok_or(anyhow!("Called function does not exist"))?;
+	if func_item.0.annotations.no_inline {
+		candidates.remove(func);
+	}
 	let block = mir
 		.blocks
-		.get(func_item)
+		.get(func_item.1)
 		.ok_or(anyhow!("Block does not exist"))?;
 
 	for instr in &block.contents {
