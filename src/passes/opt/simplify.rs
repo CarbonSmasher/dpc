@@ -90,6 +90,8 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 			if is_new {
 				run_again = true;
 			}
+
+			continue;
 		}
 
 		// Instructions to replace
@@ -257,6 +259,7 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 			if is_new {
 				run_again = true;
 			}
+			continue;
 		}
 	}
 
