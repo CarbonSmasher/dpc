@@ -250,7 +250,7 @@ fn known() {
 #[allow(dead_code)]
 fn fuzz() {
 	let instr_count = 35;
-	let fn_count = 10000;
+	let fn_count = 1000;
 	let debug = false;
 
 	let mut rng = rand::thread_rng();

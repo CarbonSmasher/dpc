@@ -130,7 +130,7 @@ impl<'cont> ConstAnalyzer<'cont> {
 
 	fn new_dont_store() -> Self {
 		Self {
-			vals: DashMap::new(),
+			vals: DashMap::with_capacity(0),
 			store_self: false,
 		}
 	}
@@ -229,6 +229,7 @@ impl Pass for ConstFoldPass {
 
 impl MIRPass for ConstFoldPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		let mut fold_points = DashMap::new();
 		for (_, block) in &mut data.mir.functions {
 			let block = data
 				.mir
@@ -236,9 +237,11 @@ impl MIRPass for ConstFoldPass {
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
+			fold_points.clear();
+
 			let mut instrs_to_remove = DashSetEmptyTracker::new();
 			loop {
-				let run_again = run_const_fold_iter(block, &mut instrs_to_remove);
+				let run_again = run_const_fold_iter(block, &mut instrs_to_remove, &mut fold_points);
 				if run_again {
 					self.made_changes = true;
 				} else {
@@ -257,10 +260,10 @@ impl MIRPass for ConstFoldPass {
 fn run_const_fold_iter(
 	block: &mut MIRBlock,
 	instrs_to_remove: &mut DashSetEmptyTracker<usize>,
+	fold_points: &mut DashMap<Identifier, FoldPoint>,
 ) -> bool {
 	let mut run_again = false;
 
-	let fold_points: DashMap<Identifier, FoldPoint> = DashMap::new();
 	// Scope here because the analyzer holds references to the data type contents
 	{
 		let mut an = ConstAnalyzer::new_dont_store();
@@ -388,10 +391,12 @@ fn run_const_fold_iter(
 		}
 	}
 
-	for (reg, point) in fold_points.into_iter() {
+	for val in fold_points.iter() {
+		let reg = val.key();
+		let point = val.value();
 		if let Some(instr) = block.contents.get_mut(point.pos) {
 			instr.kind = MIRInstrKind::Assign {
-				left: MutableValue::Register(reg),
+				left: MutableValue::Register(reg.clone()),
 				right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
 					ScoreTypeContents::Score(point.value),
 				))),

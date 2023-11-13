@@ -1,11 +1,11 @@
 use anyhow::anyhow;
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
 use crate::common::{val::MutableScoreValue, val::MutableValue, val::ScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
-use crate::util::remove_indices;
+use crate::util::{remove_indices, DashSetEmptyTracker};
 
 pub struct ScoreboardDataflowPass;
 
@@ -19,7 +19,7 @@ impl LIRPass for ScoreboardDataflowPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		let mut flow_points = DashMap::new();
 		let mut finished_flow_points = Vec::new();
-		let mut instrs_to_remove = DashSet::new();
+		let mut instrs_to_remove = DashSetEmptyTracker::new();
 
 		for (_, block) in &mut lir.functions {
 			instrs_to_remove.clear();
@@ -52,7 +52,7 @@ impl LIRPass for ScoreboardDataflowPass {
 
 fn run_scoreboard_dataflow_iter(
 	block: &mut LIRBlock,
-	instrs_to_remove: &mut DashSet<usize>,
+	instrs_to_remove: &mut DashSetEmptyTracker<usize>,
 	flow_points: &mut DashMap<Identifier, SBDataflowPoint>,
 	finished_flow_points: &mut Vec<SBDataflowPoint>,
 ) -> bool {

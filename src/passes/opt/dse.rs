@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
 use anyhow::anyhow;
-use dashmap::DashSet;
 
 use crate::common::val::MutableValue;
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::remove_indices;
+use crate::util::{remove_indices, DashSetEmptyTracker};
 
 pub struct DSEPass;
 
@@ -18,7 +17,7 @@ impl Pass for DSEPass {
 
 impl MIRPass for DSEPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		let mut instrs_to_remove = DashSet::new();
+		let mut instrs_to_remove = DashSetEmptyTracker::new();
 		for (_, block) in &mut data.mir.functions {
 			let block = data
 				.mir
@@ -41,7 +40,7 @@ impl MIRPass for DSEPass {
 }
 
 /// Runs an iteration of DSE and returns true if another iteration should be performed
-fn run_dse_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<usize>) -> bool {
+fn run_dse_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSetEmptyTracker<usize>) -> bool {
 	let mut run_again = false;
 	let mut elim_candidates = HashMap::new();
 	let mut dead_stores = Vec::new();
