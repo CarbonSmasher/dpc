@@ -314,7 +314,7 @@ pub fn codegen_instr(
 		}
 		LIRInstrKind::Fill(data) => {
 			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "fill ", data.start, " ", data.block)?;
+			cgwrite!(&mut out, cbcx, "fill ", data.start, " ", data.end, " ", data.block)?;
 
 			// Replace mode is default and can be omitted if there is no filter
 			if let FillMode::Replace(filter) = &data.mode {
@@ -360,6 +360,25 @@ pub fn codegen_instr(
 
 			Some(out)
 		}
+		LIRInstrKind::FillBiome(data) => {
+			let mut out = String::new();
+			cgwrite!(
+				&mut out,
+				cbcx,
+				"fillbiome ",
+				data.start,
+				" ",
+				data.end,
+				" ",
+				data.biome
+			)?;
+
+			if let Some(filter) = &data.replace {
+				cgwrite!(&mut out, cbcx, " replace ", filter)?;
+			}
+
+			Some(out)
+		}
 		LIRInstrKind::SetWeather(weather, duration) => {
 			if let Some(duration) = duration {
 				Some(cgformat!(cbcx, "weather ", weather, " ", duration)?)
@@ -387,6 +406,15 @@ pub fn codegen_instr(
 			Some(cgformat!(cbcx, "ride ", target, " mount ", vehicle)?)
 		}
 		LIRInstrKind::RideDismount(target) => Some(cgformat!(cbcx, "ride ", target, " dismount")?),
+		LIRInstrKind::Spectate(target, spectator) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "spectate ", target)?;
+			if !spectator.is_blank_this() {
+				cgwrite!(&mut out, cbcx, " ", spectator)?;
+			}
+			Some(out)
+		}
+		LIRInstrKind::SpectateStop => Some("spectate".into()),
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

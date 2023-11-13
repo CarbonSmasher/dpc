@@ -70,6 +70,24 @@ impl Debug for CloneData {
 }
 
 #[derive(Clone)]
+pub struct FillBiomeData {
+	pub start: IntCoordinates,
+	pub end: IntCoordinates,
+	pub biome: ResourceLocation,
+	pub replace: Option<ResourceLocation>,
+}
+
+impl Debug for FillBiomeData {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{:?} {:?} {:?}", self.start, self.end, self.biome)?;
+		if let Some(repl) = &self.replace {
+			write!(f, " repl {repl:?}")?;
+		}
+		Ok(())
+	}
+}
+
+#[derive(Clone)]
 pub struct BlockData {
 	pub block: ResourceLocation,
 	pub props: BlockProperties,

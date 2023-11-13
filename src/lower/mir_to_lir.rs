@@ -237,6 +237,11 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 					lower!(lir_instrs, RideMount, target, vehicle)
 				}
 				MIRInstrKind::RideDismount { target } => lower!(lir_instrs, RideDismount, target),
+				MIRInstrKind::FillBiome { data } => lower!(lir_instrs, FillBiome, data),
+				MIRInstrKind::Spectate { target, spectator } => {
+					lower!(lir_instrs, Spectate, target, spectator)
+				}
+				MIRInstrKind::SpectateStop => lower!(lir_instrs, SpectateStop),
 			}
 		}
 

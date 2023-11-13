@@ -4,7 +4,7 @@ use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::{
 	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
 };
-use crate::common::mc::block::{CloneData, FillData, SetBlockData};
+use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{Difficulty, EntityTarget, Weather, XPValue};
 use crate::common::ty::DataType;
@@ -282,6 +282,14 @@ pub enum MIRInstrKind {
 	RideDismount {
 		target: EntityTarget,
 	},
+	FillBiome {
+		data: FillBiomeData,
+	},
+	Spectate {
+		target: EntityTarget,
+		spectator: EntityTarget,
+	},
+	SpectateStop,
 }
 
 impl Debug for MIRInstrKind {
@@ -356,6 +364,9 @@ impl Debug for MIRInstrKind {
 			Self::ListTags { target } => format!("tagl {target:?}"),
 			Self::RideMount { target, vehicle } => format!("mnt {target:?} {vehicle:?}"),
 			Self::RideDismount { target } => format!("dmnt {target:?}"),
+			Self::FillBiome { data } => format!("fillb {data:?}"),
+			Self::Spectate { target, spectator } => format!("spec {target:?} {spectator:?}"),
+			Self::SpectateStop => "specs".into(),
 		};
 		write!(f, "{text}")
 	}

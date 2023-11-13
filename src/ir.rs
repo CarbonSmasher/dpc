@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
 use crate::common::function::{CallInterface, FunctionInterface};
-use crate::common::mc::block::{CloneData, FillData, SetBlockData};
+use crate::common::mc::block::{CloneData, FillData, SetBlockData, FillBiomeData};
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{Difficulty, EntityTarget, Weather, XPValue};
 use crate::common::ty::DataType;
@@ -259,6 +259,14 @@ pub enum InstrKind {
 	RideDismount {
 		target: EntityTarget,
 	},
+	FillBiome {
+		data: FillBiomeData,
+	},
+	Spectate {
+		target: EntityTarget,
+		spectator: EntityTarget,
+	},
+	SpectateStop,
 }
 
 impl Debug for InstrKind {
@@ -333,6 +341,9 @@ impl Debug for InstrKind {
 			Self::ListTags { target } => format!("tagl {target:?}"),
 			Self::RideMount { target, vehicle } => format!("mnt {target:?} {vehicle:?}"),
 			Self::RideDismount { target } => format!("dmnt {target:?}"),
+			Self::FillBiome { data } => format!("fillb {data:?}"),
+			Self::Spectate { target, spectator } => format!("spec {target:?} {spectator:?}"),
+			Self::SpectateStop => "specs".into(),
 		};
 		write!(f, "{text}")
 	}

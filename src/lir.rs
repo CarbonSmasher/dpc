@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::FunctionInterface;
-use crate::common::mc::block::{CloneData, FillData, SetBlockData};
+use crate::common::mc::block::{CloneData, FillData, SetBlockData, FillBiomeData};
 use crate::common::mc::modifier::Modifier;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{Difficulty, EntityTarget, Weather, XPValue};
@@ -165,12 +165,15 @@ pub enum LIRInstrKind {
 	ListTags(EntityTarget),
 	RideMount(EntityTarget, EntityTarget),
 	RideDismount(EntityTarget),
+	Spectate(EntityTarget, EntityTarget),
+	SpectateStop,
 	// Items
 	Enchant(EntityTarget, ResourceLocation, i32),
 	// Blocks
 	SetBlock(SetBlockData),
 	Fill(FillData),
 	Clone(CloneData),
+	FillBiome(FillBiomeData),
 	// World
 	Seed,
 	GetDifficulty,
@@ -256,6 +259,8 @@ impl Debug for LIRInstrKind {
 			Self::ListTags(target) => format!("tagl {target:?}"),
 			Self::RideMount(target, vehicle) => format!("mnt {target:?} {vehicle:?}"),
 			Self::RideDismount(target) => format!("dmnt {target:?}"),
+			Self::Spectate(target, spectator) => format!("spec {target:?} {spectator:?}"),
+			Self::SpectateStop => "specs".into(),
 			Self::ListPlayers => "lsp".into(),
 			Self::StopSound => "stops".into(),
 			Self::StopServer => "stop".into(),
@@ -277,6 +282,7 @@ impl Debug for LIRInstrKind {
 			Self::SetBlock(data) => format!("sb {data:?}"),
 			Self::Fill(data) => format!("fill {data:?}"),
 			Self::Clone(data) => format!("cln {data:?}"),
+			Self::FillBiome(data) => format!("fillb {data:?}"),
 			Self::Seed => "seed".into(),
 			Self::GetDifficulty => "diffg".into(),
 			Self::SetDifficulty(diff) => format!("diffs {diff}"),
