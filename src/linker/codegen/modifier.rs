@@ -3,6 +3,7 @@ use anyhow::anyhow;
 use crate::common::mc::modifier::{
 	EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
+use crate::common::ty::ScoreTypeContents;
 use crate::common::val::{MutableNBTValue, ScoreValue};
 use crate::linker::text::REG_OBJECTIVE;
 
@@ -128,6 +129,18 @@ pub fn codegen_modifier(
 				IfModCondition::DataExists(loc) => Some(cgformat!(cbcx, keyword, " data ", loc)?),
 				IfModCondition::Block(loc, block) => {
 					Some(cgformat!(cbcx, keyword, " block ", loc, " ", block)?)
+				}
+				IfModCondition::Const(val) => {
+					let left = ScoreValue::Constant(ScoreTypeContents::Score(0));
+					let right_num = if val { 0 } else { 1 };
+					Some(cgformat!(
+						cbcx,
+						keyword,
+						" score ",
+						left,
+						" matches ",
+						right_num
+					)?)
 				}
 			};
 

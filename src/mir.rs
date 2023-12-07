@@ -1,12 +1,13 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
+use crate::common::condition::Condition;
 use crate::common::function::{
 	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
 };
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
-use crate::common::mc::{Difficulty, EntityTarget, Weather, XPValue};
+use crate::common::mc::{Difficulty, EntityTarget, Gamemode, Weather, XPValue};
 use crate::common::ty::DataType;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 
@@ -168,6 +169,11 @@ pub enum MIRInstrKind {
 	Call {
 		call: CallInterface,
 	},
+	If {
+		condition: Condition,
+		body: Box<MIRInstrKind>,
+	},
+	// Game instructions
 	Say {
 		message: String,
 	},
@@ -290,6 +296,13 @@ pub enum MIRInstrKind {
 		spectator: EntityTarget,
 	},
 	SpectateStop,
+	SetGamemode {
+		target: EntityTarget,
+		gamemode: Gamemode,
+	},
+	DefaultGamemode {
+		gamemode: Gamemode,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -314,6 +327,7 @@ impl Debug for MIRInstrKind {
 			Self::Insert { left, right, index } => format!("ins {left:?}, {right:?}, {index}"),
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Call { call } => format!("call {call:?}"),
+			Self::If { condition, body } => format!("if {condition:?} then {body:?}"),
 			Self::Say { message } => format!("say {message}"),
 			Self::Tell { target, message } => format!("tell {target:?} {message}"),
 			Self::Me { message } => format!("me {message}"),
@@ -367,6 +381,8 @@ impl Debug for MIRInstrKind {
 			Self::FillBiome { data } => format!("fillb {data:?}"),
 			Self::Spectate { target, spectator } => format!("spec {target:?} {spectator:?}"),
 			Self::SpectateStop => "specs".into(),
+			Self::SetGamemode { target, gamemode } => format!("setgm {target:?} {gamemode}"),
+			Self::DefaultGamemode { gamemode } => format!("dgm {gamemode}"),
 		};
 		write!(f, "{text}")
 	}

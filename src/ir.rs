@@ -2,9 +2,9 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
 use crate::common::function::{CallInterface, FunctionInterface};
-use crate::common::mc::block::{CloneData, FillData, SetBlockData, FillBiomeData};
+use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
-use crate::common::mc::{Difficulty, EntityTarget, Weather, XPValue};
+use crate::common::mc::{Difficulty, EntityTarget, Gamemode, Weather, XPValue};
 use crate::common::ty::DataType;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 
@@ -267,6 +267,13 @@ pub enum InstrKind {
 		spectator: EntityTarget,
 	},
 	SpectateStop,
+	SetGamemode {
+		target: EntityTarget,
+		gamemode: Gamemode,
+	},
+	DefaultGamemode {
+		gamemode: Gamemode,
+	},
 }
 
 impl Debug for InstrKind {
@@ -344,6 +351,8 @@ impl Debug for InstrKind {
 			Self::FillBiome { data } => format!("fillb {data:?}"),
 			Self::Spectate { target, spectator } => format!("spec {target:?} {spectator:?}"),
 			Self::SpectateStop => "specs".into(),
+			Self::SetGamemode { target, gamemode } => format!("setgm {target:?} {gamemode}"),
+			Self::DefaultGamemode { gamemode } => format!("dgm {gamemode}"),
 		};
 		write!(f, "{text}")
 	}

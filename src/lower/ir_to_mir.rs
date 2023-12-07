@@ -159,6 +159,12 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 					lower!(mir_block, Spectate, target, spectator)
 				}
 				InstrKind::SpectateStop => lower!(mir_block, SpectateStop),
+				InstrKind::SetGamemode { target, gamemode } => {
+					lower!(mir_block, SetGamemode, target, gamemode)
+				}
+				InstrKind::DefaultGamemode { gamemode } => {
+					lower!(mir_block, DefaultGamemode, gamemode)
+				}
 			}
 		}
 

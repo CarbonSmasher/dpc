@@ -2,10 +2,10 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::FunctionInterface;
-use crate::common::mc::block::{CloneData, FillData, SetBlockData, FillBiomeData};
+use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::modifier::Modifier;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
-use crate::common::mc::{Difficulty, EntityTarget, Weather, XPValue};
+use crate::common::mc::{Difficulty, EntityTarget, Gamemode, Weather, XPValue};
 use crate::common::ty::ArraySize;
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
 use crate::common::{Identifier, RegisterList, ResourceLocation};
@@ -167,6 +167,7 @@ pub enum LIRInstrKind {
 	RideDismount(EntityTarget),
 	Spectate(EntityTarget, EntityTarget),
 	SpectateStop,
+	SetGamemode(EntityTarget, Gamemode),
 	// Items
 	Enchant(EntityTarget, ResourceLocation, i32),
 	// Blocks
@@ -183,6 +184,7 @@ pub enum LIRInstrKind {
 	SetTime(Time),
 	SetTimePreset(TimePreset),
 	GetTime(TimeQuery),
+	DefaultGamemode(Gamemode),
 	// Misc
 	Reload,
 	StopSound,
@@ -292,6 +294,8 @@ impl Debug for LIRInstrKind {
 			Self::SetTimePreset(time) => format!("settp {time:?}"),
 			Self::GetTime(query) => format!("gett {query:?}"),
 			Self::Enchant(target, ench, lvl) => format!("ench {target:?} {ench} {lvl}"),
+			Self::SetGamemode(target, gm) => format!("setgm {target:?} {gm}"),
+			Self::DefaultGamemode(gm) => format!("dgm {gm}"),
 		};
 		write!(f, "{text}")
 	}

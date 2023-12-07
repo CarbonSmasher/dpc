@@ -415,6 +415,10 @@ pub fn codegen_instr(
 			Some(out)
 		}
 		LIRInstrKind::SpectateStop => Some("spectate".into()),
+		LIRInstrKind::SetGamemode(target, gm) => {
+			Some(cgformat!(cbcx, "gamemode ", gm, " ", target)?)
+		}
+		LIRInstrKind::DefaultGamemode(gm) => Some(cgformat!(cbcx, "defaultgamemode ", gm)?),
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

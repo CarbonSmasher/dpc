@@ -1,5 +1,7 @@
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Context};
 
+use crate::common::condition::Condition;
+use crate::common::function::FunctionInterface;
 use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
@@ -26,7 +28,7 @@ macro_rules! lower {
 	};
 }
 
-/// Lower IR to LIR
+/// Lower MIR to LIR
 pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 	let mut lir = LIR::with_capacity(mir.functions.len(), mir.blocks.count());
 
@@ -37,212 +39,10 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 			.ok_or(anyhow!("Block does not exist"))?;
 		let mut lir_instrs = Vec::with_capacity(block.contents.len());
 
-		let mut lbcx = LowerBlockCx::new();
+		let mut lbcx = LowerBlockCx::new(&mut lir);
 
-		for ir_instr in block.contents {
-			match ir_instr.kind {
-				MIRInstrKind::Declare { left, ty } => {
-					// Add as a register
-					let reg = Register {
-						id: left.clone(),
-						ty,
-					};
-					lbcx.registers.insert(left.clone(), reg);
-				}
-				MIRInstrKind::Assign { left, right } => {
-					lir_instrs.extend(lower_assign(left, right, &mut lbcx)?);
-				}
-				MIRInstrKind::Add { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_add(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Sub { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_sub(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Mul { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_mul(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Div { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_div(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Mod { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_mod(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Min { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_min(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Max { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_max(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Swap { left, right } => {
-					lir_instrs.extend(lower_swap(left, right, &mut lbcx)?);
-				}
-				MIRInstrKind::Abs { val } => {
-					lir_instrs.push(lower_abs(val, &lbcx)?);
-				}
-				MIRInstrKind::Get { value } => {
-					lir_instrs.push(LIRInstruction::new(lower_get(value, &lbcx)?));
-				}
-				MIRInstrKind::Merge { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_merge(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Push { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_push(left, right, &lbcx)?));
-				}
-				MIRInstrKind::PushFront { left, right } => {
-					lir_instrs.push(LIRInstruction::new(lower_push_front(left, right, &lbcx)?));
-				}
-				MIRInstrKind::Insert { left, right, index } => {
-					lir_instrs.push(LIRInstruction::new(lower_insert(
-						left, right, index, &lbcx,
-					)?));
-				}
-				MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
-				MIRInstrKind::Call { call } => lower!(lir_instrs, Call, call.function),
-				MIRInstrKind::Say { message } => lower!(lir_instrs, Say, message),
-				MIRInstrKind::Tell { target, message } => lower!(lir_instrs, Tell, target, message),
-				MIRInstrKind::Kill { target } => lower!(lir_instrs, Kill, target),
-				MIRInstrKind::Reload => lower!(lir_instrs, Reload),
-				MIRInstrKind::SetXP {
-					target,
-					amount,
-					value,
-				} => {
-					lower!(lir_instrs, SetXP, target, amount, value)
-				}
-				MIRInstrKind::Pow { base, exp } => {
-					match exp {
-						// x ^ 0 == 1
-						0 => {
-							lower!(
-								lir_instrs,
-								SetScore,
-								base.clone().to_mutable_score_value()?,
-								ScoreValue::Constant(ScoreTypeContents::Score(1))
-							);
-						}
-						// x ^ 1 == x
-						1 => {}
-						// x ^ 2 == x * x
-						2 => {
-							let base = base.clone().to_mutable_score_value()?;
-							lower!(
-								lir_instrs,
-								MulScore,
-								base.clone(),
-								ScoreValue::Mutable(base)
-							);
-						}
-						// Now we have to use a temp register because just multiplying x by
-						// itself multiple times will yield incorrect results
-						exp => {
-							let base = base.clone().to_mutable_score_value()?;
-							let new_reg = lbcx.new_additional_reg();
-							let new_reg = MutableScoreValue::Reg(new_reg);
-							// Set the temp reg to the base
-							lower!(
-								lir_instrs,
-								SetScore,
-								new_reg.clone(),
-								ScoreValue::Mutable(base.clone())
-							);
-							// Do the multiplications
-							for _ in 0..exp - 1 {
-								lower!(
-									lir_instrs,
-									MulScore,
-									base.clone(),
-									ScoreValue::Mutable(new_reg.clone())
-								);
-							}
-						}
-					}
-					if exp == 0 {
-					} else {
-						for _ in 0..(exp - 1) {
-							lower!(
-								lir_instrs,
-								MulScore,
-								base.clone().to_mutable_score_value()?,
-								ScoreValue::Mutable(base.clone().to_mutable_score_value()?)
-							);
-						}
-					}
-				}
-				MIRInstrKind::Publish => lower!(lir_instrs, Publish),
-				MIRInstrKind::Seed => lower!(lir_instrs, Seed),
-				MIRInstrKind::GetDifficulty => lower!(lir_instrs, GetDifficulty),
-				MIRInstrKind::StopServer => lower!(lir_instrs, StopServer),
-				MIRInstrKind::StopSound => lower!(lir_instrs, StopSound),
-				MIRInstrKind::Banlist => lower!(lir_instrs, Banlist),
-				MIRInstrKind::WhitelistList => lower!(lir_instrs, WhitelistList),
-				MIRInstrKind::WhitelistReload => lower!(lir_instrs, WhitelistReload),
-				MIRInstrKind::WhitelistOn => lower!(lir_instrs, WhitelistOn),
-				MIRInstrKind::WhitelistOff => lower!(lir_instrs, WhitelistOff),
-				MIRInstrKind::ListPlayers => lower!(lir_instrs, ListPlayers),
-				MIRInstrKind::Me { message } => lower!(lir_instrs, Me, message),
-				MIRInstrKind::TeamMessage { message } => lower!(lir_instrs, TeamMessage, message),
-				MIRInstrKind::BanPlayers { targets, reason } => {
-					lower!(lir_instrs, BanPlayers, targets, reason)
-				}
-				MIRInstrKind::BanIP { target, reason } => {
-					lower!(lir_instrs, BanIP, target, reason)
-				}
-				MIRInstrKind::PardonPlayers { targets } => {
-					lower!(lir_instrs, PardonPlayers, targets)
-				}
-				MIRInstrKind::PardonIP { target } => {
-					lower!(lir_instrs, PardonIP, target)
-				}
-				MIRInstrKind::Op { targets } => {
-					lower!(lir_instrs, Op, targets)
-				}
-				MIRInstrKind::Deop { targets } => {
-					lower!(lir_instrs, Deop, targets)
-				}
-				MIRInstrKind::WhitelistAdd { targets } => {
-					lower!(lir_instrs, WhitelistAdd, targets)
-				}
-				MIRInstrKind::WhitelistRemove { targets } => {
-					lower!(lir_instrs, WhitelistRemove, targets)
-				}
-				MIRInstrKind::Kick { targets, reason } => {
-					lower!(lir_instrs, Kick, targets, reason)
-				}
-				MIRInstrKind::SetDifficulty { difficulty } => {
-					lower!(lir_instrs, SetDifficulty, difficulty)
-				}
-				MIRInstrKind::Enchant {
-					target,
-					enchantment,
-					level,
-				} => {
-					lower!(lir_instrs, Enchant, target, enchantment, level)
-				}
-				MIRInstrKind::SetBlock { data } => lower!(lir_instrs, SetBlock, data),
-				MIRInstrKind::Fill { data } => lower!(lir_instrs, Fill, data),
-				MIRInstrKind::Clone { data } => lower!(lir_instrs, Clone, data),
-				MIRInstrKind::SetWeather { weather, duration } => {
-					lower!(lir_instrs, SetWeather, weather, duration)
-				}
-				MIRInstrKind::AddTime { time } => lower!(lir_instrs, AddTime, time),
-				MIRInstrKind::SetTime { time } => lower!(lir_instrs, SetTime, time),
-				MIRInstrKind::SetTimePreset { time } => lower!(lir_instrs, SetTimePreset, time),
-				MIRInstrKind::GetTime { query } => lower!(lir_instrs, GetTime, query),
-				MIRInstrKind::AddTag { target, tag } => lower!(lir_instrs, AddTag, target, tag),
-				MIRInstrKind::RemoveTag { target, tag } => {
-					lower!(lir_instrs, RemoveTag, target, tag)
-				}
-				MIRInstrKind::ListTags { target } => lower!(lir_instrs, ListTags, target),
-				MIRInstrKind::RideMount { target, vehicle } => {
-					lower!(lir_instrs, RideMount, target, vehicle)
-				}
-				MIRInstrKind::RideDismount { target } => lower!(lir_instrs, RideDismount, target),
-				MIRInstrKind::FillBiome { data } => lower!(lir_instrs, FillBiome, data),
-				MIRInstrKind::Spectate { target, spectator } => {
-					lower!(lir_instrs, Spectate, target, spectator)
-				}
-				MIRInstrKind::SpectateStop => lower!(lir_instrs, SpectateStop),
-			}
+		for mir_instr in block.contents {
+			lower_kind(mir_instr.kind, &mut lir_instrs, &mut lbcx)?;
 		}
 
 		let mut lir_block = LIRBlock::new(lbcx.registers);
@@ -255,16 +55,266 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 	Ok(lir)
 }
 
-struct LowerBlockCx {
-	registers: RegisterList,
-	additional_reg_count: u32,
+fn lower_kind(
+	kind: MIRInstrKind,
+	lir_instrs: &mut Vec<LIRInstruction>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<()> {
+	match kind {
+		MIRInstrKind::Declare { left, ty } => {
+			// Add as a register
+			let reg = Register {
+				id: left.clone(),
+				ty,
+			};
+			lbcx.registers.insert(left.clone(), reg);
+		}
+		MIRInstrKind::Assign { left, right } => {
+			lir_instrs.extend(lower_assign(left, right, lbcx)?);
+		}
+		MIRInstrKind::Add { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_add(left, right, lbcx)?));
+		}
+		MIRInstrKind::Sub { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_sub(left, right, lbcx)?));
+		}
+		MIRInstrKind::Mul { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_mul(left, right, lbcx)?));
+		}
+		MIRInstrKind::Div { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_div(left, right, lbcx)?));
+		}
+		MIRInstrKind::Mod { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_mod(left, right, lbcx)?));
+		}
+		MIRInstrKind::Min { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_min(left, right, lbcx)?));
+		}
+		MIRInstrKind::Max { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_max(left, right, lbcx)?));
+		}
+		MIRInstrKind::Swap { left, right } => {
+			lir_instrs.extend(lower_swap(left, right, lbcx)?);
+		}
+		MIRInstrKind::Abs { val } => {
+			lir_instrs.push(lower_abs(val, lbcx)?);
+		}
+		MIRInstrKind::Get { value } => {
+			lir_instrs.push(LIRInstruction::new(lower_get(value, lbcx)?));
+		}
+		MIRInstrKind::Merge { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_merge(left, right, lbcx)?));
+		}
+		MIRInstrKind::Push { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_push(left, right, lbcx)?));
+		}
+		MIRInstrKind::PushFront { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_push_front(left, right, lbcx)?));
+		}
+		MIRInstrKind::Insert { left, right, index } => {
+			lir_instrs.push(LIRInstruction::new(lower_insert(left, right, index, lbcx)?));
+		}
+		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
+		MIRInstrKind::Call { call } => lower!(lir_instrs, Call, call.function),
+		MIRInstrKind::Say { message } => lower!(lir_instrs, Say, message),
+		MIRInstrKind::Tell { target, message } => lower!(lir_instrs, Tell, target, message),
+		MIRInstrKind::Kill { target } => lower!(lir_instrs, Kill, target),
+		MIRInstrKind::Reload => lower!(lir_instrs, Reload),
+		MIRInstrKind::SetXP {
+			target,
+			amount,
+			value,
+		} => {
+			lower!(lir_instrs, SetXP, target, amount, value)
+		}
+		MIRInstrKind::Pow { base, exp } => {
+			match exp {
+				// x ^ 0 == 1
+				0 => {
+					lower!(
+						lir_instrs,
+						SetScore,
+						base.clone().to_mutable_score_value()?,
+						ScoreValue::Constant(ScoreTypeContents::Score(1))
+					);
+				}
+				// x ^ 1 == x
+				1 => {}
+				// x ^ 2 == x * x
+				2 => {
+					let base = base.clone().to_mutable_score_value()?;
+					lower!(
+						lir_instrs,
+						MulScore,
+						base.clone(),
+						ScoreValue::Mutable(base)
+					);
+				}
+				// Now we have to use a temp register because just multiplying x by
+				// itself multiple times will yield incorrect results
+				exp => {
+					let base = base.clone().to_mutable_score_value()?;
+					let new_reg = lbcx.new_additional_reg();
+					let new_reg = MutableScoreValue::Reg(new_reg);
+					// Set the temp reg to the base
+					lower!(
+						lir_instrs,
+						SetScore,
+						new_reg.clone(),
+						ScoreValue::Mutable(base.clone())
+					);
+					// Do the multiplications
+					for _ in 0..exp - 1 {
+						lower!(
+							lir_instrs,
+							MulScore,
+							base.clone(),
+							ScoreValue::Mutable(new_reg.clone())
+						);
+					}
+				}
+			}
+			if exp == 0 {
+			} else {
+				for _ in 0..(exp - 1) {
+					lower!(
+						lir_instrs,
+						MulScore,
+						base.clone().to_mutable_score_value()?,
+						ScoreValue::Mutable(base.clone().to_mutable_score_value()?)
+					);
+				}
+			}
+		}
+		MIRInstrKind::Publish => lower!(lir_instrs, Publish),
+		MIRInstrKind::Seed => lower!(lir_instrs, Seed),
+		MIRInstrKind::GetDifficulty => lower!(lir_instrs, GetDifficulty),
+		MIRInstrKind::StopServer => lower!(lir_instrs, StopServer),
+		MIRInstrKind::StopSound => lower!(lir_instrs, StopSound),
+		MIRInstrKind::Banlist => lower!(lir_instrs, Banlist),
+		MIRInstrKind::WhitelistList => lower!(lir_instrs, WhitelistList),
+		MIRInstrKind::WhitelistReload => lower!(lir_instrs, WhitelistReload),
+		MIRInstrKind::WhitelistOn => lower!(lir_instrs, WhitelistOn),
+		MIRInstrKind::WhitelistOff => lower!(lir_instrs, WhitelistOff),
+		MIRInstrKind::ListPlayers => lower!(lir_instrs, ListPlayers),
+		MIRInstrKind::Me { message } => lower!(lir_instrs, Me, message),
+		MIRInstrKind::TeamMessage { message } => lower!(lir_instrs, TeamMessage, message),
+		MIRInstrKind::BanPlayers { targets, reason } => {
+			lower!(lir_instrs, BanPlayers, targets, reason)
+		}
+		MIRInstrKind::BanIP { target, reason } => {
+			lower!(lir_instrs, BanIP, target, reason)
+		}
+		MIRInstrKind::PardonPlayers { targets } => {
+			lower!(lir_instrs, PardonPlayers, targets)
+		}
+		MIRInstrKind::PardonIP { target } => {
+			lower!(lir_instrs, PardonIP, target)
+		}
+		MIRInstrKind::Op { targets } => {
+			lower!(lir_instrs, Op, targets)
+		}
+		MIRInstrKind::Deop { targets } => {
+			lower!(lir_instrs, Deop, targets)
+		}
+		MIRInstrKind::WhitelistAdd { targets } => {
+			lower!(lir_instrs, WhitelistAdd, targets)
+		}
+		MIRInstrKind::WhitelistRemove { targets } => {
+			lower!(lir_instrs, WhitelistRemove, targets)
+		}
+		MIRInstrKind::Kick { targets, reason } => {
+			lower!(lir_instrs, Kick, targets, reason)
+		}
+		MIRInstrKind::SetDifficulty { difficulty } => {
+			lower!(lir_instrs, SetDifficulty, difficulty)
+		}
+		MIRInstrKind::Enchant {
+			target,
+			enchantment,
+			level,
+		} => {
+			lower!(lir_instrs, Enchant, target, enchantment, level)
+		}
+		MIRInstrKind::SetBlock { data } => lower!(lir_instrs, SetBlock, data),
+		MIRInstrKind::Fill { data } => lower!(lir_instrs, Fill, data),
+		MIRInstrKind::Clone { data } => lower!(lir_instrs, Clone, data),
+		MIRInstrKind::SetWeather { weather, duration } => {
+			lower!(lir_instrs, SetWeather, weather, duration)
+		}
+		MIRInstrKind::AddTime { time } => lower!(lir_instrs, AddTime, time),
+		MIRInstrKind::SetTime { time } => lower!(lir_instrs, SetTime, time),
+		MIRInstrKind::SetTimePreset { time } => lower!(lir_instrs, SetTimePreset, time),
+		MIRInstrKind::GetTime { query } => lower!(lir_instrs, GetTime, query),
+		MIRInstrKind::AddTag { target, tag } => lower!(lir_instrs, AddTag, target, tag),
+		MIRInstrKind::RemoveTag { target, tag } => {
+			lower!(lir_instrs, RemoveTag, target, tag)
+		}
+		MIRInstrKind::ListTags { target } => lower!(lir_instrs, ListTags, target),
+		MIRInstrKind::RideMount { target, vehicle } => {
+			lower!(lir_instrs, RideMount, target, vehicle)
+		}
+		MIRInstrKind::RideDismount { target } => lower!(lir_instrs, RideDismount, target),
+		MIRInstrKind::FillBiome { data } => lower!(lir_instrs, FillBiome, data),
+		MIRInstrKind::Spectate { target, spectator } => {
+			lower!(lir_instrs, Spectate, target, spectator)
+		}
+		MIRInstrKind::SpectateStop => lower!(lir_instrs, SpectateStop),
+		MIRInstrKind::SetGamemode { target, gamemode } => {
+			lower!(lir_instrs, SetGamemode, target, gamemode)
+		}
+		MIRInstrKind::DefaultGamemode { gamemode } => {
+			lower!(lir_instrs, DefaultGamemode, gamemode)
+		}
+		MIRInstrKind::If { condition, body } => {
+			let (prepend, condition) =
+				lower_condition(condition, lbcx).context("Failed to lower condition")?;
+			lir_instrs.extend(prepend);
+
+			// Create the body
+			let mut new_lir_instrs = Vec::new();
+			lower_kind(*body, &mut new_lir_instrs, lbcx).context("Failed to lower if body")?;
+
+			// Create a new function or just inline it
+			let mut instr = if new_lir_instrs.len() == 1 {
+				new_lir_instrs
+					.first()
+					.expect("If len is 1, instr should exist")
+					.clone()
+			} else {
+				let mut lir_block = LIRBlock::new(RegisterList::new());
+				lir_block.contents = new_lir_instrs;
+				let block = lbcx.lir.blocks.add(lir_block);
+				let interface = lbcx.new_if_body_fn();
+				lbcx.lir.functions.insert(interface.clone(), block);
+				LIRInstruction::new(LIRInstrKind::Call(interface.id))
+			};
+			instr.modifiers.insert(
+				0,
+				Modifier::If {
+					condition: Box::new(condition),
+					negate: false,
+				},
+			);
+		}
+	}
+	Ok(())
 }
 
-impl LowerBlockCx {
-	fn new() -> Self {
+struct LowerBlockCx<'lir> {
+	lir: &'lir mut LIR,
+	registers: RegisterList,
+	additional_reg_count: u32,
+	if_body_count: u32,
+}
+
+impl<'lir> LowerBlockCx<'lir> {
+	fn new(lir: &'lir mut LIR) -> Self {
 		Self {
+			lir,
 			registers: RegisterList::new(),
 			additional_reg_count: 0,
+			if_body_count: 0,
 		}
 	}
 
@@ -272,6 +322,12 @@ impl LowerBlockCx {
 		let old_val = self.additional_reg_count;
 		self.additional_reg_count += 1;
 		Identifier::from(format!("__lir_lower_{old_val}"))
+	}
+
+	fn new_if_body_fn(&mut self) -> FunctionInterface {
+		let old_val = self.if_body_count;
+		self.if_body_count += 1;
+		FunctionInterface::new(format!("dpc::ifbody_{old_val}").into())
 	}
 }
 
@@ -621,4 +677,59 @@ fn lower_insert(
 	};
 
 	Ok(kind)
+}
+
+/// Returns a list of instructions to add before where the
+/// condition is used, and the condition to use for the if
+/// modifier
+fn lower_condition(
+	condition: Condition,
+	lbcx: &LowerBlockCx,
+) -> anyhow::Result<(Vec<LIRInstruction>, IfModCondition)> {
+	let out = match condition {
+		Condition::Equal(l, r) => {
+			let lty = l.get_ty(&lbcx.registers)?;
+			let rty = r.get_ty(&lbcx.registers)?;
+			let cond = match (lty, rty) {
+				(DataType::Score(..), DataType::Score(..)) => {
+					// Rearrange them so that the mutable value is on the left
+					let cond = match (l.to_score_value()?, r.to_score_value()?) {
+						(ScoreValue::Mutable(l), r) => {
+							IfModCondition::Score(IfScoreCondition::Single { left: l, right: r })
+						}
+						(l @ ScoreValue::Constant(..), ScoreValue::Mutable(r)) => {
+							IfModCondition::Score(IfScoreCondition::Single { left: r, right: l })
+						}
+						(ScoreValue::Constant(l), ScoreValue::Constant(r)) => {
+							let result = l.get_i32() == r.get_i32();
+							IfModCondition::Const(result)
+						}
+					};
+					cond
+				}
+				_ => bail!("Condition does not allow these types"),
+			};
+			(Vec::new(), cond)
+		}
+		Condition::Exists(val) => {
+			let cond = match val.get_ty(&lbcx.registers)? {
+				DataType::Score(..) => match val.to_score_value()? {
+					ScoreValue::Constant(..) => IfModCondition::Const(true),
+					ScoreValue::Mutable(val) => IfModCondition::Score(IfScoreCondition::Range {
+						score: val,
+						left: IfScoreRangeEnd::Infinite,
+						right: IfScoreRangeEnd::Infinite,
+					}),
+				},
+				DataType::NBT(..) => match val.to_nbt_value()? {
+					NBTValue::Constant(..) => IfModCondition::Const(true),
+					NBTValue::Mutable(val) => IfModCondition::DataExists(val),
+				},
+			};
+
+			(Vec::new(), cond)
+		}
+	};
+
+	Ok(out)
 }
