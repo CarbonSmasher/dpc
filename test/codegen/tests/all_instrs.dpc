@@ -1,0 +1,37 @@
+"test:main" {
+	let x: score = val const 7;
+	set x, mut x;
+	add x, const 1;
+	sub x, const 1;
+	mul x, const 1;
+	div x, const 1;
+	mod x, const 1;
+	min x, const 1;
+	max x, const 1;
+	let y: score = val const 3;
+	swap x, y;
+	abs x;
+	use x;
+	pow x, 3;
+	get x;
+	say "foo";
+	me "foo";
+	tm "foo";
+	banl;
+	bani "foo";
+	bani "foo", "bar";
+	pari "foo";
+	wlon;
+	wloff;
+	wlrl;
+	wll;
+	lsp;
+	pub;
+	rl;
+	seed;
+	stop;
+	stops;
+	diffg;
+	diffs hard;
+	specs;
+}

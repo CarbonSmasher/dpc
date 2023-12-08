@@ -132,6 +132,18 @@ impl Display for Difficulty {
 	}
 }
 
+impl Difficulty {
+	pub fn parse(string: &str) -> Option<Self> {
+		match string {
+			"peaceful" => Some(Self::Peaceful),
+			"easy" => Some(Self::Easy),
+			"normal" => Some(Self::Normal),
+			"hard" => Some(Self::Hard),
+			_ => None,
+		}
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Gamemode {
 	Survival,

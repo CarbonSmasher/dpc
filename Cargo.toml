@@ -8,6 +8,10 @@ name = "codegen"
 path = "test/codegen/mod.rs"
 harness = false
 
+[[bin]]
+name = "cg_gen"
+path = "test/codegen/gen_test.rs"
+
 [[test]]
 name = "parse"
 path = "test/parse/mod.rs"

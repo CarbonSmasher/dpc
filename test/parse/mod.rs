@@ -1,17 +1,12 @@
 use std::panic::catch_unwind;
 
 use anyhow::{bail, Context};
-use dpc::{
-	common::{
-		function::FunctionInterface,
-		ty::{DataType, DataTypeContents, ScoreType, ScoreTypeContents},
-		val::Value,
-		DeclareBinding,
-	},
-	ir::{Block, InstrKind, IR},
-	parse::Parser,
-	push_instrs,
-};
+use dpc::common::function::FunctionInterface;
+use dpc::common::ty::{DataType, DataTypeContents, ScoreType, ScoreTypeContents};
+use dpc::common::{val::Value, DeclareBinding};
+use dpc::ir::{Block, InstrKind, IR};
+use dpc::parse::Parser;
+use dpc::push_instrs;
 
 struct Test {
 	name: &'static str,
@@ -23,7 +18,7 @@ macro_rules! test {
 	($name:literal, $output:block) => {
 		Test {
 			name: $name,
-			input: include_str!(concat!($name, ".dpc")),
+			input: include_str!(concat!("tests/", $name, ".dpc")),
 			output: $output,
 		}
 	};

@@ -5,7 +5,9 @@ use crate::common::function::FunctionInterface;
 use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
-use crate::common::ty::{get_op_tys, ArraySize, DataType, DataTypeContents, ScoreTypeContents};
+use crate::common::ty::{
+	get_op_tys, ArraySize, DataType, DataTypeContents, ScoreType, ScoreTypeContents,
+};
 use crate::common::{
 	val::MutableNBTValue, val::MutableScoreValue, val::MutableValue, val::NBTValue,
 	val::ScoreValue, val::Value, DeclareBinding, Identifier, Register, RegisterList,
@@ -154,9 +156,16 @@ fn lower_kind(
 				// itself multiple times will yield incorrect results
 				exp => {
 					let base = base.clone().to_mutable_score_value()?;
-					let new_reg = lbcx.new_additional_reg();
-					let new_reg = MutableScoreValue::Reg(new_reg);
-					// Set the temp reg to the base
+					let new_reg_id = lbcx.new_additional_reg();
+					let new_reg = MutableScoreValue::Reg(new_reg_id.clone());
+					// Declare the temp reg as the base
+					lbcx.registers.insert(
+						new_reg_id.clone(),
+						Register {
+							id: new_reg_id,
+							ty: DataType::Score(ScoreType::Score),
+						},
+					);
 					lower!(
 						lir_instrs,
 						SetScore,

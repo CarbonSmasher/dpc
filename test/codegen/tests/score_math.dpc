@@ -1,0 +1,10 @@
+"test:main" {
+	let x: score = val const 7;
+	let y: score = val mut x;
+	mul x, const 8;
+	add y, mut x;
+	swap x, y;
+	let z: score = val mut y;
+	pow z, 4;
+	set x, mut z;
+}

@@ -254,9 +254,9 @@ pub fn codegen_instr(
 		}
 		LIRInstrKind::BanIP(target, reason) => {
 			if let Some(reason) = reason {
-				Some(cgformat!(cbcx, "ban ", target, " ", reason)?)
+				Some(cgformat!(cbcx, "ban-ip ", target, " ", reason)?)
 			} else {
-				Some(cgformat!(cbcx, "ban ", target)?)
+				Some(cgformat!(cbcx, "ban-ip ", target)?)
 			}
 		}
 		LIRInstrKind::PardonPlayers(targets) => {

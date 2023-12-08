@@ -1,5 +1,5 @@
 use anyhow::{bail, Context};
-use dpc::{codegen_ir, parse::Parser, CodegenIRSettings};
+use dpc::{codegen_ir, common::function::FunctionInterface, parse::Parser, CodegenIRSettings};
 use include_dir::{include_dir, Dir};
 
 static TESTS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/test/codegen/tests");
@@ -26,6 +26,8 @@ fn main() {
 	}
 }
 
+static TEST_ENTRYPOINT: &str = "test:main";
+
 fn run_test(test_name: &str) -> anyhow::Result<()> {
 	let input_contents = TESTS
 		.get_file(format!("{test_name}.dpc"))
@@ -43,7 +45,14 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 	parse
 		.parse(input_contents)
 		.context("Failed to parse test input")?;
-	let ir = parse.finish();
+	let mut ir = parse.finish();
+
+	// Make sure the test function is marked as preserve
+	let Some(mut actual) = ir.functions.remove_entry(&FunctionInterface::new(TEST_ENTRYPOINT.into())) else {
+		bail!("Test function does not exist")
+	};
+	actual.0.annotations.preserve = true;
+	ir.functions.insert(actual.0, actual.1);
 
 	// Run the codegen
 	let datapack = codegen_ir(
@@ -58,7 +67,7 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 	.context("Failed to codegen input")?;
 
 	// Check the test function
-	let Some(actual) = datapack.functions.get("test:main".into()) else {
+	let Some(actual) = datapack.functions.get(TEST_ENTRYPOINT.into()) else {
 		bail!("Test function does not exist")
 	};
 	assert_eq!(

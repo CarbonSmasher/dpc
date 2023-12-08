@@ -138,7 +138,7 @@ pub fn alloc_block_registers(
 			let reg = block
 				.regs
 				.get(reg_id)
-				.ok_or(anyhow!("Used register does not exist"))?;
+				.ok_or(anyhow!("Used register {reg_id} does not exist"))?;
 			match reg.ty {
 				DataType::Score(..) => {
 					if !out_regs.contains_key(reg_id) {
@@ -158,17 +158,17 @@ pub fn alloc_block_registers(
 				let reg = block
 					.regs
 					.get(reg_id)
-					.ok_or(anyhow!("Used register does not exist"))?;
+					.ok_or(anyhow!("Used register {reg_id} does not exist"))?;
 				match reg.ty {
 					DataType::Score(..) => racx.regs.finish_using(
 						*out_regs
 							.get(reg_id)
-							.ok_or(anyhow!("Used register does not exist"))?,
+							.ok_or(anyhow!("Used register {reg_id} does not exist"))?,
 					),
 					DataType::NBT(..) => racx.locals.finish_using(
 						*out_locals
 							.get(reg_id)
-							.ok_or(anyhow!("Used register does not exist"))?,
+							.ok_or(anyhow!("Used register {reg_id} does not exist"))?,
 					),
 				}
 			}
