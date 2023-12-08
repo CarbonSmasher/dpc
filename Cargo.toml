@@ -8,6 +8,11 @@ name = "codegen"
 path = "test/codegen/mod.rs"
 harness = false
 
+[[test]]
+name = "parse"
+path = "test/parse/mod.rs"
+harness = false
+
 [dependencies]
 anyhow = "1.0.75"
 dashmap = "5.5.3"

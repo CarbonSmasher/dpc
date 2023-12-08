@@ -52,6 +52,12 @@ impl PartialEq for FunctionInterface {
 
 impl Eq for FunctionInterface {}
 
+impl Default for FunctionInterface {
+	fn default() -> Self {
+		Self::new("".into())
+	}
+}
+
 pub type FunctionParams = Vec<DataType>;
 pub type FunctionArgs = Vec<Value>;
 
@@ -109,7 +115,7 @@ impl Debug for ReturnType {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct CallInterface {
 	pub function: ResourceLocation,
 	pub args: FunctionArgs,
@@ -159,5 +165,11 @@ impl FunctionAnnotations {
 			preserve: false,
 			no_inline: false,
 		}
+	}
+}
+
+impl Default for FunctionAnnotations {
+	fn default() -> Self {
+		Self::new()
 	}
 }

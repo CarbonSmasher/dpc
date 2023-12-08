@@ -81,7 +81,7 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				left: _,
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if score.get_i32() == 0 => true,
-			MIRInstrKind::AddTime { time } if time.amount.is_zero() => true,
+			MIRInstrKind::AddTime { time } if time.amount.0.is_zero() => true,
 			_ => false,
 		};
 

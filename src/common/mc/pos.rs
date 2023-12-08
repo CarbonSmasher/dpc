@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 use crate::linker::codegen::{Codegen, CodegenBlockCx};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Coordinates<T> {
 	XYZ(AbsOrRelCoord<T>, AbsOrRelCoord<T>, AbsOrRelCoord<T>),
 	Local(T, T, T),
@@ -128,7 +128,7 @@ impl<T: Debug + Num> Codegen for Rotation<T> {
 pub type DoubleRotation = Rotation<f64>;
 pub type IntRotation = Rotation<i64>;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum AbsOrRelCoord<T> {
 	Abs(T),
 	Rel(T),

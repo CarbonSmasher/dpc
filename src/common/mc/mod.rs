@@ -13,7 +13,7 @@ use self::pos::IntCoordinates;
 use self::entity::TargetSelector;
 use super::ResourceLocation;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum EntityTarget {
 	Player(String),
 	Selector(TargetSelector),
@@ -39,7 +39,7 @@ impl Debug for EntityTarget {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Score {
 	pub holder: EntityTarget,
 	pub objective: Identifier,
@@ -63,7 +63,7 @@ impl Debug for Score {
 
 pub type DataPath = String;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataLocation {
 	Block(IntCoordinates),
 	Entity(EntityTarget),
@@ -78,7 +78,7 @@ impl DataLocation {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FullDataLocation {
 	pub loc: DataLocation,
 	pub path: DataPath,
@@ -90,7 +90,7 @@ impl FullDataLocation {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum XPValue {
 	Points,
 	Levels,
@@ -109,7 +109,7 @@ impl Display for XPValue {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Difficulty {
 	Peaceful,
 	Easy,
@@ -155,7 +155,7 @@ impl Display for Gamemode {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Heightmap {
 	WorldSurface,
 	MotionBlocking,
@@ -174,7 +174,7 @@ impl Debug for Heightmap {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Weather {
 	Clear,
 	Rain,

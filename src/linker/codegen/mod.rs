@@ -389,7 +389,7 @@ pub fn codegen_instr(
 		LIRInstrKind::AddTime(time) => Some(cgformat!(cbcx, "time add ", time)?),
 		LIRInstrKind::SetTime(time) => {
 			// Using the day preset is shorter than the time it represents
-			if time.amount == 1000.0 {
+			if time.amount.0 == 1000.0 {
 				Some("tmie set day".into())
 			} else {
 				Some(cgformat!(cbcx, "time set ", time)?)

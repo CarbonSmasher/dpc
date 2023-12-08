@@ -13,7 +13,7 @@ macro_rules! def_compound {
 macro_rules! push_instrs {
 	($block:expr, $($instr:expr);* $(;)?) => {
 		$(
-			$block.contents.push(Instruction::new($instr));
+			$block.contents.push($crate::ir::Instruction::new($instr));
 		)*
 	};
 }

@@ -5,7 +5,7 @@ use crate::common::{ResourceLocation, ResourceLocationTag};
 
 use super::pos::IntCoordinates;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SetBlockData {
 	pub pos: IntCoordinates,
 	pub block: BlockData,
@@ -18,7 +18,7 @@ impl Debug for SetBlockData {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FillData {
 	pub start: IntCoordinates,
 	pub end: IntCoordinates,
@@ -36,7 +36,7 @@ impl Debug for FillData {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct CloneData {
 	pub source_dimension: Option<ResourceLocation>,
 	pub start: IntCoordinates,
@@ -69,7 +69,7 @@ impl Debug for CloneData {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FillBiomeData {
 	pub start: IntCoordinates,
 	pub end: IntCoordinates,
@@ -87,7 +87,7 @@ impl Debug for FillBiomeData {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BlockData {
 	pub block: ResourceLocation,
 	pub props: BlockProperties,
@@ -105,7 +105,7 @@ impl Debug for BlockData {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BlockFilter {
 	pub block: ResourceLocationTag,
 	pub props: BlockProperties,
@@ -117,7 +117,7 @@ impl Debug for BlockFilter {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BlockProperties {
 	pub data: NBTCompoundTypeContents,
 	pub states: BlockStates,
@@ -138,7 +138,7 @@ impl Debug for BlockProperties {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum SetBlockMode {
 	Destroy,
 	Keep,
@@ -155,7 +155,7 @@ impl Debug for SetBlockMode {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum FillMode {
 	Destroy,
 	Hollow,
@@ -182,7 +182,7 @@ impl Debug for FillMode {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum CloneMaskMode {
 	Replace,
 	Masked,
@@ -199,7 +199,7 @@ impl Debug for CloneMaskMode {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum CloneMode {
 	Force,
 	Move,
@@ -216,7 +216,7 @@ impl Debug for CloneMode {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BlockStates(HashMap<String, BlockStateValue>);
 
 impl BlockStates {
@@ -239,7 +239,7 @@ impl Debug for BlockStates {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockStateValue {
 	String(Identifier),
 }

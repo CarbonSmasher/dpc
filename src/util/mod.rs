@@ -169,3 +169,9 @@ where
 		self.is_empty
 	}
 }
+
+/// Float with Eq
+#[derive(PartialEq, Clone)]
+pub struct EqFloat(pub f32);
+
+impl Eq for EqFloat {}

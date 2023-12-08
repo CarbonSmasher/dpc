@@ -52,7 +52,7 @@ impl Debug for Block {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Instruction {
 	pub kind: InstrKind,
 }
@@ -69,7 +69,7 @@ impl Debug for Instruction {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum InstrKind {
 	Declare {
 		left: Identifier,
@@ -299,12 +299,12 @@ impl Debug for InstrKind {
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Call { call } => format!("call {call:?}"),
 			Self::Say { message } => format!("say {message}"),
-			Self::Tell { target, message } => format!("tell {target:?} {message}"),
+			Self::Tell { target, message } => format!("tell {target:?}, {message}"),
 			Self::Me { message } => format!("me {message}"),
 			Self::TeamMessage { message } => format!("tm {message}"),
 			Self::Banlist => "banl".into(),
-			Self::BanPlayers { targets, reason } => format!("ban {targets:?} {reason:?}"),
-			Self::BanIP { target, reason } => format!("bani {target} {reason:?}"),
+			Self::BanPlayers { targets, reason } => format!("ban {targets:?}, {reason:?}"),
+			Self::BanIP { target, reason } => format!("bani {target}, {reason:?}"),
 			Self::PardonPlayers { targets } => format!("par {targets:?}"),
 			Self::PardonIP { target } => format!("pari {target}"),
 			Self::Op { targets } => format!("op {targets:?}"),
@@ -315,7 +315,7 @@ impl Debug for InstrKind {
 			Self::WhitelistOff => "wloff".into(),
 			Self::WhitelistReload => "wlrl".into(),
 			Self::WhitelistList => "wll".into(),
-			Self::Kick { targets, reason } => format!("kick {targets:?} {reason:?}"),
+			Self::Kick { targets, reason } => format!("kick {targets:?}, {reason:?}"),
 			Self::ListPlayers => "lsp".into(),
 			Self::Publish => "pub".into(),
 			Self::Kill { target } => format!("kill {target:?}"),
@@ -329,29 +329,29 @@ impl Debug for InstrKind {
 				target,
 				enchantment,
 				level,
-			} => format!("ench {target:?} {enchantment} {level}"),
+			} => format!("ench {target:?}, {enchantment}, {level}"),
 			Self::SetXP {
 				target,
 				amount,
 				value,
-			} => format!("xps {target:?} {amount} {value}"),
+			} => format!("xps {target:?}, {amount}, {value}"),
 			Self::SetBlock { data } => format!("sb {data:?}"),
 			Self::Fill { data } => format!("fill {data:?}"),
 			Self::Clone { data } => format!("cln {data:?}"),
-			Self::SetWeather { weather, duration } => format!("setw {weather} {duration:?}"),
+			Self::SetWeather { weather, duration } => format!("setw {weather}, {duration:?}"),
 			Self::AddTime { time } => format!("addt {time:?}"),
 			Self::SetTime { time } => format!("sett {time:?}"),
 			Self::SetTimePreset { time } => format!("settp {time:?}"),
 			Self::GetTime { query } => format!("gett {query:?}"),
-			Self::AddTag { target, tag } => format!("taga {target:?} {tag}"),
-			Self::RemoveTag { target, tag } => format!("tagr {target:?} {tag}"),
+			Self::AddTag { target, tag } => format!("taga {target:?}, {tag}"),
+			Self::RemoveTag { target, tag } => format!("tagr {target:?}, {tag}"),
 			Self::ListTags { target } => format!("tagl {target:?}"),
-			Self::RideMount { target, vehicle } => format!("mnt {target:?} {vehicle:?}"),
+			Self::RideMount { target, vehicle } => format!("mnt {target:?}, {vehicle:?}"),
 			Self::RideDismount { target } => format!("dmnt {target:?}"),
 			Self::FillBiome { data } => format!("fillb {data:?}"),
-			Self::Spectate { target, spectator } => format!("spec {target:?} {spectator:?}"),
+			Self::Spectate { target, spectator } => format!("spec {target:?}, {spectator:?}"),
 			Self::SpectateStop => "specs".into(),
-			Self::SetGamemode { target, gamemode } => format!("setgm {target:?} {gamemode}"),
+			Self::SetGamemode { target, gamemode } => format!("setgm {target:?}, {gamemode}"),
 			Self::DefaultGamemode { gamemode } => format!("dgm {gamemode}"),
 		};
 		write!(f, "{text}")

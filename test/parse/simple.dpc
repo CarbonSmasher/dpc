@@ -1,0 +1,3 @@
+"test:main/main" {
+	let x: score = val const 7;
+}

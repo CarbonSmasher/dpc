@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 
 use super::{super::ty::NBTCompoundTypeContents, Gamemode};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct TargetSelector {
 	pub selector: SelectorType,
 	pub params: Vec<SelectorParameter>,

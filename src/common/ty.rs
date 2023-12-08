@@ -187,7 +187,7 @@ impl Debug for NBTArrayType {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum DataTypeContents {
 	Score(ScoreTypeContents),
 	NBT(NBTTypeContents),
@@ -211,7 +211,7 @@ impl Debug for DataTypeContents {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ScoreTypeContents {
 	Score(i32),
 	UScore(u16),
@@ -255,7 +255,7 @@ impl Debug for ScoreTypeContents {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum NBTTypeContents {
 	Byte(Byte),
 	Bool(bool),
@@ -328,7 +328,7 @@ impl Debug for NBTTypeContents {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum NBTArrayTypeContents {
 	Byte(Vec<Byte>, ArraySize),
 	Int(Vec<Int>, ArraySize),

@@ -1,16 +1,19 @@
 use std::fmt::Debug;
 
-use crate::linker::codegen::Codegen;
+use crate::{linker::codegen::Codegen, util::EqFloat};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Time {
-	pub amount: f32,
+	pub amount: EqFloat,
 	pub unit: TimeUnit,
 }
 
 impl Time {
 	pub fn new(amount: f32, unit: TimeUnit) -> Self {
-		Self { amount, unit }
+		Self {
+			amount: EqFloat(amount),
+			unit,
+		}
 	}
 
 	pub fn new_ticks(amount: f32) -> Self {
@@ -24,7 +27,7 @@ impl Time {
 
 impl Debug for Time {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.amount)?;
+		write!(f, "{}", self.amount.0)?;
 		self.unit.fmt(f)
 	}
 }
@@ -39,7 +42,7 @@ impl Codegen for Time {
 		F: std::fmt::Write,
 	{
 		let _ = cbcx;
-		write!(f, "{}", self.amount)?;
+		write!(f, "{}", self.amount.0)?;
 		match self.unit {
 			TimeUnit::Days => write!(f, "d")?,
 			TimeUnit::Seconds => write!(f, "s")?,
@@ -50,7 +53,7 @@ impl Codegen for Time {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum TimeUnit {
 	Days,
 	Seconds,
@@ -67,7 +70,7 @@ impl Debug for TimeUnit {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum TimePreset {
 	Day,
 	Night,
@@ -105,7 +108,7 @@ impl Codegen for TimePreset {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum TimeQuery {
 	Daytime,
 	Gametime,
