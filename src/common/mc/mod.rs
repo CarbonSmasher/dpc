@@ -1,7 +1,9 @@
 pub mod block;
 pub mod entity;
+pub mod item;
 pub mod modifier;
 pub mod pos;
+pub mod scoreboard_and_teams;
 pub mod time;
 
 use std::fmt::{Debug, Display};

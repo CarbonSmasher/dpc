@@ -165,6 +165,65 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 				InstrKind::DefaultGamemode { gamemode } => {
 					lower!(mir_block, DefaultGamemode, gamemode)
 				}
+				InstrKind::TeleportToEntity { source, dest } => {
+					lower!(mir_block, TeleportToEntity, source, dest)
+				}
+				InstrKind::TeleportToLocation { source, dest } => {
+					lower!(mir_block, TeleportToLocation, source, dest)
+				}
+				InstrKind::TeleportWithRotation {
+					source,
+					dest,
+					rotation,
+				} => {
+					lower!(mir_block, TeleportWithRotation, source, dest, rotation)
+				}
+				InstrKind::TeleportFacingLocation {
+					source,
+					dest,
+					facing,
+				} => {
+					lower!(mir_block, TeleportFacingLocation, source, dest, facing)
+				}
+				InstrKind::TeleportFacingEntity {
+					source,
+					dest,
+					facing,
+				} => {
+					lower!(mir_block, TeleportFacingEntity, source, dest, facing)
+				}
+				InstrKind::GiveItem {
+					target,
+					item,
+					amount,
+				} => {
+					lower!(mir_block, GiveItem, target, item, amount)
+				}
+				InstrKind::AddScoreboardObjective {
+					objective,
+					criterion,
+					display_name,
+				} => {
+					lower!(
+						mir_block,
+						AddScoreboardObjective,
+						objective,
+						criterion,
+						display_name
+					)
+				}
+				InstrKind::RemoveScoreboardObjective { objective } => {
+					lower!(mir_block, RemoveScoreboardObjective, objective)
+				}
+				InstrKind::ListScoreboardObjectives => {
+					lower!(mir_block, ListScoreboardObjectives)
+				}
+				InstrKind::TriggerAdd { objective, amount } => {
+					lower!(mir_block, TriggerAdd, objective, amount)
+				}
+				InstrKind::TriggerSet { objective, amount } => {
+					lower!(mir_block, TriggerSet, objective, amount)
+				}
 			}
 		}
 

@@ -93,7 +93,7 @@ impl<T: Debug + Num> Codegen for Coordinates<T> {
 pub type DoubleCoordinates = Coordinates<f64>;
 pub type IntCoordinates = Coordinates<i64>;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Rotation<T>(AbsOrRelCoord<T>, AbsOrRelCoord<T>);
 
 impl<T: Num> Rotation<T> {

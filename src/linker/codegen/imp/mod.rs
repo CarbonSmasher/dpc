@@ -7,7 +7,9 @@ use crate::common::mc::block::{
 	CloneMode, FillMode, SetBlockMode,
 };
 use crate::common::mc::entity::{SelectorSort, SelectorType};
+use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::{AlignAxes, AnchorLocation};
+use crate::common::mc::scoreboard_and_teams::SingleCriterion;
 use crate::common::mc::{
 	DataLocation, Difficulty, FullDataLocation, Gamemode, Heightmap, Weather, XPValue,
 };
@@ -92,6 +94,7 @@ macro_rules! impl_cg_str {
 impl_disp!(str);
 impl_disp!(String);
 impl_disp!(i32);
+impl_disp!(u32);
 impl_disp!(Arc<str>);
 
 // Value types
@@ -171,6 +174,7 @@ impl_disp!(Difficulty);
 impl_disp!(Gamemode);
 impl_dbg!(Heightmap);
 impl_disp!(Weather);
+impl_dbg!(SingleCriterion);
 
 // Selectors
 impl_disp!(SelectorSort);
@@ -251,6 +255,23 @@ cg_impl!(
 		}
 
 		write!(f, "]")?;
+		Ok(())
+	})
+);
+
+// Items
+cg_impl!(
+	ItemData,
+	self,
+	f,
+	cbcx,
+	(|| {
+		cgwrite!(f, cbcx, self.block)?;
+
+		if !self.nbt.is_empty() {
+			cgwrite!(f, cbcx, self.nbt.get_literal_str())?;
+		}
+
 		Ok(())
 	})
 );

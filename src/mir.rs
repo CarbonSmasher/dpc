@@ -6,6 +6,9 @@ use crate::common::function::{
 	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
 };
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
+use crate::common::mc::item::ItemData;
+use crate::common::mc::pos::{DoubleCoordinates, DoubleRotation};
+use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{Difficulty, EntityTarget, Gamemode, Weather, XPValue};
 use crate::common::ty::DataType;
@@ -303,6 +306,51 @@ pub enum MIRInstrKind {
 	DefaultGamemode {
 		gamemode: Gamemode,
 	},
+	TeleportToEntity {
+		source: Vec<EntityTarget>,
+		dest: EntityTarget,
+	},
+	TeleportToLocation {
+		source: Vec<EntityTarget>,
+		dest: DoubleCoordinates,
+	},
+	TeleportWithRotation {
+		source: Vec<EntityTarget>,
+		dest: DoubleCoordinates,
+		rotation: DoubleRotation,
+	},
+	TeleportFacingLocation {
+		source: Vec<EntityTarget>,
+		dest: DoubleCoordinates,
+		facing: DoubleCoordinates,
+	},
+	TeleportFacingEntity {
+		source: Vec<EntityTarget>,
+		dest: DoubleCoordinates,
+		facing: EntityTarget,
+	},
+	GiveItem {
+		target: EntityTarget,
+		item: ItemData,
+		amount: u32,
+	},
+	AddScoreboardObjective {
+		objective: String,
+		criterion: Criterion,
+		display_name: Option<String>,
+	},
+	RemoveScoreboardObjective {
+		objective: String,
+	},
+	ListScoreboardObjectives,
+	TriggerAdd {
+		objective: String,
+		amount: i32,
+	},
+	TriggerSet {
+		objective: String,
+		amount: i32,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -383,6 +431,43 @@ impl Debug for MIRInstrKind {
 			Self::SpectateStop => "specs".into(),
 			Self::SetGamemode { target, gamemode } => format!("setgm {target:?} {gamemode}"),
 			Self::DefaultGamemode { gamemode } => format!("dgm {gamemode}"),
+			Self::TeleportToEntity { source, dest } => format!("tpe {source:?} {dest:?}"),
+			Self::TeleportToLocation { source, dest } => format!("tpl {source:?} {dest:?}"),
+			Self::TeleportWithRotation {
+				source,
+				dest,
+				rotation,
+			} => format!("tpr {source:?} {dest:?} {rotation:?}"),
+			Self::TeleportFacingLocation {
+				source,
+				dest,
+				facing,
+			} => {
+				format!("tpfl {source:?} {dest:?} {facing:?}")
+			}
+			Self::TeleportFacingEntity {
+				source,
+				dest,
+				facing,
+			} => {
+				format!("tpfe {source:?} {dest:?} {facing:?}")
+			}
+			Self::GiveItem {
+				target,
+				item,
+				amount,
+			} => format!("itmg {target:?} {item:?} {amount}"),
+			Self::AddScoreboardObjective {
+				objective,
+				criterion,
+				display_name,
+			} => {
+				format!("sboa {objective} {criterion:?} {display_name:?}")
+			}
+			Self::RemoveScoreboardObjective { objective } => format!("sbor {objective}"),
+			Self::ListScoreboardObjectives => "sbol".into(),
+			Self::TriggerAdd { objective, amount } => format!("trga {objective}, {amount}"),
+			Self::TriggerSet { objective, amount } => format!("trgs {objective}, {amount}"),
 		};
 		write!(f, "{text}")
 	}

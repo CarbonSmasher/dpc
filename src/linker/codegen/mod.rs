@@ -9,6 +9,7 @@ use anyhow::{anyhow, bail, Context};
 
 use crate::common::mc::block::{CloneMaskMode, CloneMode, FillMode, SetBlockMode};
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
+use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::Score;
 use crate::common::ty::NBTTypeContents;
 use crate::common::{val::NBTValue, val::ScoreValue, RegisterList};
@@ -419,6 +420,125 @@ pub fn codegen_instr(
 			Some(cgformat!(cbcx, "gamemode ", gm, " ", target)?)
 		}
 		LIRInstrKind::DefaultGamemode(gm) => Some(cgformat!(cbcx, "defaultgamemode ", gm)?),
+		LIRInstrKind::ReturnValue(val) => Some(cgformat!(cbcx, "return ", val)?),
+		LIRInstrKind::ReturnFail => Some("return fail".into()),
+		LIRInstrKind::ReturnRun(fun) => Some(cgformat!(cbcx, "return run ", fun)?),
+		LIRInstrKind::TeleportToEntity(src, dest) => {
+			let mut out = String::new();
+			if src.is_empty() {
+				bail!("Target list empty");
+			}
+			cgwrite!(&mut out, cbcx, "tp ")?;
+			if !src.first().expect("Not empty").is_blank_this() {
+				cgwrite!(&mut out, cbcx, SpaceSepListCG(src), " ")?;
+			}
+			cgwrite!(&mut out, cbcx, dest)?;
+
+			Some(out)
+		}
+		LIRInstrKind::TeleportToLocation(src, dest) => {
+			let mut out = String::new();
+			if src.is_empty() {
+				bail!("Target list empty");
+			}
+			cgwrite!(&mut out, cbcx, "tp ")?;
+			if !src.first().expect("Not empty").is_blank_this() {
+				cgwrite!(&mut out, cbcx, SpaceSepListCG(src), " ")?;
+			}
+			cgwrite!(&mut out, cbcx, dest)?;
+
+			Some(out)
+		}
+		LIRInstrKind::TeleportWithRotation(src, dest, rot) => {
+			let mut out = String::new();
+			if src.is_empty() {
+				bail!("Target list empty");
+			}
+			cgwrite!(
+				&mut out,
+				cbcx,
+				"tp ",
+				SpaceSepListCG(src),
+				" ",
+				dest,
+				" ",
+				rot
+			)?;
+
+			Some(out)
+		}
+		LIRInstrKind::TeleportFacingLocation(src, dest, face) => {
+			let mut out = String::new();
+			if src.is_empty() {
+				bail!("Target list empty");
+			}
+			cgwrite!(
+				&mut out,
+				cbcx,
+				"tp ",
+				SpaceSepListCG(src),
+				" ",
+				dest,
+				" facing ",
+				face
+			)?;
+
+			Some(out)
+		}
+		LIRInstrKind::TeleportFacingEntity(src, dest, face) => {
+			let mut out = String::new();
+			if src.is_empty() {
+				bail!("Target list empty");
+			}
+			cgwrite!(
+				&mut out,
+				cbcx,
+				"tp ",
+				SpaceSepListCG(src),
+				" ",
+				dest,
+				" facing ",
+				face
+			)?;
+
+			Some(out)
+		}
+		LIRInstrKind::GiveItem(target, item, amount) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "give ", target, " ", item)?;
+			if *amount == 0 || (*amount as i64) > (i32::MAX as i64) {
+				bail!("Invalid item count");
+			}
+			if *amount != 1 {
+				cgwrite!(&mut out, cbcx, amount)?;
+			}
+			Some(out)
+		}
+		LIRInstrKind::AddScoreboardObjective(obj, crit, disp) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "scoreboard objectives add ", obj, " ")?;
+			match crit {
+				Criterion::Single(val) => val.gen_writer(&mut out, cbcx)?,
+				Criterion::Compound(val) => val.gen_writer(&mut out, cbcx)?,
+			}
+
+			if let Some(disp) = disp {
+				cgwrite!(&mut out, cbcx, " ", disp)?;
+			}
+			Some(out)
+		}
+		LIRInstrKind::RemoveScoreboardObjective(obj) => {
+			Some(cgformat!(cbcx, "scoreboard objectives remove ", obj)?)
+		}
+		LIRInstrKind::ListScoreboardObjectives => Some("scoreboard objectives list".into()),
+		LIRInstrKind::TriggerAdd(obj, amt) => {
+			if *amt == 1 {
+				Some(cgformat!(cbcx, "trigger ", obj)?)
+			} else {
+				Some(cgformat!(cbcx, "trigger ", obj, " add ", amt)?)
+			}
+		}
+		LIRInstrKind::TriggerSet(obj, amt) => Some(cgformat!(cbcx, "trigger ", obj, " set ", amt)?),
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

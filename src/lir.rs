@@ -3,7 +3,10 @@ use std::{collections::HashMap, fmt::Debug};
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::FunctionInterface;
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
+use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::Modifier;
+use crate::common::mc::pos::{DoubleCoordinates, DoubleRotation};
+use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{Difficulty, EntityTarget, Gamemode, Weather, XPValue};
 use crate::common::ty::ArraySize;
@@ -134,6 +137,11 @@ pub enum LIRInstrKind {
 	Use(MutableValue),
 	NoOp,
 	Call(ResourceLocation),
+	ReturnValue(i32),
+	ReturnFail,
+	ReturnRun(ResourceLocation),
+	TriggerAdd(String, i32),
+	TriggerSet(String, i32),
 	// Chat
 	Say(String),
 	Tell(EntityTarget, String),
@@ -168,7 +176,13 @@ pub enum LIRInstrKind {
 	Spectate(EntityTarget, EntityTarget),
 	SpectateStop,
 	SetGamemode(EntityTarget, Gamemode),
+	TeleportToEntity(Vec<EntityTarget>, EntityTarget),
+	TeleportToLocation(Vec<EntityTarget>, DoubleCoordinates),
+	TeleportWithRotation(Vec<EntityTarget>, DoubleCoordinates, DoubleRotation),
+	TeleportFacingLocation(Vec<EntityTarget>, DoubleCoordinates, DoubleCoordinates),
+	TeleportFacingEntity(Vec<EntityTarget>, DoubleCoordinates, EntityTarget),
 	// Items
+	GiveItem(EntityTarget, ItemData, u32),
 	Enchant(EntityTarget, ResourceLocation, i32),
 	// Blocks
 	SetBlock(SetBlockData),
@@ -185,6 +199,10 @@ pub enum LIRInstrKind {
 	SetTimePreset(TimePreset),
 	GetTime(TimeQuery),
 	DefaultGamemode(Gamemode),
+	// Teams and scoreboards
+	AddScoreboardObjective(String, Criterion, Option<String>),
+	RemoveScoreboardObjective(String),
+	ListScoreboardObjectives,
 	// Misc
 	Reload,
 	StopSound,
@@ -249,6 +267,9 @@ impl Debug for LIRInstrKind {
 			Self::Use(val) => format!("use {val:?}"),
 			Self::NoOp => "no".into(),
 			Self::Call(fun) => format!("call {fun}"),
+			Self::ReturnValue(val) => format!("retv {val}"),
+			Self::ReturnFail => "retf".into(),
+			Self::ReturnRun(fun) => format!("retr {fun}"),
 			Self::Say(text) => format!("say {text}"),
 			Self::Tell(target, text) => format!("tell {target:?} {text}"),
 			Self::Me(text) => format!("me {text}"),
@@ -296,6 +317,23 @@ impl Debug for LIRInstrKind {
 			Self::Enchant(target, ench, lvl) => format!("ench {target:?} {ench} {lvl}"),
 			Self::SetGamemode(target, gm) => format!("setgm {target:?} {gm}"),
 			Self::DefaultGamemode(gm) => format!("dgm {gm}"),
+			Self::TeleportToEntity(src, dest) => format!("tpe {src:?} {dest:?}"),
+			Self::TeleportToLocation(src, dest) => format!("tpl {src:?} {dest:?}"),
+			Self::TeleportWithRotation(src, dest, rot) => format!("tpr {src:?} {dest:?} {rot:?}"),
+			Self::TeleportFacingLocation(src, dest, face) => {
+				format!("tpfl {src:?} {dest:?} {face:?}")
+			}
+			Self::TeleportFacingEntity(src, dest, face) => {
+				format!("tpfe {src:?} {dest:?} {face:?}")
+			}
+			Self::GiveItem(tgt, item, amt) => format!("itmg {tgt:?} {item:?} {amt}"),
+			Self::AddScoreboardObjective(obj, crit, disp) => {
+				format!("sboa {obj} {crit:?} {disp:?}")
+			}
+			Self::RemoveScoreboardObjective(obj) => format!("sbor {obj}"),
+			Self::ListScoreboardObjectives => "sbol".into(),
+			Self::TriggerAdd(obj, amt) => format!("trga {obj}, {amt}"),
+			Self::TriggerSet(obj, amt) => format!("trgs {obj}, {amt}"),
 		};
 		write!(f, "{text}")
 	}

@@ -306,6 +306,65 @@ fn lower_kind(
 				},
 			);
 		}
+		MIRInstrKind::TeleportToEntity { source, dest } => {
+			lower!(lir_instrs, TeleportToEntity, source, dest)
+		}
+		MIRInstrKind::TeleportToLocation { source, dest } => {
+			lower!(lir_instrs, TeleportToLocation, source, dest)
+		}
+		MIRInstrKind::TeleportWithRotation {
+			source,
+			dest,
+			rotation,
+		} => {
+			lower!(lir_instrs, TeleportWithRotation, source, dest, rotation)
+		}
+		MIRInstrKind::TeleportFacingLocation {
+			source,
+			dest,
+			facing,
+		} => {
+			lower!(lir_instrs, TeleportFacingLocation, source, dest, facing)
+		}
+		MIRInstrKind::TeleportFacingEntity {
+			source,
+			dest,
+			facing,
+		} => {
+			lower!(lir_instrs, TeleportFacingEntity, source, dest, facing)
+		}
+		MIRInstrKind::GiveItem {
+			target,
+			item,
+			amount,
+		} => {
+			lower!(lir_instrs, GiveItem, target, item, amount)
+		}
+		MIRInstrKind::AddScoreboardObjective {
+			objective,
+			criterion,
+			display_name,
+		} => {
+			lower!(
+				lir_instrs,
+				AddScoreboardObjective,
+				objective,
+				criterion,
+				display_name
+			)
+		}
+		MIRInstrKind::RemoveScoreboardObjective { objective } => {
+			lower!(lir_instrs, RemoveScoreboardObjective, objective)
+		}
+		MIRInstrKind::ListScoreboardObjectives => {
+			lower!(lir_instrs, ListScoreboardObjectives)
+		}
+		MIRInstrKind::TriggerAdd { objective, amount } => {
+			lower!(lir_instrs, TriggerAdd, objective, amount)
+		}
+		MIRInstrKind::TriggerSet { objective, amount } => {
+			lower!(lir_instrs, TriggerSet, objective, amount)
+		}
 	}
 	Ok(())
 }
