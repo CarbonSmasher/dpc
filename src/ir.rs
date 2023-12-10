@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
+use crate::common::condition::Condition;
 use crate::common::function::{CallInterface, FunctionInterface};
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::entity::{AttributeType, UUID};
@@ -148,6 +149,10 @@ pub enum InstrKind {
 	},
 	Use {
 		val: MutableValue,
+	},
+	If {
+		condition: Condition,
+		body: Box<InstrKind>,
 	},
 	Call {
 		call: CallInterface,
@@ -598,6 +603,7 @@ impl Debug for InstrKind {
 				respect_teams,
 				target,
 			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
+			Self::If { condition, body } => format!("if {condition:?}: {body:?}"),
 		};
 		write!(f, "{text}")
 	}

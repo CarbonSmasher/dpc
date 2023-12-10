@@ -1,5 +1,6 @@
 use anyhow::{bail, Context};
 
+use crate::common::condition::Condition;
 use crate::common::mc::Difficulty;
 use crate::common::ty::{DataType, DataTypeContents, ScoreType, ScoreTypeContents};
 use crate::common::val::{MutableValue, Value};
@@ -16,8 +17,8 @@ pub fn parse_body(body: UnparsedBody) -> anyhow::Result<Vec<Instruction>> {
 	// Split into the tokens for each instruction
 	let split = body.split(|x| matches!(x.0, Token::Semicolon));
 	for instr in split {
-		let instr = parse_instr(instr).context("Failed to parse instruction")?;
-		out.extend(instr);
+		let instr = parse_instr(&mut instr.iter()).context("Failed to parse instruction")?;
+		out.extend(instr.map(Instruction::new));
 	}
 
 	Ok(out)
@@ -97,87 +98,87 @@ macro_rules! consume_optional_extract {
 	}};
 }
 
-fn parse_instr(toks: &[TokenAndPos]) -> anyhow::Result<Option<Instruction>> {
-	let mut iter = toks.iter();
-
-	let instr = consume_extract!(iter, Ident, { return Ok(None) });
+fn parse_instr<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<Option<InstrKind>> {
+	let instr = consume_extract!(toks, Ident, { return Ok(None) });
 
 	let instr = match instr.as_str() {
-		"let" => parse_let(&mut iter),
+		"let" => parse_let(toks),
 		"set" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Assign { left: l, right: r })
 		}
 		"add" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Add { left: l, right: r })
 		}
 		"sub" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Sub { left: l, right: r })
 		}
 		"mul" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Mul { left: l, right: r })
 		}
 		"div" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Div { left: l, right: r })
 		}
 		"mod" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Mod { left: l, right: r })
 		}
 		"min" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Min { left: l, right: r })
 		}
 		"max" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Max { left: l, right: r })
 		}
 		"swap" => {
-			let (l, r) = parse_swap(&mut iter)?;
+			let (l, r) = parse_swap(toks)?;
 			Ok(InstrKind::Swap { left: l, right: r })
 		}
 		"abs" => {
-			let reg = consume_extract!(iter, Ident, { bail!("Missing register name") });
+			let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
 			Ok(InstrKind::Abs {
 				val: MutableValue::Register(reg.clone().into()),
 			})
 		}
 		"pow" => {
-			let (l, r) = parse_pow(&mut iter)?;
+			let (l, r) = parse_pow(toks)?;
 			Ok(InstrKind::Pow { base: l, exp: r })
 		}
 		"use" => {
-			let reg = consume_extract!(iter, Ident, { bail!("Missing register name") });
+			let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
 			Ok(InstrKind::Use {
 				val: MutableValue::Register(reg.clone().into()),
 			})
 		}
 		"get" => {
-			let reg = consume_extract!(iter, Ident, { bail!("Missing register name") });
+			let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
 			Ok(InstrKind::Get {
 				value: MutableValue::Register(reg.clone().into()),
 			})
 		}
 		"mrg" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Merge { left: l, right: r })
 		}
 		"psh" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Push { left: l, right: r })
 		}
 		"pshf" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
+			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::PushFront { left: l, right: r })
 		}
 		"ins" => {
-			let (l, r) = parse_simple_op(&mut iter)?;
-			consume_expect!(iter, Comma, { bail!("Missing comma") });
-			let idx = consume_extract!(iter, Num, { bail!("Missing exponent") });
+			let (l, r) = parse_simple_op(toks)?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let idx = consume_extract!(toks, Num, { bail!("Missing exponent") });
 			Ok(InstrKind::Insert {
 				left: l,
 				right: r,
@@ -185,35 +186,35 @@ fn parse_instr(toks: &[TokenAndPos]) -> anyhow::Result<Option<Instruction>> {
 			})
 		}
 		"say" => {
-			let msg = consume_extract!(iter, Str, { bail!("Missing message") });
+			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
 			Ok(InstrKind::Say {
 				message: msg.clone(),
 			})
 		}
 		"me" => {
-			let msg = consume_extract!(iter, Str, { bail!("Missing message") });
+			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
 			Ok(InstrKind::Me {
 				message: msg.clone(),
 			})
 		}
 		"tm" => {
-			let msg = consume_extract!(iter, Str, { bail!("Missing message") });
+			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
 			Ok(InstrKind::TeamMessage {
 				message: msg.clone(),
 			})
 		}
 		"banl" => Ok(InstrKind::Banlist),
 		"bani" => {
-			let tgt = consume_extract!(iter, Str, { bail!("Missing target") });
-			consume_optional_expect!(iter, Comma);
-			let reason = consume_optional_extract!(iter, Str);
+			let tgt = consume_extract!(toks, Str, { bail!("Missing target") });
+			consume_optional_expect!(toks, Comma);
+			let reason = consume_optional_extract!(toks, Str);
 			Ok(InstrKind::BanIP {
 				target: tgt.clone(),
 				reason: reason.cloned(),
 			})
 		}
 		"pari" => {
-			let tgt = consume_extract!(iter, Str, { bail!("Missing target") });
+			let tgt = consume_extract!(toks, Str, { bail!("Missing target") });
 			Ok(InstrKind::PardonIP {
 				target: tgt.clone(),
 			})
@@ -230,17 +231,18 @@ fn parse_instr(toks: &[TokenAndPos]) -> anyhow::Result<Option<Instruction>> {
 		"stops" => Ok(InstrKind::StopSound),
 		"diffg" => Ok(InstrKind::GetDifficulty),
 		"diffs" => {
-			let diff = consume_extract!(iter, Ident, { bail!("Missing difficulty") });
+			let diff = consume_extract!(toks, Ident, { bail!("Missing difficulty") });
 			let Some(diff) = Difficulty::parse(diff) else {
 				bail!("Invalid difficulty");
 			};
 			Ok(InstrKind::SetDifficulty { difficulty: diff })
 		}
 		"specs" => Ok(InstrKind::SpectateStop),
+		"if" => parse_if(toks).context("Failed to parse if"),
 		other => bail!("Unknown instruction {other}"),
 	}
 	.context("Failed to parse instruction")?;
-	Ok(Some(Instruction::new(instr)))
+	Ok(Some(instr))
 }
 
 fn parse_let<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<InstrKind> {
@@ -308,6 +310,15 @@ fn parse_decl_binding<'t>(
 			let val = parse_val(toks).context("Failed to parse value")?;
 			Ok(DeclareBinding::Value(val))
 		}
+		"null" => Ok(DeclareBinding::Null),
+		"cast" => {
+			let ty = parse_ty(toks).context("Failed to parse cast type")?;
+			let reg = consume_extract!(toks, Ident, { bail!("Missing cast register name") });
+			Ok(DeclareBinding::Cast(
+				ty,
+				MutableValue::Register(reg.clone().into()),
+			))
+		}
 		other => bail!("Unknown type {other}"),
 	}
 }
@@ -338,5 +349,39 @@ fn parse_lit<'t>(
 		// TODO: More num literals
 		Token::Num(num) => Ok(DataTypeContents::Score(ScoreTypeContents::Score(*num))),
 		other => bail!("Unexpected token {other:?} {pos}"),
+	}
+}
+
+fn parse_if<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<InstrKind> {
+	let condition = parse_condition(toks).context("Failed to parse if condition")?;
+	consume_expect!(toks, Colon, { bail!("Missing colon") });
+	let instr = parse_instr(toks).context("Failed to parse if body instruction")?;
+	let Some(instr) = instr else { bail!("If instruction missing") };
+	Ok(InstrKind::If {
+		condition,
+		body: Box::new(instr),
+	})
+}
+
+fn parse_condition<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<Condition> {
+	let ty = consume_extract!(toks, Ident, { bail!("Missing condition type token") });
+	match ty.as_str() {
+		"eq" => {
+			let l = parse_val(toks).context("Failed to parse eq left hand side")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let r = parse_val(toks).context("Failed to parse eq right hand side")?;
+			Ok(Condition::Equal(l, r))
+		}
+		"exists" => {
+			let val = parse_val(toks).context("Failed to parse exists value")?;
+			Ok(Condition::Exists(val))
+		}
+		"not" => {
+			let condition = parse_condition(toks).context("Failed to parse not condition")?;
+			Ok(Condition::Not(Box::new(condition)))
+		}
+		other => bail!("Unknown condition type {other}"),
 	}
 }

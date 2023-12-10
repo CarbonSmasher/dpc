@@ -2,23 +2,7 @@ use crate::common::{val::MutableValue, DeclareBinding};
 use crate::ir::{InstrKind, IR};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction, MIR};
 
-use anyhow::anyhow;
-
-macro_rules! lower {
-	($mir_block:expr, $kind:ident) => {
-		lower!($mir_block, MIRInstrKind::$kind)
-	};
-
-	($mir_block:expr, $kind:ident, $($arg:ident),+) => {
-		lower!($mir_block, MIRInstrKind::$kind {$($arg),+})
-	};
-
-	($mir_block:expr, $val:expr) => {
-		$mir_block
-			.contents
-			.push(MIRInstruction::new($val))
-	};
-}
+use anyhow::{anyhow, Context};
 
 /// Lower IR to MIR
 pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
@@ -32,296 +16,10 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 		let mut mir_block = MIRBlock::with_capacity(block.contents.len());
 
 		for ir_instr in block.contents {
-			match ir_instr.kind {
-				InstrKind::Declare { left, ty, right } => {
-					let left_clone = left.clone();
-					lower!(mir_block, Declare, left, ty);
-					lower!(
-						mir_block,
-						MIRInstrKind::Assign {
-							left: MutableValue::Register(left_clone),
-							right,
-						}
-					);
-				}
-				InstrKind::Assign { left, right } => {
-					lower!(
-						mir_block,
-						MIRInstrKind::Assign {
-							left,
-							right: DeclareBinding::Value(right),
-						}
-					);
-				}
-				InstrKind::Add { left, right } => lower!(mir_block, Add, left, right),
-				InstrKind::Sub { left, right } => lower!(mir_block, Sub, left, right),
-				InstrKind::Mul { left, right } => lower!(mir_block, Mul, left, right),
-				InstrKind::Div { left, right } => lower!(mir_block, Div, left, right),
-				InstrKind::Mod { left, right } => lower!(mir_block, Mod, left, right),
-				InstrKind::Min { left, right } => lower!(mir_block, Min, left, right),
-				InstrKind::Max { left, right } => lower!(mir_block, Max, left, right),
-				InstrKind::Swap { left, right } => lower!(mir_block, Swap, left, right),
-				InstrKind::Abs { val } => lower!(mir_block, Abs, val),
-				InstrKind::Pow { base, exp } => lower!(mir_block, Pow, base, exp),
-				InstrKind::Get { value } => lower!(mir_block, Get, value),
-				InstrKind::Merge { left, right } => lower!(mir_block, Merge, left, right),
-				InstrKind::Push { left, right } => lower!(mir_block, Push, left, right),
-				InstrKind::PushFront { left, right } => lower!(mir_block, PushFront, left, right),
-				InstrKind::Insert { left, right, index } => {
-					lower!(mir_block, Insert, left, right, index)
-				}
-				InstrKind::Use { val } => lower!(mir_block, Use, val),
-				InstrKind::Call { call } => lower!(mir_block, Call, call),
-				InstrKind::Say { message } => lower!(mir_block, Say, message),
-				InstrKind::Tell { target, message } => {
-					lower!(mir_block, Tell, target, message)
-				}
-				InstrKind::Me { message } => {
-					lower!(mir_block, Me, message)
-				}
-				InstrKind::TeamMessage { message } => {
-					lower!(mir_block, TeamMessage, message)
-				}
-				InstrKind::BanPlayers { targets, reason } => {
-					lower!(mir_block, BanPlayers, targets, reason)
-				}
-				InstrKind::BanIP { target, reason } => {
-					lower!(mir_block, BanIP, target, reason)
-				}
-				InstrKind::PardonPlayers { targets } => {
-					lower!(mir_block, PardonPlayers, targets)
-				}
-				InstrKind::PardonIP { target } => {
-					lower!(mir_block, PardonIP, target)
-				}
-				InstrKind::Op { targets } => {
-					lower!(mir_block, Op, targets)
-				}
-				InstrKind::Deop { targets } => {
-					lower!(mir_block, Deop, targets)
-				}
-				InstrKind::WhitelistAdd { targets } => {
-					lower!(mir_block, WhitelistAdd, targets)
-				}
-				InstrKind::WhitelistRemove { targets } => {
-					lower!(mir_block, WhitelistRemove, targets)
-				}
-				InstrKind::Kick { targets, reason } => {
-					lower!(mir_block, Kick, targets, reason)
-				}
-				InstrKind::SetDifficulty { difficulty } => {
-					lower!(mir_block, SetDifficulty, difficulty)
-				}
-				InstrKind::ListPlayers => lower!(mir_block, ListPlayers),
-				InstrKind::Seed => lower!(mir_block, Seed),
-				InstrKind::Banlist => lower!(mir_block, Banlist),
-				InstrKind::WhitelistList => lower!(mir_block, WhitelistList),
-				InstrKind::WhitelistOn => lower!(mir_block, WhitelistOn),
-				InstrKind::WhitelistOff => lower!(mir_block, WhitelistOff),
-				InstrKind::WhitelistReload => lower!(mir_block, WhitelistReload),
-				InstrKind::StopServer => lower!(mir_block, StopServer),
-				InstrKind::StopSound => lower!(mir_block, StopSound),
-				InstrKind::GetDifficulty => lower!(mir_block, GetDifficulty),
-				InstrKind::Publish => lower!(mir_block, Publish),
-				InstrKind::Enchant {
-					target,
-					enchantment,
-					level,
-				} => {
-					lower!(mir_block, Enchant, target, enchantment, level)
-				}
-				InstrKind::Kill { target } => lower!(mir_block, Kill, target),
-				InstrKind::Reload => lower!(mir_block, Reload),
-				InstrKind::SetXP {
-					target,
-					amount,
-					value,
-				} => lower!(mir_block, SetXP, target, amount, value),
-				InstrKind::SetBlock { data } => lower!(mir_block, SetBlock, data),
-				InstrKind::Fill { data } => lower!(mir_block, Fill, data),
-				InstrKind::Clone { data } => lower!(mir_block, Clone, data),
-				InstrKind::SetWeather { weather, duration } => {
-					lower!(mir_block, SetWeather, weather, duration)
-				}
-				InstrKind::AddTime { time } => lower!(mir_block, AddTime, time),
-				InstrKind::SetTime { time } => lower!(mir_block, SetTime, time),
-				InstrKind::SetTimePreset { time } => lower!(mir_block, SetTimePreset, time),
-				InstrKind::GetTime { query } => lower!(mir_block, GetTime, query),
-				InstrKind::AddTag { target, tag } => lower!(mir_block, AddTag, target, tag),
-				InstrKind::RemoveTag { target, tag } => lower!(mir_block, RemoveTag, target, tag),
-				InstrKind::ListTags { target } => lower!(mir_block, ListTags, target),
-				InstrKind::RideMount { target, vehicle } => {
-					lower!(mir_block, RideMount, target, vehicle)
-				}
-				InstrKind::RideDismount { target } => lower!(mir_block, RideDismount, target),
-				InstrKind::FillBiome { data } => lower!(mir_block, FillBiome, data),
-				InstrKind::Spectate { target, spectator } => {
-					lower!(mir_block, Spectate, target, spectator)
-				}
-				InstrKind::SpectateStop => lower!(mir_block, SpectateStop),
-				InstrKind::SetGamemode { target, gamemode } => {
-					lower!(mir_block, SetGamemode, target, gamemode)
-				}
-				InstrKind::DefaultGamemode { gamemode } => {
-					lower!(mir_block, DefaultGamemode, gamemode)
-				}
-				InstrKind::TeleportToEntity { source, dest } => {
-					lower!(mir_block, TeleportToEntity, source, dest)
-				}
-				InstrKind::TeleportToLocation { source, dest } => {
-					lower!(mir_block, TeleportToLocation, source, dest)
-				}
-				InstrKind::TeleportWithRotation {
-					source,
-					dest,
-					rotation,
-				} => {
-					lower!(mir_block, TeleportWithRotation, source, dest, rotation)
-				}
-				InstrKind::TeleportFacingLocation {
-					source,
-					dest,
-					facing,
-				} => {
-					lower!(mir_block, TeleportFacingLocation, source, dest, facing)
-				}
-				InstrKind::TeleportFacingEntity {
-					source,
-					dest,
-					facing,
-				} => {
-					lower!(mir_block, TeleportFacingEntity, source, dest, facing)
-				}
-				InstrKind::GiveItem {
-					target,
-					item,
-					amount,
-				} => {
-					lower!(mir_block, GiveItem, target, item, amount)
-				}
-				InstrKind::AddScoreboardObjective {
-					objective,
-					criterion,
-					display_name,
-				} => {
-					lower!(
-						mir_block,
-						AddScoreboardObjective,
-						objective,
-						criterion,
-						display_name
-					)
-				}
-				InstrKind::RemoveScoreboardObjective { objective } => {
-					lower!(mir_block, RemoveScoreboardObjective, objective)
-				}
-				InstrKind::ListScoreboardObjectives => {
-					lower!(mir_block, ListScoreboardObjectives)
-				}
-				InstrKind::TriggerAdd { objective, amount } => {
-					lower!(mir_block, TriggerAdd, objective, amount)
-				}
-				InstrKind::TriggerSet { objective, amount } => {
-					lower!(mir_block, TriggerSet, objective, amount)
-				}
-				InstrKind::GetAttribute {
-					target,
-					attribute,
-					scale,
-				} => lower!(mir_block, GetAttribute, target, attribute, scale),
-				InstrKind::GetAttributeBase {
-					target,
-					attribute,
-					scale,
-				} => lower!(mir_block, GetAttributeBase, target, attribute, scale),
-				InstrKind::SetAttributeBase {
-					target,
-					attribute,
-					value,
-				} => lower!(mir_block, SetAttributeBase, target, attribute, value),
-				InstrKind::AddAttributeModifier {
-					target,
-					attribute,
-					uuid,
-					name,
-					value,
-					ty,
-				} => lower!(
-					mir_block,
-					AddAttributeModifier,
-					target,
-					attribute,
-					uuid,
-					name,
-					value,
-					ty
-				),
-				InstrKind::RemoveAttributeModifier {
-					target,
-					attribute,
-					uuid,
-				} => lower!(mir_block, RemoveAttributeModifier, target, attribute, uuid),
-				InstrKind::GetAttributeModifier {
-					target,
-					attribute,
-					uuid,
-					scale,
-				} => lower!(
-					mir_block,
-					GetAttributeModifier,
-					target,
-					attribute,
-					uuid,
-					scale
-				),
-				InstrKind::DisableDatapack { pack } => lower!(mir_block, DisableDatapack, pack),
-				InstrKind::EnableDatapack { pack } => lower!(mir_block, EnableDatapack, pack),
-				InstrKind::SetDatapackPriority { pack, priority } => {
-					lower!(mir_block, SetDatapackPriority, pack, priority)
-				}
-				InstrKind::SetDatapackOrder {
-					pack,
-					order,
-					existing,
-				} => {
-					lower!(mir_block, SetDatapackOrder, pack, order, existing)
-				}
-				InstrKind::ListDatapacks { mode } => lower!(mir_block, ListDatapacks, mode),
-				InstrKind::ListPlayerUUIDs => lower!(mir_block, ListPlayerUUIDs),
-				InstrKind::SummonEntity { entity, pos, nbt } => {
-					lower!(mir_block, SummonEntity, entity, pos, nbt)
-				}
-				InstrKind::SetWorldSpawn { pos, angle } => {
-					lower!(mir_block, SetWorldSpawn, pos, angle)
-				}
-				InstrKind::ClearItems {
-					targets,
-					item,
-					max_count,
-				} => lower!(mir_block, ClearItems, targets, item, max_count),
-				InstrKind::SetSpawnpoint {
-					targets,
-					pos,
-					angle,
-				} => lower!(mir_block, SetSpawnpoint, targets, pos, angle),
-				InstrKind::SpreadPlayers {
-					center,
-					spread_distance,
-					max_range,
-					max_height,
-					respect_teams,
-					target,
-				} => lower!(
-					mir_block,
-					SpreadPlayers,
-					center,
-					spread_distance,
-					max_range,
-					max_height,
-					respect_teams,
-					target
-				),
-			}
+			let (prelude, instr) =
+				lower_kind(ir_instr.kind).context("Failed to lower instruction")?;
+			mir_block.contents.extend(prelude);
+			mir_block.contents.push(MIRInstruction::new(instr));
 		}
 
 		let id = mir.blocks.add(mir_block);
@@ -329,4 +27,301 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 	}
 
 	Ok(mir)
+}
+
+macro_rules! lower {
+	($kind:ident) => {
+		MIRInstrKind::$kind
+	};
+
+	($kind:ident, $($arg:ident),+) => {
+		MIRInstrKind::$kind {$($arg),+}
+	};
+
+	($kind:expr) => {
+		$kind
+	}
+}
+
+fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrKind)> {
+	let mut prelude = Vec::new();
+	let kind = match kind {
+		InstrKind::Declare { left, ty, right } => {
+			let left_clone = left.clone();
+			prelude.push(MIRInstruction::new(lower!(Declare, left, ty)));
+			lower!(MIRInstrKind::Assign {
+				left: MutableValue::Register(left_clone),
+				right,
+			})
+		}
+		InstrKind::Assign { left, right } => {
+			lower!(MIRInstrKind::Assign {
+				left,
+				right: DeclareBinding::Value(right),
+			})
+		}
+		InstrKind::Add { left, right } => lower!(Add, left, right),
+		InstrKind::Sub { left, right } => lower!(Sub, left, right),
+		InstrKind::Mul { left, right } => lower!(Mul, left, right),
+		InstrKind::Div { left, right } => lower!(Div, left, right),
+		InstrKind::Mod { left, right } => lower!(Mod, left, right),
+		InstrKind::Min { left, right } => lower!(Min, left, right),
+		InstrKind::Max { left, right } => lower!(Max, left, right),
+		InstrKind::Swap { left, right } => lower!(Swap, left, right),
+		InstrKind::Abs { val } => lower!(Abs, val),
+		InstrKind::Pow { base, exp } => lower!(Pow, base, exp),
+		InstrKind::Get { value } => lower!(Get, value),
+		InstrKind::Merge { left, right } => lower!(Merge, left, right),
+		InstrKind::Push { left, right } => lower!(Push, left, right),
+		InstrKind::PushFront { left, right } => lower!(PushFront, left, right),
+		InstrKind::Insert { left, right, index } => {
+			lower!(Insert, left, right, index)
+		}
+		InstrKind::Use { val } => lower!(Use, val),
+		InstrKind::Call { call } => lower!(Call, call),
+		InstrKind::Say { message } => lower!(Say, message),
+		InstrKind::Tell { target, message } => {
+			lower!(Tell, target, message)
+		}
+		InstrKind::Me { message } => {
+			lower!(Me, message)
+		}
+		InstrKind::TeamMessage { message } => {
+			lower!(TeamMessage, message)
+		}
+		InstrKind::BanPlayers { targets, reason } => {
+			lower!(BanPlayers, targets, reason)
+		}
+		InstrKind::BanIP { target, reason } => {
+			lower!(BanIP, target, reason)
+		}
+		InstrKind::PardonPlayers { targets } => {
+			lower!(PardonPlayers, targets)
+		}
+		InstrKind::PardonIP { target } => {
+			lower!(PardonIP, target)
+		}
+		InstrKind::Op { targets } => {
+			lower!(Op, targets)
+		}
+		InstrKind::Deop { targets } => {
+			lower!(Deop, targets)
+		}
+		InstrKind::WhitelistAdd { targets } => {
+			lower!(WhitelistAdd, targets)
+		}
+		InstrKind::WhitelistRemove { targets } => {
+			lower!(WhitelistRemove, targets)
+		}
+		InstrKind::Kick { targets, reason } => {
+			lower!(Kick, targets, reason)
+		}
+		InstrKind::SetDifficulty { difficulty } => {
+			lower!(SetDifficulty, difficulty)
+		}
+		InstrKind::ListPlayers => lower!(ListPlayers),
+		InstrKind::Seed => lower!(Seed),
+		InstrKind::Banlist => lower!(Banlist),
+		InstrKind::WhitelistList => lower!(WhitelistList),
+		InstrKind::WhitelistOn => lower!(WhitelistOn),
+		InstrKind::WhitelistOff => lower!(WhitelistOff),
+		InstrKind::WhitelistReload => lower!(WhitelistReload),
+		InstrKind::StopServer => lower!(StopServer),
+		InstrKind::StopSound => lower!(StopSound),
+		InstrKind::GetDifficulty => lower!(GetDifficulty),
+		InstrKind::Publish => lower!(Publish),
+		InstrKind::Enchant {
+			target,
+			enchantment,
+			level,
+		} => {
+			lower!(Enchant, target, enchantment, level)
+		}
+		InstrKind::Kill { target } => lower!(Kill, target),
+		InstrKind::Reload => lower!(Reload),
+		InstrKind::SetXP {
+			target,
+			amount,
+			value,
+		} => lower!(SetXP, target, amount, value),
+		InstrKind::SetBlock { data } => lower!(SetBlock, data),
+		InstrKind::Fill { data } => lower!(Fill, data),
+		InstrKind::Clone { data } => lower!(Clone, data),
+		InstrKind::SetWeather { weather, duration } => {
+			lower!(SetWeather, weather, duration)
+		}
+		InstrKind::AddTime { time } => lower!(AddTime, time),
+		InstrKind::SetTime { time } => lower!(SetTime, time),
+		InstrKind::SetTimePreset { time } => lower!(SetTimePreset, time),
+		InstrKind::GetTime { query } => lower!(GetTime, query),
+		InstrKind::AddTag { target, tag } => lower!(AddTag, target, tag),
+		InstrKind::RemoveTag { target, tag } => lower!(RemoveTag, target, tag),
+		InstrKind::ListTags { target } => lower!(ListTags, target),
+		InstrKind::RideMount { target, vehicle } => {
+			lower!(RideMount, target, vehicle)
+		}
+		InstrKind::RideDismount { target } => lower!(RideDismount, target),
+		InstrKind::FillBiome { data } => lower!(FillBiome, data),
+		InstrKind::Spectate { target, spectator } => {
+			lower!(Spectate, target, spectator)
+		}
+		InstrKind::SpectateStop => lower!(SpectateStop),
+		InstrKind::SetGamemode { target, gamemode } => {
+			lower!(SetGamemode, target, gamemode)
+		}
+		InstrKind::DefaultGamemode { gamemode } => {
+			lower!(DefaultGamemode, gamemode)
+		}
+		InstrKind::TeleportToEntity { source, dest } => {
+			lower!(TeleportToEntity, source, dest)
+		}
+		InstrKind::TeleportToLocation { source, dest } => {
+			lower!(TeleportToLocation, source, dest)
+		}
+		InstrKind::TeleportWithRotation {
+			source,
+			dest,
+			rotation,
+		} => {
+			lower!(TeleportWithRotation, source, dest, rotation)
+		}
+		InstrKind::TeleportFacingLocation {
+			source,
+			dest,
+			facing,
+		} => {
+			lower!(TeleportFacingLocation, source, dest, facing)
+		}
+		InstrKind::TeleportFacingEntity {
+			source,
+			dest,
+			facing,
+		} => {
+			lower!(TeleportFacingEntity, source, dest, facing)
+		}
+		InstrKind::GiveItem {
+			target,
+			item,
+			amount,
+		} => {
+			lower!(GiveItem, target, item, amount)
+		}
+		InstrKind::AddScoreboardObjective {
+			objective,
+			criterion,
+			display_name,
+		} => {
+			lower!(AddScoreboardObjective, objective, criterion, display_name)
+		}
+		InstrKind::RemoveScoreboardObjective { objective } => {
+			lower!(RemoveScoreboardObjective, objective)
+		}
+		InstrKind::ListScoreboardObjectives => {
+			lower!(ListScoreboardObjectives)
+		}
+		InstrKind::TriggerAdd { objective, amount } => {
+			lower!(TriggerAdd, objective, amount)
+		}
+		InstrKind::TriggerSet { objective, amount } => {
+			lower!(TriggerSet, objective, amount)
+		}
+		InstrKind::GetAttribute {
+			target,
+			attribute,
+			scale,
+		} => lower!(GetAttribute, target, attribute, scale),
+		InstrKind::GetAttributeBase {
+			target,
+			attribute,
+			scale,
+		} => lower!(GetAttributeBase, target, attribute, scale),
+		InstrKind::SetAttributeBase {
+			target,
+			attribute,
+			value,
+		} => lower!(SetAttributeBase, target, attribute, value),
+		InstrKind::AddAttributeModifier {
+			target,
+			attribute,
+			uuid,
+			name,
+			value,
+			ty,
+		} => lower!(
+			AddAttributeModifier,
+			target,
+			attribute,
+			uuid,
+			name,
+			value,
+			ty
+		),
+		InstrKind::RemoveAttributeModifier {
+			target,
+			attribute,
+			uuid,
+		} => lower!(RemoveAttributeModifier, target, attribute, uuid),
+		InstrKind::GetAttributeModifier {
+			target,
+			attribute,
+			uuid,
+			scale,
+		} => lower!(GetAttributeModifier, target, attribute, uuid, scale),
+		InstrKind::DisableDatapack { pack } => lower!(DisableDatapack, pack),
+		InstrKind::EnableDatapack { pack } => lower!(EnableDatapack, pack),
+		InstrKind::SetDatapackPriority { pack, priority } => {
+			lower!(SetDatapackPriority, pack, priority)
+		}
+		InstrKind::SetDatapackOrder {
+			pack,
+			order,
+			existing,
+		} => {
+			lower!(SetDatapackOrder, pack, order, existing)
+		}
+		InstrKind::ListDatapacks { mode } => lower!(ListDatapacks, mode),
+		InstrKind::ListPlayerUUIDs => lower!(ListPlayerUUIDs),
+		InstrKind::SummonEntity { entity, pos, nbt } => {
+			lower!(SummonEntity, entity, pos, nbt)
+		}
+		InstrKind::SetWorldSpawn { pos, angle } => {
+			lower!(SetWorldSpawn, pos, angle)
+		}
+		InstrKind::ClearItems {
+			targets,
+			item,
+			max_count,
+		} => lower!(ClearItems, targets, item, max_count),
+		InstrKind::SetSpawnpoint {
+			targets,
+			pos,
+			angle,
+		} => lower!(SetSpawnpoint, targets, pos, angle),
+		InstrKind::SpreadPlayers {
+			center,
+			spread_distance,
+			max_range,
+			max_height,
+			respect_teams,
+			target,
+		} => lower!(
+			SpreadPlayers,
+			center,
+			spread_distance,
+			max_range,
+			max_height,
+			respect_teams,
+			target
+		),
+		InstrKind::If { condition, body } => {
+			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower if body")?;
+			prelude.extend(new_prelude);
+			MIRInstrKind::If {
+				condition,
+				body: Box::new(instr),
+			}
+		}
+	};
+
+	Ok((prelude, kind))
 }

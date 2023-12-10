@@ -276,7 +276,7 @@ fn lower_kind(
 			lower!(lir_instrs, DefaultGamemode, gamemode)
 		}
 		MIRInstrKind::If { condition, body } => {
-			let (prepend, condition) =
+			let (prepend, condition, negate) =
 				lower_condition(condition, lbcx).context("Failed to lower condition")?;
 			lir_instrs.extend(prepend);
 
@@ -302,10 +302,10 @@ fn lower_kind(
 				0,
 				Modifier::If {
 					condition: Box::new(condition),
-					negate: false,
+					negate,
 				},
 			);
-			// FIXME: Actually add the instruction
+			lir_instrs.push(instr);
 		}
 		MIRInstrKind::TeleportToEntity { source, dest } => {
 			lower!(lir_instrs, TeleportToEntity, source, dest)
@@ -846,12 +846,13 @@ fn lower_insert(
 }
 
 /// Returns a list of instructions to add before where the
-/// condition is used, and the condition to use for the if
-/// modifier
+/// condition is used, the condition to use for the if
+/// modifier, and whether to negate it
 fn lower_condition(
 	condition: Condition,
 	lbcx: &LowerBlockCx,
-) -> anyhow::Result<(Vec<LIRInstruction>, IfModCondition)> {
+) -> anyhow::Result<(Vec<LIRInstruction>, IfModCondition, bool)> {
+	let mut negate = false;
 	let out = match condition {
 		Condition::Equal(l, r) => {
 			let lty = l.get_ty(&lbcx.registers)?;
@@ -895,7 +896,13 @@ fn lower_condition(
 
 			(Vec::new(), cond)
 		}
+		Condition::Not(condition) => {
+			let (prelude, condition, other_negate) =
+				lower_condition(*condition, lbcx).context("Failed to lower not condition")?;
+			negate = !other_negate;
+			(prelude, condition)
+		}
 	};
 
-	Ok(out)
+	Ok((out.0, out.1, negate))
 }
