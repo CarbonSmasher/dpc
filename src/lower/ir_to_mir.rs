@@ -224,6 +224,103 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 				InstrKind::TriggerSet { objective, amount } => {
 					lower!(mir_block, TriggerSet, objective, amount)
 				}
+				InstrKind::GetAttribute {
+					target,
+					attribute,
+					scale,
+				} => lower!(mir_block, GetAttribute, target, attribute, scale),
+				InstrKind::GetAttributeBase {
+					target,
+					attribute,
+					scale,
+				} => lower!(mir_block, GetAttributeBase, target, attribute, scale),
+				InstrKind::SetAttributeBase {
+					target,
+					attribute,
+					value,
+				} => lower!(mir_block, SetAttributeBase, target, attribute, value),
+				InstrKind::AddAttributeModifier {
+					target,
+					attribute,
+					uuid,
+					name,
+					value,
+					ty,
+				} => lower!(
+					mir_block,
+					AddAttributeModifier,
+					target,
+					attribute,
+					uuid,
+					name,
+					value,
+					ty
+				),
+				InstrKind::RemoveAttributeModifier {
+					target,
+					attribute,
+					uuid,
+				} => lower!(mir_block, RemoveAttributeModifier, target, attribute, uuid),
+				InstrKind::GetAttributeModifier {
+					target,
+					attribute,
+					uuid,
+					scale,
+				} => lower!(
+					mir_block,
+					GetAttributeModifier,
+					target,
+					attribute,
+					uuid,
+					scale
+				),
+				InstrKind::DisableDatapack { pack } => lower!(mir_block, DisableDatapack, pack),
+				InstrKind::EnableDatapack { pack } => lower!(mir_block, EnableDatapack, pack),
+				InstrKind::SetDatapackPriority { pack, priority } => {
+					lower!(mir_block, SetDatapackPriority, pack, priority)
+				}
+				InstrKind::SetDatapackOrder {
+					pack,
+					order,
+					existing,
+				} => {
+					lower!(mir_block, SetDatapackOrder, pack, order, existing)
+				}
+				InstrKind::ListDatapacks { mode } => lower!(mir_block, ListDatapacks, mode),
+				InstrKind::ListPlayerUUIDs => lower!(mir_block, ListPlayerUUIDs),
+				InstrKind::SummonEntity { entity, pos, nbt } => {
+					lower!(mir_block, SummonEntity, entity, pos, nbt)
+				}
+				InstrKind::SetWorldSpawn { pos, angle } => {
+					lower!(mir_block, SetWorldSpawn, pos, angle)
+				}
+				InstrKind::ClearItems {
+					targets,
+					item,
+					max_count,
+				} => lower!(mir_block, ClearItems, targets, item, max_count),
+				InstrKind::SetSpawnpoint {
+					targets,
+					pos,
+					angle,
+				} => lower!(mir_block, SetSpawnpoint, targets, pos, angle),
+				InstrKind::SpreadPlayers {
+					center,
+					spread_distance,
+					max_range,
+					max_height,
+					respect_teams,
+					target,
+				} => lower!(
+					mir_block,
+					SpreadPlayers,
+					center,
+					spread_distance,
+					max_range,
+					max_height,
+					respect_teams,
+					target
+				),
 			}
 		}
 

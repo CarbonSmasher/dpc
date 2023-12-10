@@ -3,13 +3,17 @@ use std::{collections::HashMap, fmt::Debug};
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::FunctionInterface;
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
+use crate::common::mc::entity::{AttributeType, UUID};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::Modifier;
-use crate::common::mc::pos::{DoubleCoordinates, DoubleRotation};
+use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
-use crate::common::mc::{Difficulty, EntityTarget, Gamemode, Weather, XPValue};
-use crate::common::ty::ArraySize;
+use crate::common::mc::{
+	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode, Weather,
+	XPValue,
+};
+use crate::common::ty::{ArraySize, NBTCompoundTypeContents};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
 use crate::common::{Identifier, RegisterList, ResourceLocation};
 
@@ -149,6 +153,7 @@ pub enum LIRInstrKind {
 	TeamMessage(String),
 	// Multiplayer
 	ListPlayers,
+	ListPlayerUUIDs,
 	StopServer,
 	BanPlayers(Vec<EntityTarget>, Option<String>),
 	BanIP(String, Option<String>),
@@ -178,12 +183,35 @@ pub enum LIRInstrKind {
 	SetGamemode(EntityTarget, Gamemode),
 	TeleportToEntity(Vec<EntityTarget>, EntityTarget),
 	TeleportToLocation(Vec<EntityTarget>, DoubleCoordinates),
-	TeleportWithRotation(Vec<EntityTarget>, DoubleCoordinates, DoubleRotation),
+	TeleportWithRotation(Vec<EntityTarget>, DoubleCoordinates, DoubleCoordinates2D),
 	TeleportFacingLocation(Vec<EntityTarget>, DoubleCoordinates, DoubleCoordinates),
 	TeleportFacingEntity(Vec<EntityTarget>, DoubleCoordinates, EntityTarget),
+	GetAttribute(EntityTarget, ResourceLocation, f64),
+	GetAttributeBase(EntityTarget, ResourceLocation, f64),
+	SetAttributeBase(EntityTarget, ResourceLocation, f64),
+	AddAttributeModifier(
+		EntityTarget,
+		ResourceLocation,
+		UUID,
+		String,
+		f64,
+		AttributeType,
+	),
+	RemoveAttributeModifier(EntityTarget, ResourceLocation, UUID),
+	GetAttributeModifier(EntityTarget, ResourceLocation, UUID, f64),
+	SummonEntity(ResourceLocation, DoubleCoordinates, NBTCompoundTypeContents),
+	SpreadPlayers {
+		center: DoubleCoordinates2D,
+		spread_distance: f32,
+		max_range: f32,
+		max_height: Option<f32>,
+		respect_teams: bool,
+		target: EntityTarget,
+	},
 	// Items
 	GiveItem(EntityTarget, ItemData, u32),
 	Enchant(EntityTarget, ResourceLocation, i32),
+	ClearItems(Vec<EntityTarget>, Option<ItemData>, Option<u32>),
 	// Blocks
 	SetBlock(SetBlockData),
 	Fill(FillData),
@@ -199,6 +227,8 @@ pub enum LIRInstrKind {
 	SetTimePreset(TimePreset),
 	GetTime(TimeQuery),
 	DefaultGamemode(Gamemode),
+	SetWorldSpawn(IntCoordinates, Angle),
+	SetSpawnpoint(Vec<EntityTarget>, IntCoordinates, Angle),
 	// Teams and scoreboards
 	AddScoreboardObjective(String, Criterion, Option<String>),
 	RemoveScoreboardObjective(String),
@@ -206,6 +236,11 @@ pub enum LIRInstrKind {
 	// Misc
 	Reload,
 	StopSound,
+	DisableDatapack(String),
+	EnableDatapack(String),
+	SetDatapackPriority(String, DatapackPriority),
+	SetDatapackOrder(String, DatapackOrder, String),
+	ListDatapacks(DatapackListMode),
 }
 
 impl LIRInstrKind {
@@ -334,6 +369,42 @@ impl Debug for LIRInstrKind {
 			Self::ListScoreboardObjectives => "sbol".into(),
 			Self::TriggerAdd(obj, amt) => format!("trga {obj}, {amt}"),
 			Self::TriggerSet(obj, amt) => format!("trgs {obj}, {amt}"),
+			Self::GetAttribute(tgt, attr, scale) => format!("attrg {tgt:?} {attr} {scale}"),
+			Self::GetAttributeBase(tgt, attr, scale) => format!("attrgb {tgt:?} {attr} {scale}"),
+			Self::SetAttributeBase(tgt, attr, value) => format!("attrs {tgt:?} {attr} {value}"),
+			Self::AddAttributeModifier(tgt, attr, uuid, name, value, ty) => {
+				format!("attrma {tgt:?} {attr} {uuid:?} {name} {value} {ty:?}")
+			}
+			Self::RemoveAttributeModifier(tgt, attr, uuid) => {
+				format!("attrmr {tgt:?} {attr} {uuid:?}")
+			}
+			Self::GetAttributeModifier(tgt, attr, uuid, scale) => {
+				format!("attrmg {tgt:?} {attr} {uuid:?} {scale}")
+			}
+			Self::DisableDatapack(pack) => format!("dpd {pack}"),
+			Self::EnableDatapack(pack) => format!("dpe {pack}"),
+			Self::SetDatapackPriority(pack, priority) => format!("dpp {pack} {priority:?}"),
+			Self::SetDatapackOrder(pack, order, existing) => {
+				format!("dpo {pack} {order:?} {existing}")
+			}
+			Self::ListDatapacks(mode) => format!("dpl {mode:?}"),
+			Self::ListPlayerUUIDs => "lspu".into(),
+			Self::SummonEntity(entity, pos, nbt) => format!("smn {entity} {pos:?} {nbt:?}"),
+			Self::SetWorldSpawn(pos, angle) => format!("sws {pos:?} {angle:?}"),
+			Self::SetSpawnpoint(targets, pos, angle) => {
+				format!("ssp {targets:?} {pos:?} {angle:?}")
+			}
+			Self::ClearItems(targets, item, max_count) => {
+				format!("itmc {targets:?} {item:?} {max_count:?}")
+			}
+			Self::SpreadPlayers {
+				center,
+				spread_distance,
+				max_range,
+				max_height,
+				respect_teams,
+				target,
+			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
 		};
 		write!(f, "{text}")
 	}

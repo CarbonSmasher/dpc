@@ -305,6 +305,7 @@ fn lower_kind(
 					negate: false,
 				},
 			);
+			// FIXME: Actually add the instruction
 		}
 		MIRInstrKind::TeleportToEntity { source, dest } => {
 			lower!(lir_instrs, TeleportToEntity, source, dest)
@@ -364,6 +365,103 @@ fn lower_kind(
 		}
 		MIRInstrKind::TriggerSet { objective, amount } => {
 			lower!(lir_instrs, TriggerSet, objective, amount)
+		}
+		MIRInstrKind::GetAttribute {
+			target,
+			attribute,
+			scale,
+		} => lower!(lir_instrs, GetAttribute, target, attribute, scale),
+		MIRInstrKind::GetAttributeBase {
+			target,
+			attribute,
+			scale,
+		} => lower!(lir_instrs, GetAttributeBase, target, attribute, scale),
+		MIRInstrKind::SetAttributeBase {
+			target,
+			attribute,
+			value,
+		} => lower!(lir_instrs, SetAttributeBase, target, attribute, value),
+		MIRInstrKind::AddAttributeModifier {
+			target,
+			attribute,
+			uuid,
+			name,
+			value,
+			ty,
+		} => lower!(
+			lir_instrs,
+			AddAttributeModifier,
+			target,
+			attribute,
+			uuid,
+			name,
+			value,
+			ty
+		),
+		MIRInstrKind::RemoveAttributeModifier {
+			target,
+			attribute,
+			uuid,
+		} => lower!(lir_instrs, RemoveAttributeModifier, target, attribute, uuid),
+		MIRInstrKind::GetAttributeModifier {
+			target,
+			attribute,
+			uuid,
+			scale,
+		} => lower!(
+			lir_instrs,
+			GetAttributeModifier,
+			target,
+			attribute,
+			uuid,
+			scale
+		),
+		MIRInstrKind::DisableDatapack { pack } => lower!(lir_instrs, DisableDatapack, pack),
+		MIRInstrKind::EnableDatapack { pack } => lower!(lir_instrs, EnableDatapack, pack),
+		MIRInstrKind::SetDatapackPriority { pack, priority } => {
+			lower!(lir_instrs, SetDatapackPriority, pack, priority)
+		}
+		MIRInstrKind::SetDatapackOrder {
+			pack,
+			order,
+			existing,
+		} => {
+			lower!(lir_instrs, SetDatapackOrder, pack, order, existing)
+		}
+		MIRInstrKind::ListDatapacks { mode } => lower!(lir_instrs, ListDatapacks, mode),
+		MIRInstrKind::ListPlayerUUIDs => lower!(lir_instrs, ListPlayerUUIDs),
+		MIRInstrKind::SummonEntity { entity, pos, nbt } => {
+			lower!(lir_instrs, SummonEntity, entity, pos, nbt)
+		}
+		MIRInstrKind::SetWorldSpawn { pos, angle } => {
+			lower!(lir_instrs, SetWorldSpawn, pos, angle)
+		}
+		MIRInstrKind::ClearItems {
+			targets,
+			item,
+			max_count,
+		} => lower!(lir_instrs, ClearItems, targets, item, max_count),
+		MIRInstrKind::SetSpawnpoint {
+			targets,
+			pos,
+			angle,
+		} => lower!(lir_instrs, SetSpawnpoint, targets, pos, angle),
+		MIRInstrKind::SpreadPlayers {
+			center,
+			spread_distance,
+			max_range,
+			max_height,
+			respect_teams,
+			target,
+		} => {
+			lir_instrs.push(LIRInstruction::new(LIRInstrKind::SpreadPlayers {
+				center,
+				spread_distance,
+				max_range,
+				max_height,
+				respect_teams,
+				target,
+			}));
 		}
 	}
 	Ok(())

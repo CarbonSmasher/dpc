@@ -6,12 +6,16 @@ use crate::common::function::{
 	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
 };
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
+use crate::common::mc::entity::{AttributeType, UUID};
 use crate::common::mc::item::ItemData;
-use crate::common::mc::pos::{DoubleCoordinates, DoubleRotation};
+use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
-use crate::common::mc::{Difficulty, EntityTarget, Gamemode, Weather, XPValue};
-use crate::common::ty::DataType;
+use crate::common::mc::{
+	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode, Weather,
+	XPValue,
+};
+use crate::common::ty::{DataType, NBTCompoundTypeContents};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 
 #[derive(Debug, Clone)]
@@ -317,7 +321,7 @@ pub enum MIRInstrKind {
 	TeleportWithRotation {
 		source: Vec<EntityTarget>,
 		dest: DoubleCoordinates,
-		rotation: DoubleRotation,
+		rotation: DoubleCoordinates2D,
 	},
 	TeleportFacingLocation {
 		source: Vec<EntityTarget>,
@@ -350,6 +354,86 @@ pub enum MIRInstrKind {
 	TriggerSet {
 		objective: String,
 		amount: i32,
+	},
+	GetAttribute {
+		target: EntityTarget,
+		attribute: ResourceLocation,
+		scale: f64,
+	},
+	GetAttributeBase {
+		target: EntityTarget,
+		attribute: ResourceLocation,
+		scale: f64,
+	},
+	SetAttributeBase {
+		target: EntityTarget,
+		attribute: ResourceLocation,
+		value: f64,
+	},
+	AddAttributeModifier {
+		target: EntityTarget,
+		attribute: ResourceLocation,
+		uuid: UUID,
+		name: String,
+		value: f64,
+		ty: AttributeType,
+	},
+	RemoveAttributeModifier {
+		target: EntityTarget,
+		attribute: ResourceLocation,
+		uuid: UUID,
+	},
+	GetAttributeModifier {
+		target: EntityTarget,
+		attribute: ResourceLocation,
+		uuid: UUID,
+		scale: f64,
+	},
+	DisableDatapack {
+		pack: String,
+	},
+	EnableDatapack {
+		pack: String,
+	},
+	SetDatapackPriority {
+		pack: String,
+		priority: DatapackPriority,
+	},
+	SetDatapackOrder {
+		pack: String,
+		order: DatapackOrder,
+		existing: String,
+	},
+	ListDatapacks {
+		mode: DatapackListMode,
+	},
+	ListPlayerUUIDs,
+	SummonEntity {
+		entity: ResourceLocation,
+		pos: DoubleCoordinates,
+		nbt: NBTCompoundTypeContents,
+	},
+	SetWorldSpawn {
+		pos: IntCoordinates,
+		angle: Angle,
+	},
+	ClearItems {
+		targets: Vec<EntityTarget>,
+		item: Option<ItemData>,
+		max_count: Option<u32>,
+	},
+	SetSpawnpoint {
+		targets: Vec<EntityTarget>,
+		pos: IntCoordinates,
+		angle: Angle,
+	},
+	SpreadPlayers {
+		center: DoubleCoordinates2D,
+		spread_distance: f32,
+		max_range: f32,
+		max_height: Option<f32>,
+		respect_teams: bool,
+		target: EntityTarget,
 	},
 }
 
@@ -468,6 +552,82 @@ impl Debug for MIRInstrKind {
 			Self::ListScoreboardObjectives => "sbol".into(),
 			Self::TriggerAdd { objective, amount } => format!("trga {objective}, {amount}"),
 			Self::TriggerSet { objective, amount } => format!("trgs {objective}, {amount}"),
+			Self::GetAttribute {
+				target,
+				attribute,
+				scale,
+			} => format!("attrg {target:?} {attribute} {scale}"),
+			Self::GetAttributeBase {
+				target,
+				attribute,
+				scale,
+			} => format!("attrgb {target:?} {attribute} {scale}"),
+			Self::SetAttributeBase {
+				target,
+				attribute,
+				value,
+			} => format!("attrs {target:?} {attribute} {value}"),
+			Self::AddAttributeModifier {
+				target,
+				attribute,
+				uuid,
+				name,
+				value,
+				ty,
+			} => {
+				format!("attrma {target:?} {attribute} {uuid:?} {name} {value} {ty:?}")
+			}
+			Self::RemoveAttributeModifier {
+				target,
+				attribute,
+				uuid,
+			} => {
+				format!("attrmr {target:?} {attribute} {uuid:?}")
+			}
+			Self::GetAttributeModifier {
+				target,
+				attribute,
+				uuid,
+				scale,
+			} => {
+				format!("attrmg {target:?} {attribute} {uuid:?} {scale}")
+			}
+			Self::DisableDatapack { pack } => format!("dpd {pack}"),
+			Self::EnableDatapack { pack } => format!("dpe {pack}"),
+			Self::SetDatapackPriority { pack, priority } => format!("dpp {pack} {priority:?}"),
+			Self::SetDatapackOrder {
+				pack,
+				order,
+				existing,
+			} => {
+				format!("dpo {pack} {order:?} {existing}")
+			}
+			Self::ListDatapacks { mode } => format!("dpl {mode:?}"),
+			Self::ListPlayerUUIDs => "lspu".into(),
+			Self::SummonEntity { entity, pos, nbt } => format!("smn {entity} {pos:?} {nbt:?}"),
+			Self::SetWorldSpawn { pos, angle } => format!("sws {pos:?} {angle:?}"),
+			Self::SetSpawnpoint {
+				targets,
+				pos,
+				angle,
+			} => {
+				format!("ssp {targets:?} {pos:?} {angle:?}")
+			}
+			Self::ClearItems {
+				targets,
+				item,
+				max_count,
+			} => {
+				format!("itmc {targets:?} {item:?} {max_count:?}")
+			}
+			Self::SpreadPlayers {
+				center,
+				spread_distance,
+				max_range,
+				max_height,
+				respect_teams,
+				target,
+			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
 		};
 		write!(f, "{text}")
 	}

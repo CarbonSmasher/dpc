@@ -94,27 +94,27 @@ pub type DoubleCoordinates = Coordinates<f64>;
 pub type IntCoordinates = Coordinates<i64>;
 
 #[derive(Clone, PartialEq)]
-pub struct Rotation<T>(AbsOrRelCoord<T>, AbsOrRelCoord<T>);
+pub struct Coordinates2D<T>(AbsOrRelCoord<T>, AbsOrRelCoord<T>);
 
-impl<T: Num> Rotation<T> {
+impl<T: Num> Coordinates2D<T> {
 	pub fn are_zero(&self) -> bool {
 		self.0.is_relative_zero() && self.1.is_relative_zero()
 	}
 }
 
-impl<T: Num + PartialEq + Eq> Rotation<T> {
+impl<T: Num + PartialEq + Eq> Coordinates2D<T> {
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		self.0.is_value_eq(&other.0) && self.1.is_value_eq(&other.1)
 	}
 }
 
-impl<T: Debug + Num> Debug for Rotation<T> {
+impl<T: Debug + Num> Debug for Coordinates2D<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{:?} {:?}", self.0, self.1)
 	}
 }
 
-impl<T: Debug + Num> Codegen for Rotation<T> {
+impl<T: Debug + Num> Codegen for Coordinates2D<T> {
 	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
 	where
 		F: std::fmt::Write,
@@ -125,8 +125,8 @@ impl<T: Debug + Num> Codegen for Rotation<T> {
 	}
 }
 
-pub type DoubleRotation = Rotation<f64>;
-pub type IntRotation = Rotation<i64>;
+pub type DoubleCoordinates2D = Coordinates2D<f64>;
+pub type IntCoordinates2D = Coordinates2D<i64>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum AbsOrRelCoord<T> {
@@ -193,7 +193,7 @@ impl Axis {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Angle {
 	pub relative: bool,
 	pub value: f32,
@@ -210,6 +210,14 @@ impl Angle {
 
 	pub fn new(relative: bool, value: f32) -> Self {
 		Self { relative, value }
+	}
+
+	pub fn is_relative_zero(&self) -> bool {
+		self.relative && self.value == 0.0
+	}
+
+	pub fn is_absolute_zero(&self) -> bool {
+		!self.relative && self.value == 0.0
 	}
 }
 

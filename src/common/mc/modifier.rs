@@ -4,7 +4,7 @@ use crate::common::val::{MutableNBTValue, MutableScoreValue, ScoreValue};
 use crate::common::ResourceLocationTag;
 
 use super::block::BlockFilter;
-use super::pos::{DoubleCoordinates, DoubleRotation};
+use super::pos::{DoubleCoordinates, DoubleCoordinates2D};
 use super::{EntityTarget, FullDataLocation, Heightmap, IntCoordinates, Score};
 
 use super::{Identifier, ResourceLocation};
@@ -27,7 +27,7 @@ pub enum Modifier {
 	Positioned(DoubleCoordinates),
 	PositionedAs(EntityTarget),
 	PositionedOver(Heightmap),
-	Rotated(DoubleRotation),
+	Rotated(DoubleCoordinates2D),
 	RotatedAs(EntityTarget),
 	FacingPosition(DoubleCoordinates),
 	FacingEntity(EntityTarget, AnchorLocation),

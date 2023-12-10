@@ -6,12 +6,13 @@ use crate::common::mc::block::{
 	BlockData, BlockFilter, BlockProperties, BlockStateValue, BlockStates, CloneMaskMode,
 	CloneMode, FillMode, SetBlockMode,
 };
-use crate::common::mc::entity::{SelectorSort, SelectorType};
+use crate::common::mc::entity::{AttributeType, SelectorSort, SelectorType, UUID};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::{AlignAxes, AnchorLocation};
 use crate::common::mc::scoreboard_and_teams::SingleCriterion;
 use crate::common::mc::{
-	DataLocation, Difficulty, FullDataLocation, Gamemode, Heightmap, Weather, XPValue,
+	DataLocation, DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, FullDataLocation,
+	Gamemode, Heightmap, Weather, XPValue,
 };
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 
@@ -95,6 +96,9 @@ impl_disp!(str);
 impl_disp!(String);
 impl_disp!(i32);
 impl_disp!(u32);
+impl_disp!(f32);
+impl_disp!(f64);
+impl_disp!(bool);
 impl_disp!(Arc<str>);
 
 // Value types
@@ -175,6 +179,11 @@ impl_disp!(Gamemode);
 impl_dbg!(Heightmap);
 impl_disp!(Weather);
 impl_dbg!(SingleCriterion);
+impl_dbg!(UUID);
+impl_dbg!(AttributeType);
+impl_dbg!(DatapackPriority);
+impl_dbg!(DatapackOrder);
+impl_dbg!(DatapackListMode);
 
 // Selectors
 impl_disp!(SelectorSort);

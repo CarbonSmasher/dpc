@@ -10,7 +10,7 @@ use anyhow::{anyhow, bail, Context};
 use crate::common::mc::block::{CloneMaskMode, CloneMode, FillMode, SetBlockMode};
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
 use crate::common::mc::scoreboard_and_teams::Criterion;
-use crate::common::mc::Score;
+use crate::common::mc::{DatapackListMode, Score};
 use crate::common::ty::NBTTypeContents;
 use crate::common::{val::NBTValue, val::ScoreValue, RegisterList};
 use crate::linker::codegen::util::cg_data_modify_rhs;
@@ -539,6 +539,191 @@ pub fn codegen_instr(
 			}
 		}
 		LIRInstrKind::TriggerSet(obj, amt) => Some(cgformat!(cbcx, "trigger ", obj, " set ", amt)?),
+		LIRInstrKind::GetAttribute(tgt, attr, scale) => {
+			if *scale == 1.0 {
+				Some(cgformat!(cbcx, "attribute ", tgt, " get ", attr)?)
+			} else {
+				Some(cgformat!(
+					cbcx,
+					"attribute ",
+					tgt,
+					" get ",
+					attr,
+					" ",
+					scale
+				)?)
+			}
+		}
+		LIRInstrKind::GetAttributeBase(tgt, attr, scale) => {
+			if *scale == 1.0 {
+				Some(cgformat!(cbcx, "attribute ", tgt, " base get ", attr)?)
+			} else {
+				Some(cgformat!(
+					cbcx,
+					"attribute ",
+					tgt,
+					" base get ",
+					attr,
+					" ",
+					scale
+				)?)
+			}
+		}
+		LIRInstrKind::SetAttributeBase(tgt, attr, value) => Some(cgformat!(
+			cbcx,
+			"attribute ",
+			tgt,
+			" ",
+			attr,
+			" base set ",
+			value
+		)?),
+		LIRInstrKind::AddAttributeModifier(tgt, attr, uuid, name, value, ty) => Some(cgformat!(
+			cbcx,
+			"attribute ",
+			tgt,
+			" ",
+			attr,
+			" modifier add ",
+			uuid,
+			" ",
+			name,
+			" ",
+			value,
+			" ",
+			ty
+		)?),
+		LIRInstrKind::RemoveAttributeModifier(tgt, attr, uuid) => Some(cgformat!(
+			cbcx,
+			"attribute ",
+			tgt,
+			" ",
+			attr,
+			" modifier remove ",
+			uuid
+		)?),
+		LIRInstrKind::GetAttributeModifier(tgt, attr, uuid, scale) => {
+			let mut out = String::new();
+			cgwrite!(
+				&mut out,
+				cbcx,
+				"attribute ",
+				tgt,
+				" ",
+				attr,
+				" modifier get ",
+				uuid
+			)?;
+			if *scale != 1.0 {
+				cgwrite!(&mut out, cbcx, " ", scale)?;
+			}
+
+			Some(out)
+		}
+		LIRInstrKind::DisableDatapack(pack) => Some(cgformat!(cbcx, "datapack disable ", pack)?),
+		LIRInstrKind::EnableDatapack(pack) => Some(cgformat!(cbcx, "datapack enable ", pack)?),
+		LIRInstrKind::SetDatapackPriority(pack, priority) => {
+			Some(cgformat!(cbcx, "datapack enable ", pack, " ", priority)?)
+		}
+		LIRInstrKind::SetDatapackOrder(pack, order, existing) => Some(cgformat!(
+			cbcx,
+			"datapack enable ",
+			pack,
+			" ",
+			order,
+			" ",
+			existing
+		)?),
+		LIRInstrKind::ListDatapacks(mode) => match mode {
+			DatapackListMode::All => Some("datapack list".into()),
+			other => Some(cgformat!(cbcx, "datapack list ", other)?),
+		},
+		LIRInstrKind::ListPlayerUUIDs => Some("list uuids".into()),
+		LIRInstrKind::SummonEntity(entity, pos, nbt) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "summon ", entity)?;
+			if !pos.are_zero() || !nbt.is_empty() {
+				cgwrite!(&mut out, cbcx, " ", pos)?;
+			}
+			if !nbt.is_empty() {
+				cgwrite!(&mut out, cbcx, " ", nbt.get_literal_str())?;
+			}
+			Some(out)
+		}
+		LIRInstrKind::SetWorldSpawn(pos, angle) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "setworldspawn")?;
+			if !pos.are_zero() || !angle.is_absolute_zero() {
+				cgwrite!(&mut out, cbcx, " ", pos)?;
+			}
+			if !angle.is_absolute_zero() {
+				cgwrite!(&mut out, cbcx, " ", angle)?;
+			}
+			Some(out)
+		}
+		LIRInstrKind::ClearItems(targets, item, max_count) => {
+			let mut out = String::new();
+			if targets.is_empty() {
+				bail!("Target list empty");
+			}
+			cgwrite!(&mut out, cbcx, "clear")?;
+			if !targets.first().expect("Not empty").is_blank_this() {
+				cgwrite!(&mut out, cbcx, SpaceSepListCG(targets))?;
+			}
+			if let Some(item) = item {
+				cgwrite!(&mut out, cbcx, " ", item)?;
+			}
+			if let Some(max_count) = max_count {
+				cgwrite!(&mut out, cbcx, " ", max_count)?;
+			}
+			Some(out)
+		}
+		LIRInstrKind::SetSpawnpoint(targets, pos, angle) => {
+			let mut out = String::new();
+			if targets.is_empty() {
+				bail!("Target list empty");
+			}
+			cgwrite!(&mut out, cbcx, "spawnpoint")?;
+			if !(targets.first().expect("Not empty").is_blank_this()
+				&& pos.are_zero()
+				&& angle.is_absolute_zero())
+			{
+				cgwrite!(&mut out, cbcx, " ", SpaceSepListCG(targets))?;
+			}
+			if !pos.are_zero() || !angle.is_absolute_zero() {
+				cgwrite!(&mut out, cbcx, " ", pos)?;
+			}
+			if !angle.is_absolute_zero() {
+				cgwrite!(&mut out, cbcx, " ", angle)?;
+			}
+			Some(out)
+		}
+		LIRInstrKind::SpreadPlayers {
+			center,
+			spread_distance,
+			max_range,
+			max_height,
+			respect_teams,
+			target,
+		} => {
+			let mut out = String::new();
+			cgwrite!(
+				&mut out,
+				cbcx,
+				"spreadplayers ",
+				center,
+				" ",
+				spread_distance,
+				" ",
+				max_range,
+				" "
+			)?;
+			if let Some(max_height) = max_height {
+				cgwrite!(&mut out, cbcx, "under ", max_height, " ")?;
+			}
+			cgwrite!(&mut out, cbcx, respect_teams, " ", target)?;
+			Some(out)
+		}
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

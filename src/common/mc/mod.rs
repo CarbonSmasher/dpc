@@ -208,3 +208,50 @@ impl Display for Weather {
 		)
 	}
 }
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum DatapackPriority {
+	First,
+	Last,
+}
+
+impl Debug for DatapackPriority {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::First => write!(f, "first"),
+			Self::Last => write!(f, "last"),
+		}
+	}
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum DatapackOrder {
+	Before,
+	After,
+}
+
+impl Debug for DatapackOrder {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Before => write!(f, "before"),
+			Self::After => write!(f, "after"),
+		}
+	}
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum DatapackListMode {
+	All,
+	Available,
+	Enabled,
+}
+
+impl Debug for DatapackListMode {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::All => write!(f, "all"),
+			Self::Available => write!(f, "available"),
+			Self::Enabled => write!(f, "enabled"),
+		}
+	}
+}

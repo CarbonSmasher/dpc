@@ -142,3 +142,27 @@ impl Display for SelectorSort {
 		)
 	}
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UUID(String);
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum AttributeType {
+	Add,
+	Multiply,
+	MultiplyBase,
+}
+
+impl Debug for AttributeType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Add => "add",
+				Self::Multiply => "multiply",
+				Self::MultiplyBase => "multiply_base",
+			}
+		)
+	}
+}
