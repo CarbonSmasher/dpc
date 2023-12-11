@@ -1,9 +1,9 @@
-# lir_passes
+# lir_passes mir_passes
 
 @preserve
 "test:main" {
 	# Init
-	let in: score = null;
+	let in: score = val sco ".in" "math";
 	let sign: score = val -400s;
 
 	# Setup input
@@ -25,5 +25,5 @@
 	if eq %sign, 400s:
 		add %out, 1s;
 
-	use %out;
+	set sco ".out" "math", %out;
 }

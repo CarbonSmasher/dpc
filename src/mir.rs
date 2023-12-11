@@ -659,6 +659,9 @@ impl MIRInstrKind {
 			Self::Use { val } => val.get_used_regs(),
 			Self::Call { call } => call.get_used_regs(),
 			Self::Remove { val } => val.get_used_regs(),
+			Self::If { condition, body } => {
+				[condition.get_used_regs(), body.get_used_regs()].concat()
+			}
 			_ => Vec::new(),
 		}
 	}

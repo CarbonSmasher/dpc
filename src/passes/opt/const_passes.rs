@@ -198,7 +198,15 @@ impl<'cont> ConstAnalyzer<'cont> {
 				}
 				ConstAnalyzerResult::Remove(vec![reg.clone()])
 			}
-			_ => ConstAnalyzerResult::Other,
+			other => {
+				let used = other.get_used_regs();
+				if self.store_self {
+					for used in &used {
+						self.vals.remove(*used);
+					}
+				}
+				ConstAnalyzerResult::Remove(used.into_iter().cloned().collect())
+			}
 		}
 	}
 }
