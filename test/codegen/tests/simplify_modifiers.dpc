@@ -1,0 +1,36 @@
+# lir_passes
+
+"test:main" {
+	let x: score = val 0s;
+	# Check for optimal check range
+	if exists %x:
+		say "hello";
+	# Should be reordered so that a matches can be
+	# codegenned
+	if eq 1s, %x:
+		say "hello";
+	# Should output as if matches, but constrained
+	# by one. In the future, should combine into a single range
+	if gt %x, 1s:
+		if lt %x, 1s:
+			say "hello";
+	# If should be removed
+	if eq %x, %x:
+		say "guaranteed 1";
+	# If should be removed
+	if gte %x, %x:
+		say "guaranteed 2";
+	# Impossible
+	if gt %x, %x:
+		say "never";
+	# Should not be optimized away, because the not makes the condition
+	# true
+	if not lt %x, %x:
+		say "guaranteed 3";
+
+	# Simple const folds
+	if eq 7s, 7s:
+		say "guaranteed 4";
+	if eq 7s, 6s:
+		say "never";
+}

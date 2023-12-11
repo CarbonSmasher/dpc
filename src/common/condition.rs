@@ -12,6 +12,7 @@ pub enum Condition {
 	GreaterThanOrEqual(Value, Value),
 	LessThan(Value, Value),
 	LessThanOrEqual(Value, Value),
+	Bool(Value),
 }
 
 impl Condition {
@@ -22,7 +23,7 @@ impl Condition {
 			| Self::GreaterThanOrEqual(l, r)
 			| Self::LessThan(l, r)
 			| Self::LessThanOrEqual(l, r) => [l.get_used_regs(), r.get_used_regs()].concat(),
-			Self::Exists(val) => val.get_used_regs(),
+			Self::Exists(val) | Self::Bool(val) => val.get_used_regs(),
 			Self::Not(condition) => condition.get_used_regs(),
 		}
 	}
@@ -38,6 +39,7 @@ impl Debug for Condition {
 			Self::GreaterThanOrEqual(l, r) => write!(f, "{l:?} >= {r:?}"),
 			Self::LessThan(l, r) => write!(f, "{l:?} < {r:?}"),
 			Self::LessThanOrEqual(l, r) => write!(f, "{l:?} <= {r:?}"),
+			Self::Bool(val) => write!(f, "bool {val:?}"),
 		}
 	}
 }

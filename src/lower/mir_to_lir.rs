@@ -947,6 +947,19 @@ fn lower_condition(
 				},
 			}),
 		),
+		Condition::Bool(val) => {
+			let ty = val.get_ty(&lbcx.registers)?;
+			match ty {
+				DataType::Score(ScoreType::Bool) => (
+					Vec::new(),
+					IfModCondition::Score(IfScoreCondition::Single {
+						left: val.to_score_value()?,
+						right: ScoreValue::Constant(ScoreTypeContents::Bool(true)),
+					}),
+				),
+				_ => bail!("Condition does not allow this type"),
+			}
+		}
 	};
 
 	Ok((out.0, out.1, negate))

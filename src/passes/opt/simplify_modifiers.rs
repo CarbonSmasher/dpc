@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 
 use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
-use crate::common::val::{MutableScoreValue, ScoreValue};
+use crate::common::val::ScoreValue;
 use crate::lir::{LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
 use crate::util::{remove_indices, DashSetEmptyTracker};
@@ -45,12 +45,22 @@ impl LIRPass for SimplifyModifiersPass {
 									*negate = !*negate;
 								}
 								OptimizeConditionResult::Guaranteed => {
-									mods_to_remove.insert(i);
+									if *negate {
+										// Remove this if and all modifiers after since they cannot be reached
+										mods_to_remove.extend(i..modifier_count);
+										instr.kind = LIRInstrKind::NoOp;
+									} else {
+										mods_to_remove.insert(i);
+									}
 								}
 								OptimizeConditionResult::Impossible => {
-									// Remove this if and all modifiers after since they cannot be reached
-									mods_to_remove.extend(i..modifier_count);
-									instr.kind = LIRInstrKind::NoOp;
+									if *negate {
+										mods_to_remove.insert(i);
+									} else {
+										// Remove this if and all modifiers after since they cannot be reached
+										mods_to_remove.extend(i..modifier_count);
+										instr.kind = LIRInstrKind::NoOp;
+									}
 								}
 								OptimizeConditionResult::Nothing => {}
 							}
@@ -68,13 +78,50 @@ impl LIRPass for SimplifyModifiersPass {
 }
 
 fn optimize_condition(condition: &mut Box<IfModCondition>) -> OptimizeConditionResult {
-	match condition.as_ref() {
-		// Reflexive property
-		IfModCondition::Score(IfScoreCondition::Single {
-			left: ScoreValue::Mutable(MutableScoreValue::Reg(left)),
-			right: ScoreValue::Mutable(MutableScoreValue::Reg(right)),
-		}) if left == right => {
+	match condition.as_mut() {
+		// Reflexive property and other cases where the same value
+		// appears on both sides of the condition
+		IfModCondition::Score(
+			IfScoreCondition::Single { left, right }
+			| IfScoreCondition::Range {
+				score: left,
+				left: IfScoreRangeEnd::Fixed {
+					value: right,
+					inclusive: true,
+				},
+				right: _,
+			}
+			| IfScoreCondition::Range {
+				score: left,
+				left: _,
+				right: IfScoreRangeEnd::Fixed {
+					value: right,
+					inclusive: true,
+				},
+			},
+		) if left.is_value_eq(right) => {
 			return OptimizeConditionResult::Guaranteed;
+		}
+		// These are always false since they aren't inclusive
+		IfModCondition::Score(
+			IfScoreCondition::Range {
+				score: left,
+				left: IfScoreRangeEnd::Fixed {
+					value: right,
+					inclusive: false,
+				},
+				right: _,
+			}
+			| IfScoreCondition::Range {
+				score: left,
+				left: _,
+				right: IfScoreRangeEnd::Fixed {
+					value: right,
+					inclusive: false,
+				},
+			},
+		) if left.is_value_eq(right) => {
+			return OptimizeConditionResult::Impossible;
 		}
 		// Replace ranges that are only one number long with singles
 		// or mark them as impossible if they don't match anything
@@ -92,7 +139,7 @@ fn optimize_condition(condition: &mut Box<IfModCondition>) -> OptimizeConditionR
 				},
 		}) if left_val.is_value_eq(right_val) => {
 			// If both sides are exclusive then this matches nothing and the condition is impossible
-			if !left_inc && !right_inc {
+			if !*left_inc && !*right_inc {
 				return OptimizeConditionResult::Impossible;
 			} else {
 				*condition = Box::new(IfModCondition::Score(IfScoreCondition::Single {
@@ -116,7 +163,7 @@ fn optimize_condition(condition: &mut Box<IfModCondition>) -> OptimizeConditionR
 				left: IfScoreRangeEnd::Infinite,
 				right: IfScoreRangeEnd::Fixed {
 					value: ScoreValue::Constant(value.clone()),
-					inclusive: !inclusive,
+					inclusive: !*inclusive,
 				},
 			}));
 			return OptimizeConditionResult::Invert;
@@ -134,11 +181,30 @@ fn optimize_condition(condition: &mut Box<IfModCondition>) -> OptimizeConditionR
 				score: score.clone(),
 				left: IfScoreRangeEnd::Fixed {
 					value: ScoreValue::Constant(value.clone()),
-					inclusive: !inclusive,
+					inclusive: !*inclusive,
 				},
 				right: IfScoreRangeEnd::Infinite,
 			}));
 			return OptimizeConditionResult::Invert;
+		}
+		// Reorder ranges and singles with constants on the left
+		// and mutables on the right since they generate less optimal code
+		IfModCondition::Score(IfScoreCondition::Single {
+			left: left @ ScoreValue::Constant(..),
+			right: right @ ScoreValue::Mutable(..),
+		}) => {
+			std::mem::swap(left, right);
+		}
+		// A const fold
+		IfModCondition::Score(IfScoreCondition::Single {
+			left: ScoreValue::Constant(left),
+			right: ScoreValue::Constant(right),
+		}) => {
+			if left.get_i32() == right.get_i32() {
+				return OptimizeConditionResult::Guaranteed;
+			} else {
+				return OptimizeConditionResult::Impossible;
+			}
 		}
 		_ => {}
 	}
