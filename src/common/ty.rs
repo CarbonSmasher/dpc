@@ -70,6 +70,8 @@ pub enum NBTType {
 	Short,
 	Int,
 	Long,
+	Float,
+	Double,
 	String,
 	Arr(NBTArrayType),
 	List(Box<NBTType>),
@@ -92,6 +94,8 @@ impl NBTType {
 				self,
 				Self::Byte | Self::Bool | Self::Short | Self::Int | Self::Long
 			),
+			Self::Float => matches!(self, Self::Float),
+			Self::Double => matches!(self, Self::Float | Self::Double),
 			Self::String => matches!(self, Self::String),
 			Self::Arr(other_arr) => {
 				matches!(self, Self::Arr(this_arr) if this_arr.is_trivially_castable(other_arr))
@@ -115,7 +119,7 @@ impl NBTType {
 		}
 	}
 
-	pub fn is_number_type(&self) -> bool {
+	pub fn is_int_type(&self) -> bool {
 		matches!(
 			self,
 			Self::Byte | Self::Bool | Self::Short | Self::Int | Self::Long
@@ -123,7 +127,7 @@ impl NBTType {
 	}
 
 	pub fn is_castable_to_score(&self, other: &ScoreType) -> bool {
-		if self.is_number_type() {
+		if self.is_int_type() {
 			match other {
 				ScoreType::Score => true,
 				ScoreType::UScore => true,
@@ -143,7 +147,9 @@ impl Debug for NBTType {
 			Self::Short => "nshort".to_string(),
 			Self::Int => "nint".to_string(),
 			Self::Long => "nlong".to_string(),
-			Self::String => "str".to_string(),
+			Self::Float => "nfloat".to_string(),
+			Self::Double => "ndouble".to_string(),
+			Self::String => "nstr".to_string(),
 			Self::Arr(arr) => format!("{arr:?}"),
 			Self::List(ty) => format!("{ty:?}[]"),
 			Self::Compound(tys) => format!("{tys:?}"),
@@ -187,7 +193,7 @@ impl Debug for NBTArrayType {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub enum DataTypeContents {
 	Score(ScoreTypeContents),
 	NBT(NBTTypeContents),
@@ -255,13 +261,15 @@ impl Debug for ScoreTypeContents {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub enum NBTTypeContents {
 	Byte(Byte),
 	Bool(bool),
 	Short(Short),
 	Int(Int),
 	Long(Long),
+	Float(Float),
+	Double(Double),
 	String(Arc<str>),
 	Arr(NBTArrayTypeContents),
 	List(NBTType, Vec<NBTTypeContents>),
@@ -276,6 +284,8 @@ impl NBTTypeContents {
 			Self::Short(..) => DataType::NBT(NBTType::Short),
 			Self::Int(..) => DataType::NBT(NBTType::Int),
 			Self::Long(..) => DataType::NBT(NBTType::Long),
+			Self::Float(..) => DataType::NBT(NBTType::Float),
+			Self::Double(..) => DataType::NBT(NBTType::Double),
 			Self::String(..) => DataType::NBT(NBTType::String),
 			Self::Arr(arr) => arr.get_ty(),
 			Self::List(ty, ..) => DataType::NBT(NBTType::List(Box::new(ty.clone()))),
@@ -290,6 +300,8 @@ impl NBTTypeContents {
 			Self::Short(val) => format!("{val}s"),
 			Self::Int(val) => format!("{val}"),
 			Self::Long(val) => format!("{val}l"),
+			Self::Float(val) => format!("{val}f"),
+			Self::Double(val) => format!("{val}"),
 			Self::String(string) => write_string(string.to_string()),
 			Self::Arr(arr) => arr.get_literal_str(),
 			Self::List(_, list) => fmt_arr(list.iter().map(|x| x.get_literal_str())),
@@ -303,6 +315,8 @@ impl NBTTypeContents {
 			|| matches!((self, other), (Self::Short(l), Self::Short(r)) if l == r)
 			|| matches!((self, other), (Self::Int(l), Self::Int(r)) if l == r)
 			|| matches!((self, other), (Self::Long(l), Self::Long(r)) if l == r)
+			|| matches!((self, other), (Self::Float(l), Self::Float(r)) if l == r)
+			|| matches!((self, other), (Self::Double(l), Self::Double(r)) if l == r)
 			|| matches!((self, other), (Self::Arr(l), Self::Arr(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::String(l), Self::String(r)) if l == r)
 			|| matches!((self, other), (Self::List(lt, l), Self::List(rt, r)) if lt == rt && l.iter().zip(r).all(|(l, r)| l.is_value_eq(r)))
@@ -318,6 +332,8 @@ impl Debug for NBTTypeContents {
 			Self::Short(val) => write!(f, "{val}s")?,
 			Self::Int(val) => write!(f, "{val}i")?,
 			Self::Long(val) => write!(f, "{val}l")?,
+			Self::Float(val) => write!(f, "{val}f")?,
+			Self::Double(val) => write!(f, "{val}d")?,
 			Self::String(val) => write!(f, "\"{val}\"")?,
 			Self::Arr(val) => write!(f, "{val:?}")?,
 			Self::List(_, list) => write!(f, "{}", fmt_arr(list.iter().map(|x| format!("{x:?}"))))?,
@@ -456,6 +472,8 @@ pub type Byte = i8;
 pub type Short = i16;
 pub type Int = i32;
 pub type Long = i64;
+pub type Float = f32;
+pub type Double = f64;
 
 fn fmt_arr<T: ToString>(arr: impl IntoIterator<Item = T>) -> String {
 	arr.into_iter()

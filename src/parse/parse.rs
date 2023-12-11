@@ -463,6 +463,8 @@ fn parse_simple_ty<'t>(ty: &str) -> anyhow::Result<DataType> {
 		"nshort" => Ok(DataType::NBT(NBTType::Short)),
 		"nint" => Ok(DataType::NBT(NBTType::Int)),
 		"nlong" => Ok(DataType::NBT(NBTType::Long)),
+		"nfloat" => Ok(DataType::NBT(NBTType::Float)),
+		"ndouble" => Ok(DataType::NBT(NBTType::Double)),
 		"nstr" => Ok(DataType::NBT(NBTType::String)),
 		other => bail!("Unknown type {other}"),
 	}
@@ -606,7 +608,12 @@ fn parse_lit_impl<'t>(
 			let num =
 				(*$val)
 					.try_into()
-					.expect(concat!("Numeric value is not within", $name, "range"));
+					.expect(concat!("Numeric value is not within ", $name, " range"));
+			DataTypeContents::$kind($kind2::$kind3(num))
+		}};
+
+		($val:expr, as $ty:ty, $kind:ident, $kind2:ident, $kind3:ident, $name:literal) => {{
+			let num = (*$val as $ty);
 			DataTypeContents::$kind($kind2::$kind3(num))
 		}};
 	}
@@ -637,7 +644,18 @@ fn parse_lit_impl<'t>(
 				"nb" => nbt_lit!(num, Byte, "nbyte"),
 				"ns" => nbt_lit!(num, Short, "nshort"),
 				"ni" => nbt_lit!(num, Int, "nint"),
-				"nl" => nbt_lit!(num, Int, "nlong"),
+				"nl" => nbt_lit!(num, Long, "nlong"),
+				other => bail!("Unknown numeric literal suffix {other}"),
+			})
+		}
+		Token::Decimal(num) => {
+			let suffix = consume_extract!(toks, Ident, {
+				bail!("Missing number literal suffix token")
+			});
+
+			Ok(match suffix.as_str() {
+				"nf" => num_lit!(num, as f32, NBT, NBTTypeContents, Float, "nfloat"),
+				"nd" => num_lit!(num, as f64, NBT, NBTTypeContents, Double, "ndouble"),
 				other => bail!("Unknown numeric literal suffix {other}"),
 			})
 		}

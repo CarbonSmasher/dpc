@@ -160,12 +160,31 @@ pub fn lex(text: &str) -> anyhow::Result<Vec<(Token, TextPos)>> {
 				Token::Num(num) => {
 					if is_num(c, false) {
 						num_str.push(c);
+					} else if c == '.' {
+						tok = Token::Decimal(TryInto::<i32>::try_into(*num)?.try_into()?);
+						num_str.push('.');
 					} else {
 						repeat = true;
 						if num_str == "-" {
 							bail!("Invalid number '{num_str}', {pos}");
 						}
 						*num = num_str.parse().expect("Number contains invalid characters");
+						tokens.push((tok, tok_start_pos.clone()));
+						tok_start_pos = pos.clone();
+						tok = Token::None;
+					}
+				}
+				Token::Decimal(num) => {
+					if is_decimal(c, false, true) {
+						num_str.push(c);
+					} else {
+						repeat = true;
+						if num_str == "-" {
+							bail!("Invalid number '{num_str}', {pos}");
+						}
+						*num = num_str
+							.parse()
+							.expect("Decimal number contains invalid characters");
 						tokens.push((tok, tok_start_pos.clone()));
 						tok_start_pos = pos.clone();
 						tok = Token::None;
@@ -189,6 +208,10 @@ pub fn lex(text: &str) -> anyhow::Result<Vec<(Token, TextPos)>> {
 
 	match &mut tok {
 		Token::Num(num) => {
+			*num = num_str.parse().expect("Number contains invalid characters");
+			tokens.push((tok, tok_start_pos.clone()));
+		}
+		Token::Decimal(num) => {
 			*num = num_str.parse().expect("Number contains invalid characters");
 			tokens.push((tok, tok_start_pos.clone()));
 		}
@@ -238,6 +261,8 @@ pub enum Token {
 	Ident(String),
 	/// An integer number (-12, 6, 128, etc.)
 	Num(i128),
+	/// A decimal number (-2.4, 6.0, 88.9, etc.)
+	Decimal(f64),
 	/// A string literal ("'hello' there")
 	Str(String),
 }
@@ -268,6 +293,7 @@ impl Token {
 			Token::Comment(text) => "# ".to_string() + text,
 			Token::Ident(name) => name.clone(),
 			Token::Num(num) => num.to_string(),
+			Token::Decimal(num) => num.to_string(),
 			Token::Str(string) => format!("\"{string}\""),
 		}
 	}
@@ -373,6 +399,17 @@ fn is_num(c: char, first: bool) -> bool {
 		c.is_numeric() || c == '-'
 	} else {
 		c.is_numeric()
+	}
+}
+
+/// Checks if a character is part of a decimal number
+fn is_decimal(c: char, first: bool, after_decimal: bool) -> bool {
+	if first {
+		c.is_numeric() || c == '-' || c == '.'
+	} else if after_decimal {
+		c.is_numeric()
+	} else {
+		c.is_numeric() || c == '.'
 	}
 }
 
@@ -527,6 +564,22 @@ mod tests {
 				Token::Num(0),
 				Token::Semicolon,
 				Token::Num(-10)
+			]
+		);
+	}
+
+	#[test]
+	fn test_decimal() {
+		assert_tokens!(
+			"12345;88.0,-73.5,-0.03",
+			vec![
+				Token::Num(12345),
+				Token::Semicolon,
+				Token::Decimal(88.0),
+				Token::Comma,
+				Token::Decimal(-73.5),
+				Token::Comma,
+				Token::Decimal(-0.03)
 			]
 		);
 	}

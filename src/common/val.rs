@@ -7,7 +7,7 @@ use super::{ty, Identifier, RegisterList};
 
 use super::ty::{DataType, DataTypeContents, NBTTypeContents, ScoreTypeContents};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub enum Value {
 	Mutable(MutableValue),
 	Constant(DataTypeContents),

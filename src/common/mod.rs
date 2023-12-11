@@ -13,7 +13,7 @@ use dashmap::DashMap;
 use self::ty::DataType;
 use self::val::{MutableValue, Value};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub enum DeclareBinding {
 	Null,
 	Value(Value),

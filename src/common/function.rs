@@ -115,7 +115,7 @@ impl Debug for ReturnType {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub struct CallInterface {
 	pub function: ResourceLocation,
 	pub args: FunctionArgs,
