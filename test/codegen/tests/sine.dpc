@@ -1,0 +1,29 @@
+# lir_passes
+
+@preserve
+"test:main" {
+	# Init
+	let in: score = null;
+	let sign: score = val -400s;
+
+	# Setup input
+	mod %in, 3600s;
+	if gte %in, 1800s:
+		set %sign, 400s;
+	mod %in, 1800s;
+	let temp: score = val %in;
+
+	# Run
+	sub %temp, 1800s;
+	mul %temp, %in;
+	let out: score = val %temp;
+	mul %out, %sign;
+	add %temp, 4050000s;
+	div %out, %temp;
+
+	# Remove if less precision is needed
+	if eq %sign, 400s:
+		add %out, 1s;
+
+	use %out;
+}

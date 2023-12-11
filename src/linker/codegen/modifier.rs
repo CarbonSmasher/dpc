@@ -24,11 +24,10 @@ pub fn codegen_modifier(
 			let out = match *condition {
 				IfModCondition::Score(condition) => match condition {
 					IfScoreCondition::Single { left, right } => {
-						let left = get_mut_score_val_score(&left, &cbcx.ra)?.gen_str(cbcx)?;
 						match right {
 							ScoreValue::Constant(val) => {
 								let lit = val.get_literal_str();
-								Some(format!("{keyword} score {left} matches {lit}"))
+								Some(cgformat!(cbcx, keyword, " score ", left, " matches ", lit)?)
 							}
 							ScoreValue::Mutable(val) => {
 								let val = get_mut_score_val_score(&val, &cbcx.ra)?;
@@ -37,10 +36,9 @@ pub fn codegen_modifier(
 						}
 					}
 					IfScoreCondition::Range { score, left, right } => {
-						let score = get_mut_score_val_score(&score, &cbcx.ra)?.gen_str(cbcx)?;
 						let out = match (left, right) {
 							(IfScoreRangeEnd::Infinite, IfScoreRangeEnd::Infinite) => {
-								format!("{keyword} score {score} matches ..{}", i32::MAX)
+								cgformat!(cbcx, keyword, " score ", score, " matches ..", i32::MAX)?
 							}
 							(
 								IfScoreRangeEnd::Fixed {
@@ -72,23 +70,31 @@ pub fn codegen_modifier(
 							) => {
 								let mut out = String::new();
 
-								let use_general_case =
-									if left_in && right_in {
-										if let ScoreValue::Constant(left) = left.clone() {
-											if let ScoreValue::Constant(right) = right.clone() {
-												let left = left.get_literal_str();
-												let right = right.get_literal_str();
-												out =  format!("{keyword} score {score} matches {left}..{right}");
-												false
-											} else {
-												true
-											}
+								let use_general_case = if left_in && right_in {
+									if let ScoreValue::Constant(left) = left.clone() {
+										if let ScoreValue::Constant(right) = right.clone() {
+											let left = left.get_literal_str();
+											let right = right.get_literal_str();
+											out = cgformat!(
+												cbcx,
+												keyword,
+												" score ",
+												score,
+												" matches ",
+												left,
+												"..",
+												right
+											)?;
+											false
 										} else {
 											true
 										}
 									} else {
 										true
-									};
+									}
+								} else {
+									true
+								};
 
 								if use_general_case {
 									let left = codegen_if_score_range_side(
@@ -182,7 +188,7 @@ pub fn codegen_modifier(
 
 fn codegen_if_score_range_side(
 	if_keyword: &str,
-	score: String,
+	score: ScoreValue,
 	value: ScoreValue,
 	inclusive: bool,
 	lt: bool,
@@ -193,7 +199,7 @@ fn codegen_if_score_range_side(
 			if inclusive {
 				let lit = val.get_literal_str();
 				let check = codegen_match(&lit, lt);
-				format!("{if_keyword} score {score} matches {check}")
+				cgformat!(cbcx, if_keyword, " score ", score, " matches ", check)?
 			} else {
 				let num = val.get_i32();
 				// Constrict the range by adding or subtracting one if we can
@@ -212,12 +218,12 @@ fn codegen_if_score_range_side(
 				};
 				if let Some(constricted) = constricted {
 					let check = codegen_match(&constricted.to_string(), lt);
-					format!("{if_keyword} score {score} matches {check}")
+					cgformat!(cbcx, if_keyword, " score ", score, " matches ", check)?
 				} else {
 					cbcx.ccx.score_literals.insert(num);
 					let rhs = create_lit_score(num).gen_str(cbcx)?;
 					let sign = if lt { "<" } else { ">" };
-					format!("{if_keyword} score {score} {sign} {rhs}")
+					cgformat!(cbcx, if_keyword, " score ", score, " ", sign, " ", rhs)?
 				}
 			}
 		}
@@ -228,7 +234,7 @@ fn codegen_if_score_range_side(
 			} else {
 				codegen_score_gt(inclusive)
 			};
-			format!("{if_keyword} score {score} {sign} {val}")
+			cgformat!(cbcx, if_keyword, " score ", score, " ", sign, " ", val)?
 		}
 	};
 
@@ -298,10 +304,10 @@ mod tests {
 
 		let modifier = Modifier::If {
 			condition: Box::new(IfModCondition::Score(IfScoreCondition::Range {
-				score: MutableScoreValue::Score(Score::new(
+				score: ScoreValue::Mutable(MutableScoreValue::Score(Score::new(
 					EntityTarget::Player("foo".into()),
 					"bar".into(),
-				)),
+				))),
 				left: IfScoreRangeEnd::Fixed {
 					value: ScoreValue::Constant(ScoreTypeContents::Score(219)),
 					inclusive: false,

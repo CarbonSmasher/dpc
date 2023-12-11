@@ -510,20 +510,43 @@ fn parse_condition<'t>(
 ) -> anyhow::Result<Condition> {
 	let ty = consume_extract!(toks, Ident, { bail!("Missing condition type token") });
 	match ty.as_str() {
+		"not" => {
+			let condition = parse_condition(toks).context("Failed to parse not condition")?;
+			Ok(Condition::Not(Box::new(condition)))
+		}
 		"eq" => {
-			let l = parse_val(toks).context("Failed to parse eq left hand side")?;
-			consume_expect!(toks, Comma, { bail!("Missing comma") });
-			let r = parse_val(toks).context("Failed to parse eq right hand side")?;
+			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
 			Ok(Condition::Equal(l, r))
 		}
 		"exists" => {
 			let val = parse_val(toks).context("Failed to parse exists value")?;
 			Ok(Condition::Exists(val))
 		}
-		"not" => {
-			let condition = parse_condition(toks).context("Failed to parse not condition")?;
-			Ok(Condition::Not(Box::new(condition)))
+		"gt" => {
+			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
+			Ok(Condition::GreaterThan(l, r))
+		}
+		"gte" => {
+			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
+			Ok(Condition::GreaterThanOrEqual(l, r))
+		}
+		"lt" => {
+			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
+			Ok(Condition::LessThan(l, r))
+		}
+		"lte" => {
+			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
+			Ok(Condition::LessThanOrEqual(l, r))
 		}
 		other => bail!("Unknown condition type {other}"),
 	}
+}
+
+fn parse_simple_condition<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<(Value, Value)> {
+	let left = parse_val(toks).context("Failed to parse condition left hand side")?;
+	consume_expect!(toks, Comma, { bail!("Missing comma") });
+	let right = parse_val(toks).context("Failed to parse condition right hand side")?;
+	Ok((left, right))
 }

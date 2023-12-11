@@ -251,11 +251,11 @@ impl Debug for IfModCondition {
 #[derive(Clone)]
 pub enum IfScoreCondition {
 	Single {
-		left: MutableScoreValue,
+		left: ScoreValue,
 		right: ScoreValue,
 	},
 	Range {
-		score: MutableScoreValue,
+		score: ScoreValue,
 		left: IfScoreRangeEnd,
 		right: IfScoreRangeEnd,
 	},

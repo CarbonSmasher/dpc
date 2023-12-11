@@ -756,7 +756,7 @@ fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstru
 
 	let modifier = Modifier::If {
 		condition: Box::new(IfModCondition::Score(IfScoreCondition::Range {
-			score: val.to_mutable_score_value()?,
+			score: ScoreValue::Mutable(val.to_mutable_score_value()?),
 			left: IfScoreRangeEnd::Infinite,
 			right: IfScoreRangeEnd::Fixed {
 				value: ScoreValue::Constant(ScoreTypeContents::Score(-1)),
@@ -853,26 +853,17 @@ fn lower_condition(
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<(Vec<LIRInstruction>, IfModCondition, bool)> {
 	let mut negate = false;
+	// Make this account for ScoreValue changes
 	let out = match condition {
 		Condition::Equal(l, r) => {
 			let lty = l.get_ty(&lbcx.registers)?;
 			let rty = r.get_ty(&lbcx.registers)?;
 			let cond = match (lty, rty) {
 				(DataType::Score(..), DataType::Score(..)) => {
-					// Rearrange them so that the mutable value is on the left
-					let cond = match (l.to_score_value()?, r.to_score_value()?) {
-						(ScoreValue::Mutable(l), r) => {
-							IfModCondition::Score(IfScoreCondition::Single { left: l, right: r })
-						}
-						(l @ ScoreValue::Constant(..), ScoreValue::Mutable(r)) => {
-							IfModCondition::Score(IfScoreCondition::Single { left: r, right: l })
-						}
-						(ScoreValue::Constant(l), ScoreValue::Constant(r)) => {
-							let result = l.get_i32() == r.get_i32();
-							IfModCondition::Const(result)
-						}
-					};
-					cond
+					IfModCondition::Score(IfScoreCondition::Single {
+						left: l.to_score_value()?,
+						right: r.to_score_value()?,
+					})
 				}
 				_ => bail!("Condition does not allow these types"),
 			};
@@ -883,7 +874,7 @@ fn lower_condition(
 				DataType::Score(..) => match val.to_score_value()? {
 					ScoreValue::Constant(..) => IfModCondition::Const(true),
 					ScoreValue::Mutable(val) => IfModCondition::Score(IfScoreCondition::Range {
-						score: val,
+						score: ScoreValue::Mutable(val),
 						left: IfScoreRangeEnd::Infinite,
 						right: IfScoreRangeEnd::Infinite,
 					}),
@@ -902,6 +893,50 @@ fn lower_condition(
 			negate = !other_negate;
 			(prelude, condition)
 		}
+		Condition::GreaterThan(l, r) => (
+			Vec::new(),
+			IfModCondition::Score(IfScoreCondition::Range {
+				score: l.to_score_value()?,
+				left: IfScoreRangeEnd::Fixed {
+					value: r.to_score_value()?,
+					inclusive: false,
+				},
+				right: IfScoreRangeEnd::Infinite,
+			}),
+		),
+		Condition::GreaterThanOrEqual(l, r) => (
+			Vec::new(),
+			IfModCondition::Score(IfScoreCondition::Range {
+				score: l.to_score_value()?,
+				left: IfScoreRangeEnd::Fixed {
+					value: r.to_score_value()?,
+					inclusive: true,
+				},
+				right: IfScoreRangeEnd::Infinite,
+			}),
+		),
+		Condition::LessThan(l, r) => (
+			Vec::new(),
+			IfModCondition::Score(IfScoreCondition::Range {
+				score: l.to_score_value()?,
+				left: IfScoreRangeEnd::Infinite,
+				right: IfScoreRangeEnd::Fixed {
+					value: r.to_score_value()?,
+					inclusive: false,
+				},
+			}),
+		),
+		Condition::LessThanOrEqual(l, r) => (
+			Vec::new(),
+			IfModCondition::Score(IfScoreCondition::Range {
+				score: l.to_score_value()?,
+				left: IfScoreRangeEnd::Infinite,
+				right: IfScoreRangeEnd::Fixed {
+					value: r.to_score_value()?,
+					inclusive: true,
+				},
+			}),
+		),
 	};
 
 	Ok((out.0, out.1, negate))

@@ -1,6 +1,10 @@
+mod common;
+
 use anyhow::{bail, Context};
-use dpc::{codegen_ir, common::function::FunctionInterface, parse::Parser, CodegenIRSettings};
+use dpc::{codegen_ir, common::function::FunctionInterface, parse::Parser};
 use include_dir::{include_dir, Dir};
+
+use crate::common::{get_control_comment, TEST_ENTRYPOINT};
 
 static TESTS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/test/codegen/tests");
 
@@ -25,8 +29,6 @@ fn main() {
 		run_test(&test).expect(&format!("Test {test} failed"))
 	}
 }
-
-static TEST_ENTRYPOINT: &str = "test:main";
 
 fn run_test(test_name: &str) -> anyhow::Result<()> {
 	let input_contents = TESTS
@@ -55,16 +57,8 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 	ir.functions.insert(actual.0, actual.1);
 
 	// Run the codegen
-	let datapack = codegen_ir(
-		ir,
-		CodegenIRSettings {
-			debug: false,
-			ir_passes: false,
-			mir_passes: false,
-			lir_passes: false,
-		},
-	)
-	.context("Failed to codegen input")?;
+	let settings = get_control_comment(input_contents).expect("Failed to get control comment");
+	let datapack = codegen_ir(ir, settings).context("Failed to codegen input")?;
 
 	// Check the test function
 	let Some(actual) = datapack.functions.get(TEST_ENTRYPOINT.into()) else {

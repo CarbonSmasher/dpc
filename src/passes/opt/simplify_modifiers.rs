@@ -71,7 +71,7 @@ fn optimize_condition(condition: &mut Box<IfModCondition>) -> OptimizeConditionR
 	match condition.as_ref() {
 		// Reflexive property
 		IfModCondition::Score(IfScoreCondition::Single {
-			left: MutableScoreValue::Reg(left),
+			left: ScoreValue::Mutable(MutableScoreValue::Reg(left)),
 			right: ScoreValue::Mutable(MutableScoreValue::Reg(right)),
 		}) if left == right => {
 			return OptimizeConditionResult::Guaranteed;
