@@ -10,4 +10,8 @@
 	let g: nint = val 6ni;
 	let h: nlong = val 3242389nl;
 	let i: nstr = val "hello world";
+	let j: [nstr] = null;
+	psh %j, "foo";
+	let k: [nbyte, 10] = null;
+	pshf %k, 0nb;
 }

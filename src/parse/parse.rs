@@ -1,15 +1,17 @@
 use anyhow::{bail, Context};
 
 use crate::common::condition::Condition;
+use crate::common::mc::entity::{SelectorType, TargetSelector};
 use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score, XPValue};
 use crate::common::ty::{
-	DataType, DataTypeContents, NBTType, NBTTypeContents, ScoreType, ScoreTypeContents,
+	ArraySize, DataType, DataTypeContents, NBTArrayType, NBTType, NBTTypeContents, ScoreType,
+	ScoreTypeContents,
 };
 use crate::common::val::{MutableValue, Value};
 use crate::common::DeclareBinding;
 use crate::ir::{InstrKind, Instruction};
 
-use super::lex::{Token, TokenAndPos};
+use super::lex::{Side, Token, TokenAndPos};
 
 pub type UnparsedBody = Vec<TokenAndPos>;
 
@@ -42,8 +44,12 @@ macro_rules! consume {
 #[rustfmt::skip]
 macro_rules! consume_expect {
 	($toks:ident, $ty:ident, $err:block) => {{
+		consume_expect!($toks, Token::$ty, $err)
+	}};
+
+	($toks:ident, $ty:pat, $err:block) => {{
 		let tok = consume!($toks, $err);
-		let Token::$ty = &tok.0 else {
+		let $ty = &tok.0 else {
 			bail!("Unexpected token {:?} {}", tok.0, tok.1);
 		};
 		tok
@@ -412,9 +418,43 @@ fn parse_pow<'t>(
 }
 
 fn parse_ty<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<DataType> {
-	let ty = consume_extract!(toks, Ident, { bail!("Missing type token") });
-	// TODO: More complex types
-	match ty.as_str() {
+	let (tok, pos) = consume!(toks, { bail!("Missing first value token") });
+	match tok {
+		Token::Ident(ident) => parse_simple_ty(ident),
+		// Array and list types
+		Token::Square(Side::Left) => {
+			let ty = consume_extract!(toks, Ident, { bail!("Missing array/list type token") });
+			let ty = parse_simple_ty(ty).context("Failed to parse array/list internal type")?;
+			let (tok, pos) = consume!(toks, { bail!("Missing next array/list token") });
+			match tok {
+				Token::Square(Side::Right) => {
+					let DataType::NBT(ty) = ty else { bail!("Type cannot be used in a list") };
+					Ok(DataType::NBT(NBTType::List(Box::new(ty))))
+				}
+				Token::Comma => {
+					let len = consume_extract!(toks, Num, { bail!("Missing array length") });
+					let len: ArraySize = (*len)
+						.try_into()
+						.context("Array length is not an array size")?;
+					consume_expect!(toks, Token::Square(Side::Right), { bail!("Missing comma") });
+					let DataType::NBT(ty) = ty else { bail!("Type cannot be used in an array") };
+					let ty = match ty {
+						NBTType::Byte => NBTArrayType::Byte(len),
+						NBTType::Int => NBTArrayType::Int(len),
+						NBTType::Long => NBTArrayType::Long(len),
+						other => bail!("Type {other:?} cannot be used in an array"),
+					};
+					Ok(DataType::NBT(NBTType::Arr(ty)))
+				}
+				other => bail!("Unexpected token {other:?} {pos}"),
+			}
+		}
+		other => bail!("Unexpected token {other:?} {pos}"),
+	}
+}
+
+fn parse_simple_ty<'t>(ty: &str) -> anyhow::Result<DataType> {
+	match ty {
 		"score" => Ok(DataType::Score(ScoreType::Score)),
 		"uscore" => Ok(DataType::Score(ScoreType::UScore)),
 		"bool" => Ok(DataType::Score(ScoreType::Bool)),
@@ -618,8 +658,23 @@ fn parse_lit_impl<'t>(
 fn parse_entity_target<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<EntityTarget> {
-	let player = consume_extract!(toks, Str, { bail!("Missing score holder token") });
-	Ok(EntityTarget::Player(player.clone()))
+	let (tok, pos) = consume!(toks, { bail!("Missing first literal token") });
+	match tok {
+		Token::At => {
+			let ty = consume_extract!(toks, Ident, { bail!("Missing selector type token") });
+			let sel = match ty.as_str() {
+				"s" => SelectorType::This,
+				"p" => SelectorType::NearestPlayer,
+				"r" => SelectorType::RandomPlayer,
+				"a" => SelectorType::AllPlayers,
+				"e" => SelectorType::AllEntities,
+				other => bail!("Unknown selector type {other}"),
+			};
+			Ok(EntityTarget::Selector(TargetSelector::new(sel)))
+		}
+		Token::Str(player) => Ok(EntityTarget::Player(player.clone())),
+		other => bail!("Unexpected token {other:?} {pos}"),
+	}
 }
 
 fn parse_if<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<InstrKind> {

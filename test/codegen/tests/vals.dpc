@@ -3,4 +3,7 @@
 	let y: bool = val sco "foo" "bar";
 	rm %x;
 	rm %y;
+	set %x, ent @s "foo";
+	set %y, sco @s "bar";
+	set %x, stg "foo:bar" "bar";
 }
