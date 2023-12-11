@@ -98,6 +98,16 @@ pub enum XPValue {
 	Levels,
 }
 
+impl XPValue {
+	pub fn parse(string: &str) -> Option<Self> {
+		match string {
+			"points" => Some(Self::Points),
+			"levels" => Some(Self::Levels),
+			_ => None,
+		}
+	}
+}
+
 impl Display for XPValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(

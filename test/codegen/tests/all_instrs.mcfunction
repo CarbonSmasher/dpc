@@ -36,3 +36,21 @@ stopsound
 difficulty
 difficulty hard
 spectate
+w foo bar
+kill foo
+enchant foo minecraft:power 5
+xp set foo 6 levels
+xp set foo 98 points
+tag foo add bar
+tag foo remove bar
+tag foo list
+ride foo mount bar
+ride foo dismount
+spectate foo bar
+scoreboard objectives remove foo
+scoreboard objectives list
+trigger foo add 6
+trigger foo set 0
+datapack disable foo
+datapack enable foo
+list uuids

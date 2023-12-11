@@ -1,7 +1,7 @@
 use anyhow::{bail, Context};
 
 use crate::common::condition::Condition;
-use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score};
+use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score, XPValue};
 use crate::common::ty::{
 	DataType, DataTypeContents, NBTType, NBTTypeContents, ScoreType, ScoreTypeContents,
 };
@@ -188,6 +188,15 @@ fn parse_instr<'t>(
 				message: msg.clone(),
 			})
 		}
+		"tell" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
+			Ok(InstrKind::Tell {
+				target: tgt,
+				message: msg.clone(),
+			})
+		}
 		"me" => {
 			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
 			Ok(InstrKind::Me {
@@ -236,6 +245,121 @@ fn parse_instr<'t>(
 		}
 		"specs" => Ok(InstrKind::SpectateStop),
 		"if" => parse_if(toks).context("Failed to parse if"),
+		"kill" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			Ok(InstrKind::Kill { target: tgt })
+		}
+		"ench" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let ench = consume_extract!(toks, Str, { bail!("Missing enchantment") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let lvl = consume_extract!(toks, Num, { bail!("Missing level") });
+			let lvl: i32 = (*lvl).try_into().context("Level is not an i32")?;
+
+			Ok(InstrKind::Enchant {
+				target: tgt,
+				enchantment: ench.clone().into(),
+				level: lvl,
+			})
+		}
+		"xps" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let amt = consume_extract!(toks, Num, { bail!("Missing amount") });
+			let amt: i32 = (*amt).try_into().context("Amount is not an i32")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let kind = consume_extract!(toks, Ident, { bail!("Missing XP value") });
+			let Some(kind) = XPValue::parse(kind) else {
+				bail!("Invalid XP value");
+			};
+			Ok(InstrKind::SetXP {
+				target: tgt,
+				amount: amt,
+				value: kind,
+			})
+		}
+		"taga" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let tag = consume_extract!(toks, Str, { bail!("Missing tag") });
+			Ok(InstrKind::AddTag {
+				target: tgt,
+				tag: tag.clone().into(),
+			})
+		}
+		"tagr" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let tag = consume_extract!(toks, Str, { bail!("Missing tag") });
+			Ok(InstrKind::RemoveTag {
+				target: tgt,
+				tag: tag.clone().into(),
+			})
+		}
+		"tagl" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			Ok(InstrKind::ListTags { target: tgt })
+		}
+		"mnt" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let vehicle = parse_entity_target(toks).context("Failed to parse vehicle target")?;
+			Ok(InstrKind::RideMount {
+				target: tgt,
+				vehicle,
+			})
+		}
+		"dmnt" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			Ok(InstrKind::RideDismount { target: tgt })
+		}
+		"spec" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let spectator =
+				parse_entity_target(toks).context("Failed to parse spectator target")?;
+			Ok(InstrKind::Spectate {
+				target: tgt,
+				spectator,
+			})
+		}
+		"sbor" => {
+			let obj = consume_extract!(toks, Str, { bail!("Missing objective") });
+			Ok(InstrKind::RemoveScoreboardObjective {
+				objective: obj.clone(),
+			})
+		}
+		"sbol" => Ok(InstrKind::ListScoreboardObjectives),
+		"trga" => {
+			let obj = consume_extract!(toks, Str, { bail!("Missing objective") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let amt = consume_extract!(toks, Num, { bail!("Missing amount") });
+			let amt: i32 = (*amt).try_into().context("Amount is not an i32")?;
+			Ok(InstrKind::TriggerAdd {
+				objective: obj.clone(),
+				amount: amt,
+			})
+		}
+		"trgs" => {
+			let obj = consume_extract!(toks, Str, { bail!("Missing objective") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let amt = consume_extract!(toks, Num, { bail!("Missing amount") });
+			let amt: i32 = (*amt).try_into().context("Amount is not an i32")?;
+			Ok(InstrKind::TriggerSet {
+				objective: obj.clone(),
+				amount: amt,
+			})
+		}
+		"dpd" => {
+			let pack = consume_extract!(toks, Str, { bail!("Missing pack") });
+			Ok(InstrKind::DisableDatapack { pack: pack.clone() })
+		}
+		"dpe" => {
+			let pack = consume_extract!(toks, Str, { bail!("Missing pack") });
+			Ok(InstrKind::EnableDatapack { pack: pack.clone() })
+		}
+		"lspu" => Ok(InstrKind::ListPlayerUUIDs),
 		other => bail!("Unknown instruction {other}"),
 	}
 	.context("Failed to parse instruction")?;

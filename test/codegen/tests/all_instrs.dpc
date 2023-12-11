@@ -34,4 +34,22 @@
 	diffg;
 	diffs hard;
 	specs;
+	tell "foo", "bar";
+	kill "foo";
+	ench "foo", "minecraft:power", 5;
+	xps "foo", 6, levels;
+	xps "foo", 98, points;
+	taga "foo", "bar";
+	tagr "foo", "bar";
+	tagl "foo";
+	mnt "foo", "bar";
+	dmnt "foo";
+	spec "foo", "bar";
+	sbor "foo";
+	sbol;
+	trga "foo", 6;
+	trgs "foo", 0;
+	dpd "foo";
+	dpe "foo";
+	lspu;
 }
