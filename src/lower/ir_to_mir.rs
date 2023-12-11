@@ -68,6 +68,7 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 		InstrKind::Min { left, right } => lower!(Min, left, right),
 		InstrKind::Max { left, right } => lower!(Max, left, right),
 		InstrKind::Swap { left, right } => lower!(Swap, left, right),
+		InstrKind::Remove { val } => lower!(Remove, val),
 		InstrKind::Abs { val } => lower!(Abs, val),
 		InstrKind::Pow { base, exp } => lower!(Pow, base, exp),
 		InstrKind::Get { value } => lower!(Get, value),

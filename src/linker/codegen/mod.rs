@@ -166,10 +166,12 @@ pub fn codegen_instr(
 			" >< ",
 			right
 		)?),
+		LIRInstrKind::ResetScore(val) => Some(cgformat!(cbcx, "scoreboard players reset ", val)?),
 		LIRInstrKind::SetData(left, right) => {
 			let rhs = cg_data_modify_rhs(cbcx, right)?;
 			Some(cgformat!(cbcx, "data modify ", left, " set ", rhs)?)
 		}
+		LIRInstrKind::RemoveData(val) => Some(cgformat!(cbcx, "data remove ", val)?),
 		LIRInstrKind::MergeData(left, right) => {
 			if let NBTValue::Constant(rhs) = right {
 				Some(cgformat!(

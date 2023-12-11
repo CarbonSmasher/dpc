@@ -143,6 +143,9 @@ pub enum MIRInstrKind {
 		left: MutableValue,
 		right: MutableValue,
 	},
+	Remove {
+		val: MutableValue,
+	},
 	Abs {
 		val: MutableValue,
 	},
@@ -628,6 +631,7 @@ impl Debug for MIRInstrKind {
 				respect_teams,
 				target,
 			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
+			Self::Remove { val } => format!("rm {val:?}"),
 		};
 		write!(f, "{text}")
 	}
@@ -654,6 +658,7 @@ impl MIRInstrKind {
 			Self::Get { value } => value.get_used_regs(),
 			Self::Use { val } => val.get_used_regs(),
 			Self::Call { call } => call.get_used_regs(),
+			Self::Remove { val } => val.get_used_regs(),
 			_ => Vec::new(),
 		}
 	}

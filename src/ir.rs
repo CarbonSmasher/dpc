@@ -120,6 +120,9 @@ pub enum InstrKind {
 		left: MutableValue,
 		right: MutableValue,
 	},
+	Remove {
+		val: MutableValue,
+	},
 	Abs {
 		val: MutableValue,
 	},
@@ -604,6 +607,7 @@ impl Debug for InstrKind {
 				target,
 			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
 			Self::If { condition, body } => format!("if {condition:?}: {body:?}"),
+			Self::Remove { val } => format!("rm {val:?}"),
 		};
 		write!(f, "{text}")
 	}

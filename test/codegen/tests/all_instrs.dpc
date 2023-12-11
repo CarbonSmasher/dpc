@@ -10,6 +10,7 @@
 	max %x, 1s;
 	let y: score = val 3s;
 	swap %x, %y;
+	rm %x;
 	abs %x;
 	use %x;
 	pow %x, 3s;

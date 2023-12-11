@@ -1,0 +1,6 @@
+"test:main" {
+	let x: nint = val ent "foo" "bar";
+	let y: bool = val sco "foo" "bar";
+	rm %x;
+	rm %y;
+}

@@ -122,6 +122,7 @@ fn lower_kind(
 		MIRInstrKind::Tell { target, message } => lower!(lir_instrs, Tell, target, message),
 		MIRInstrKind::Kill { target } => lower!(lir_instrs, Kill, target),
 		MIRInstrKind::Reload => lower!(lir_instrs, Reload),
+		MIRInstrKind::Remove { val } => lir_instrs.push(LIRInstruction::new(lower_rm(val, lbcx)?)),
 		MIRInstrKind::SetXP {
 			target,
 			amount,
@@ -840,6 +841,15 @@ fn lower_insert(
 			LIRInstrKind::InsertData(left.to_mutable_nbt_value()?, right.to_nbt_value()?, index)
 		}
 		_ => bail!("Instruction does not allow this type"),
+	};
+
+	Ok(kind)
+}
+
+fn lower_rm(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {
+	let kind = match val.get_ty(&lbcx.registers)? {
+		DataType::Score(..) => LIRInstrKind::ResetScore(val.to_mutable_score_value()?),
+		DataType::NBT(..) => LIRInstrKind::RemoveData(val.to_mutable_nbt_value()?),
 	};
 
 	Ok(kind)

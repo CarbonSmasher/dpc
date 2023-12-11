@@ -126,6 +126,7 @@ pub enum LIRInstrKind {
 	MinScore(MutableScoreValue, ScoreValue),
 	MaxScore(MutableScoreValue, ScoreValue),
 	SwapScore(MutableScoreValue, MutableScoreValue),
+	ResetScore(MutableScoreValue),
 	SetData(MutableNBTValue, NBTValue),
 	MergeData(MutableNBTValue, NBTValue),
 	GetScore(MutableScoreValue),
@@ -133,6 +134,7 @@ pub enum LIRInstrKind {
 	PushData(MutableNBTValue, NBTValue),
 	PushFrontData(MutableNBTValue, NBTValue),
 	InsertData(MutableNBTValue, NBTValue, i32),
+	RemoveData(MutableNBTValue),
 	ConstIndexToScore {
 		score: MutableScoreValue,
 		value: NBTValue,
@@ -287,6 +289,7 @@ impl Debug for LIRInstrKind {
 			Self::MinScore(left, right) => format!("mins {left:?} {right:?}"),
 			Self::MaxScore(left, right) => format!("maxs {left:?} {right:?}"),
 			Self::SwapScore(left, right) => format!("swps {left:?} {right:?}"),
+			Self::ResetScore(val) => format!("rms {val:?}"),
 			Self::SetData(left, right) => format!("setd {left:?} {right:?}"),
 			Self::MergeData(left, right) => format!("mrgd {left:?} {right:?}"),
 			Self::GetScore(val) => format!("gets {val:?}"),
@@ -294,6 +297,7 @@ impl Debug for LIRInstrKind {
 			Self::PushData(left, right) => format!("pushd {left:?} {right:?}"),
 			Self::PushFrontData(left, right) => format!("pushfd {left:?} {right:?}"),
 			Self::InsertData(left, right, i) => format!("insd {left:?} {right:?} {i}"),
+			Self::RemoveData(val) => format!("rmd {val:?}"),
 			Self::ConstIndexToScore {
 				score,
 				value,

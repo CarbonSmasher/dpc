@@ -143,6 +143,10 @@ fn parse_instr<'t>(
 			let (l, r) = parse_swap(toks)?;
 			Ok(InstrKind::Swap { left: l, right: r })
 		}
+		"rm" => {
+			let val = parse_mut_val(toks).context("Failed to parse value")?;
+			Ok(InstrKind::Remove { val })
+		}
 		"abs" => {
 			let val = parse_mut_val(toks).context("Failed to parse value")?;
 			Ok(InstrKind::Abs { val })
