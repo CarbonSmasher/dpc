@@ -1,8 +1,10 @@
 use anyhow::{bail, Context};
 
 use crate::common::condition::Condition;
-use crate::common::mc::Difficulty;
-use crate::common::ty::{DataType, DataTypeContents, ScoreType, ScoreTypeContents};
+use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score};
+use crate::common::ty::{
+	DataType, DataTypeContents, NBTType, NBTTypeContents, ScoreType, ScoreTypeContents,
+};
 use crate::common::val::{MutableValue, Value};
 use crate::common::DeclareBinding;
 use crate::ir::{InstrKind, Instruction};
@@ -142,26 +144,20 @@ fn parse_instr<'t>(
 			Ok(InstrKind::Swap { left: l, right: r })
 		}
 		"abs" => {
-			let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
-			Ok(InstrKind::Abs {
-				val: MutableValue::Register(reg.clone().into()),
-			})
+			let val = parse_mut_val(toks).context("Failed to parse value")?;
+			Ok(InstrKind::Abs { val })
 		}
 		"pow" => {
 			let (l, r) = parse_pow(toks)?;
 			Ok(InstrKind::Pow { base: l, exp: r })
 		}
 		"use" => {
-			let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
-			Ok(InstrKind::Use {
-				val: MutableValue::Register(reg.clone().into()),
-			})
+			let val = parse_mut_val(toks).context("Failed to parse value")?;
+			Ok(InstrKind::Use { val })
 		}
 		"get" => {
-			let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
-			Ok(InstrKind::Get {
-				value: MutableValue::Register(reg.clone().into()),
-			})
+			let val = parse_mut_val(toks).context("Failed to parse value")?;
+			Ok(InstrKind::Get { value: val })
 		}
 		"mrg" => {
 			let (l, r) = parse_simple_op(toks)?;
@@ -179,10 +175,11 @@ fn parse_instr<'t>(
 			let (l, r) = parse_simple_op(toks)?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let idx = consume_extract!(toks, Num, { bail!("Missing exponent") });
+			let idx: i32 = (*idx).try_into().context("Index not within 32 bit range")?;
 			Ok(InstrKind::Insert {
 				left: l,
 				right: r,
-				index: *idx,
+				index: idx,
 			})
 		}
 		"say" => {
@@ -261,41 +258,44 @@ fn parse_let<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Re
 fn parse_simple_op<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<(MutableValue, Value)> {
-	let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
+	let left = parse_mut_val(toks).context("Failed to parse operator left hand side")?;
 	consume_expect!(toks, Comma, { bail!("Missing comma") });
-	let val = parse_val(toks).context("Failed to parse operator right hand side")?;
-	Ok((MutableValue::Register(reg.clone().into()), val))
+	let right = parse_val(toks).context("Failed to parse operator right hand side")?;
+	Ok((left, right))
 }
 
 fn parse_swap<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<(MutableValue, MutableValue)> {
-	let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
+	let l = parse_mut_val(toks).context("Failed to parse swap left hand side")?;
 	consume_expect!(toks, Comma, { bail!("Missing comma") });
-	let reg2 = consume_extract!(toks, Ident, { bail!("Missing register name") });
-	Ok((
-		MutableValue::Register(reg.clone().into()),
-		MutableValue::Register(reg2.clone().into()),
-	))
+	let r = parse_mut_val(toks).context("Failed to parse swap right hand side")?;
+	Ok((l, r))
 }
 
 fn parse_pow<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<(MutableValue, u8)> {
-	let reg = consume_extract!(toks, Ident, { bail!("Missing register name") });
+	let base = parse_mut_val(toks).context("Failed to parse base value")?;
 	consume_expect!(toks, Comma, { bail!("Missing comma") });
 	let exp = consume_extract!(toks, Num, { bail!("Missing exponent") });
 	let exp: u8 = (*exp).try_into().context("Exponent is not a u8")?;
-	Ok((MutableValue::Register(reg.clone().into()), exp))
+	Ok((base, exp))
 }
 
 fn parse_ty<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<DataType> {
 	let ty = consume_extract!(toks, Ident, { bail!("Missing type token") });
-	// TODO: More types
+	// TODO: More complex types
 	match ty.as_str() {
 		"score" => Ok(DataType::Score(ScoreType::Score)),
 		"uscore" => Ok(DataType::Score(ScoreType::UScore)),
 		"bool" => Ok(DataType::Score(ScoreType::Bool)),
+		"nbyte" => Ok(DataType::NBT(NBTType::Byte)),
+		"nbool" => Ok(DataType::NBT(NBTType::Bool)),
+		"nshort" => Ok(DataType::NBT(NBTType::Short)),
+		"nint" => Ok(DataType::NBT(NBTType::Int)),
+		"nlong" => Ok(DataType::NBT(NBTType::Long)),
+		"nstr" => Ok(DataType::NBT(NBTType::String)),
 		other => bail!("Unknown type {other}"),
 	}
 }
@@ -304,7 +304,7 @@ fn parse_decl_binding<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<DeclareBinding> {
 	let kind = consume_extract!(toks, Ident, { bail!("Missing declare binding token") });
-	// TODO: More declare bindings
+	// TODO: Idx
 	match kind.as_str() {
 		"val" => {
 			let val = parse_val(toks).context("Failed to parse value")?;
@@ -313,43 +313,185 @@ fn parse_decl_binding<'t>(
 		"null" => Ok(DeclareBinding::Null),
 		"cast" => {
 			let ty = parse_ty(toks).context("Failed to parse cast type")?;
-			let reg = consume_extract!(toks, Ident, { bail!("Missing cast register name") });
-			Ok(DeclareBinding::Cast(
-				ty,
-				MutableValue::Register(reg.clone().into()),
-			))
+			let val = parse_mut_val(toks).context("Failed to parse cast value")?;
+			Ok(DeclareBinding::Cast(ty, val))
 		}
 		other => bail!("Unknown type {other}"),
 	}
 }
 
 fn parse_val<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<Value> {
-	let kind = consume_extract!(toks, Ident, { bail!("Missing value type token") });
-	match kind.as_str() {
-		"mut" => {
-			// TODO: More mutable value types
-			let reg_name = consume_extract!(toks, Ident, { bail!("Missing register name token") });
-			Ok(Value::Mutable(MutableValue::Register(
-				reg_name.clone().into(),
-			)))
-		}
-		"const" => {
-			let lit = parse_lit(toks).context("Failed to parse literal")?;
+	// Try both
+	let first_tok = consume!(toks, { bail!("Missing first value token") });
+	let val = parse_mut_val_impl(first_tok, toks).context("Failed to parse mutable value");
+	match val {
+		Ok(val) => Ok(Value::Mutable(val)),
+		Err(..) => {
+			let lit = parse_lit_impl(first_tok, toks).context("Failed to parse literal")?;
 			Ok(Value::Constant(lit))
 		}
-		other => bail!("Unknown value type {other}"),
 	}
 }
 
+fn parse_mut_val<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<MutableValue> {
+	let first_tok = consume!(toks, { bail!("Missing first mutable value token") });
+	parse_mut_val_impl(first_tok, toks)
+}
+
+fn parse_mut_val_impl<'t>(
+	first_tok: &TokenAndPos,
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<MutableValue> {
+	let (tok, pos) = first_tok;
+	let out = match tok {
+		Token::Percent => {
+			let reg_name = consume_extract!(toks, Ident, { bail!("Missing register name token") });
+			MutableValue::Register(reg_name.clone().into())
+		}
+		Token::Ident(ident) => match ident.as_str() {
+			"sco" => {
+				let score = parse_score(toks).context("Failed to parse score")?;
+				MutableValue::Score(score)
+			}
+			other => {
+				let location = impl_parse_full_data_location(other, toks)
+					.context("Failed to parse data location")?;
+				MutableValue::Data(location)
+			}
+		},
+		other => bail!("Unexpected token {other:?} {pos}"),
+	};
+	Ok(out)
+}
+
+fn parse_score<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<Score> {
+	let holder = parse_entity_target(toks).context("Failed to parse score holder")?;
+	let objective = consume_extract!(toks, Str, { bail!("Missing score objective token") });
+	Ok(Score::new(holder, objective.clone().into()))
+}
+
+#[allow(dead_code)]
+fn parse_full_data_location<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<FullDataLocation> {
+	let loc = parse_data_location(toks).context("Failed to parse data location")?;
+	let path = consume_extract!(toks, Str, { bail!("Missing data path token") });
+	Ok(FullDataLocation {
+		loc,
+		path: path.clone(),
+	})
+}
+
+fn impl_parse_full_data_location<'t>(
+	loc: &str,
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<FullDataLocation> {
+	let loc = impl_parse_data_location(loc, toks).context("Failed to parse data location")?;
+	let path = consume_extract!(toks, Str, { bail!("Missing data path token") });
+	Ok(FullDataLocation {
+		loc,
+		path: path.clone(),
+	})
+}
+
+#[allow(dead_code)]
+fn parse_data_location<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<DataLocation> {
+	let loc = consume_extract!(toks, Ident, { bail!("Missing value type token") });
+	impl_parse_data_location(loc, toks)
+}
+
+fn impl_parse_data_location<'t>(
+	loc: &str,
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<DataLocation> {
+	match loc {
+		"ent" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse entity target")?;
+			Ok(DataLocation::Entity(tgt))
+		}
+		"stg" => {
+			let loc = consume_extract!(toks, Str, { bail!("Missing storage location token") });
+			Ok(DataLocation::Storage(loc.clone().into()))
+		}
+		other => bail!("Unknown data location type {other}"),
+	}
+}
+
+#[allow(dead_code)]
 fn parse_lit<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<DataTypeContents> {
-	let (tok, pos) = consume!(toks, { bail!("Missing declare binding token") });
+	let first_tok = consume!(toks, { bail!("Missing first literal token") });
+	parse_lit_impl(first_tok, toks)
+}
+
+fn parse_lit_impl<'t>(
+	first_tok: &TokenAndPos,
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<DataTypeContents> {
+	macro_rules! num_lit {
+		($val:expr, $kind:ident, $kind2:ident, $kind3:ident, $name:literal) => {{
+			let num =
+				(*$val)
+					.try_into()
+					.expect(concat!("Numeric value is not within", $name, "range"));
+			DataTypeContents::$kind($kind2::$kind3(num))
+		}};
+	}
+
+	macro_rules! score_lit {
+		($val:expr, $kind:ident, $name:literal) => {{
+			num_lit!($val, Score, ScoreTypeContents, $kind, $name)
+		}};
+	}
+
+	macro_rules! nbt_lit {
+		($val:expr, $kind:ident, $name:literal) => {{
+			num_lit!($val, NBT, NBTTypeContents, $kind, $name)
+		}};
+	}
+
+	let (tok, pos) = first_tok;
+
 	match tok {
-		// TODO: More num literals
-		Token::Num(num) => Ok(DataTypeContents::Score(ScoreTypeContents::Score(*num))),
+		Token::Num(num) => {
+			let suffix = consume_extract!(toks, Ident, {
+				bail!("Missing number literal suffix token")
+			});
+
+			Ok(match suffix.as_str() {
+				"s" => score_lit!(num, Score, "score"),
+				"u" => score_lit!(num, UScore, "uscore"),
+				"nb" => nbt_lit!(num, Byte, "nbyte"),
+				"ns" => nbt_lit!(num, Short, "nshort"),
+				"ni" => nbt_lit!(num, Int, "nint"),
+				"nl" => nbt_lit!(num, Int, "nlong"),
+				other => bail!("Unknown numeric literal suffix {other}"),
+			})
+		}
+		Token::Ident(ident) => match ident.as_str() {
+			"true" => Ok(DataTypeContents::Score(ScoreTypeContents::Bool(true))),
+			"false" => Ok(DataTypeContents::Score(ScoreTypeContents::Bool(false))),
+			"truen" => Ok(DataTypeContents::NBT(NBTTypeContents::Bool(true))),
+			"falsen" => Ok(DataTypeContents::NBT(NBTTypeContents::Bool(false))),
+			other => bail!("Unknown data value {other}"),
+		},
+		Token::Str(string) => Ok(DataTypeContents::NBT(NBTTypeContents::String(
+			string.clone().into(),
+		))),
 		other => bail!("Unexpected token {other:?} {pos}"),
 	}
+}
+
+fn parse_entity_target<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<EntityTarget> {
+	let player = consume_extract!(toks, Str, { bail!("Missing score holder token") });
+	Ok(EntityTarget::Player(player.clone()))
 }
 
 fn parse_if<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<InstrKind> {

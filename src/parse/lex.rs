@@ -95,6 +95,10 @@ pub fn lex(text: &str) -> anyhow::Result<Vec<(Token, TextPos)>> {
 						tok = Token::Equal;
 						tok_finished = true;
 					}
+					'%' => {
+						tok = Token::Percent;
+						tok_finished = true;
+					}
 					'"' => tok = Token::Str(String::new()),
 					'#' => tok = Token::Comment(String::new()),
 					'$' => tok = Token::Variable(String::new()),
@@ -216,6 +220,8 @@ pub enum Token {
 	Bang,
 	/// An equal sign (=)
 	Equal,
+	/// A percent sign (%)
+	Percent,
 	/// A variable ($var_name)
 	Variable(String),
 	/// A curly brace ({ / })
@@ -231,7 +237,7 @@ pub enum Token {
 	/// An identifier (foo)
 	Ident(String),
 	/// An integer number (-12, 6, 128, etc.)
-	Num(i32),
+	Num(i128),
 	/// A string literal ("'hello' there")
 	Str(String),
 }
@@ -249,6 +255,7 @@ impl Token {
 			Token::At => "@".into(),
 			Token::Bang => "!".into(),
 			Token::Equal => "=".into(),
+			Token::Percent => "%".into(),
 			Token::Variable(name) => "$".to_string() + name,
 			Token::Curly(Side::Left) => "{".into(),
 			Token::Curly(Side::Right) => "}".into(),

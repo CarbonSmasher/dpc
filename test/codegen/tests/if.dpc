@@ -1,8 +1,8 @@
 "test:main" {
-	let x: score = val const 7;
-	if eq mut x, const 7: say "hello";
+	let x: score = val 7s;
+	if eq %x, 7s: say "hello";
 	let y: score = null;
-	if exists mut y:
-		if not eq const 5, mut y:
-			set x, const 3;
+	if exists %y:
+		if not eq 5s, %y:
+			set %x, 3s;
 }
