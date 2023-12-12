@@ -207,6 +207,11 @@ impl DataTypeContents {
 			Self::NBT(nbt) => nbt.get_ty(),
 		}
 	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Score(l), Self::Score(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::NBT(l), Self::NBT(r)) if l.is_value_eq(r))
+	}
 }
 
 impl Debug for DataTypeContents {

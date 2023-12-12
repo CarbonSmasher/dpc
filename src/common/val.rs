@@ -74,6 +74,11 @@ impl Value {
 			Self::Mutable(val) => Some(val),
 		}
 	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Constant(l), Self::Constant(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::Mutable(l), Self::Mutable(r)) if l.is_same_val(r))
+	}
 }
 
 impl Debug for Value {

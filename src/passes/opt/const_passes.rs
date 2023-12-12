@@ -507,29 +507,7 @@ fn run_const_condition_iter(
 
 		match &mut instr.kind {
 			MIRInstrKind::If { condition, body } => {
-				let result = match condition {
-					Condition::Equal(
-						Value::Constant(DataTypeContents::Score(l)),
-						Value::Constant(DataTypeContents::Score(r)),
-					) => Some(l.get_i32() == r.get_i32()),
-					Condition::GreaterThan(
-						Value::Constant(DataTypeContents::Score(l)),
-						Value::Constant(DataTypeContents::Score(r)),
-					) => Some(l.get_i32() > r.get_i32()),
-					Condition::GreaterThanOrEqual(
-						Value::Constant(DataTypeContents::Score(l)),
-						Value::Constant(DataTypeContents::Score(r)),
-					) => Some(l.get_i32() >= r.get_i32()),
-					Condition::LessThan(
-						Value::Constant(DataTypeContents::Score(l)),
-						Value::Constant(DataTypeContents::Score(r)),
-					) => Some(l.get_i32() < r.get_i32()),
-					Condition::LessThanOrEqual(
-						Value::Constant(DataTypeContents::Score(l)),
-						Value::Constant(DataTypeContents::Score(r)),
-					) => Some(l.get_i32() <= r.get_i32()),
-					_ => None,
-				};
+				let result = const_eval_condition(condition);
 				if let Some(result) = result {
 					if result {
 						instr.kind = *body.clone();
@@ -544,4 +522,33 @@ fn run_const_condition_iter(
 	}
 
 	run_again
+}
+
+fn const_eval_condition(condition: &Condition) -> Option<bool> {
+	match condition {
+		Condition::Equal(
+			Value::Constant(DataTypeContents::Score(l)),
+			Value::Constant(DataTypeContents::Score(r)),
+		) => Some(l.get_i32() == r.get_i32()),
+		Condition::GreaterThan(
+			Value::Constant(DataTypeContents::Score(l)),
+			Value::Constant(DataTypeContents::Score(r)),
+		) => Some(l.get_i32() > r.get_i32()),
+		Condition::GreaterThanOrEqual(
+			Value::Constant(DataTypeContents::Score(l)),
+			Value::Constant(DataTypeContents::Score(r)),
+		) => Some(l.get_i32() >= r.get_i32()),
+		Condition::LessThan(
+			Value::Constant(DataTypeContents::Score(l)),
+			Value::Constant(DataTypeContents::Score(r)),
+		) => Some(l.get_i32() < r.get_i32()),
+		Condition::LessThanOrEqual(
+			Value::Constant(DataTypeContents::Score(l)),
+			Value::Constant(DataTypeContents::Score(r)),
+		) => Some(l.get_i32() <= r.get_i32()),
+		Condition::Bool(Value::Constant(DataTypeContents::Score(val))) => Some(val.get_i32() == 1),
+		Condition::Exists(Value::Constant(..)) => Some(true),
+		Condition::Not(condition) => const_eval_condition(condition).map(|x| !x),
+		_ => None,
+	}
 }

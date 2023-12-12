@@ -1,3 +1,4 @@
+use crate::common::condition::Condition;
 use crate::common::mc::modifier::Modifier;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::{val::ScoreValue, val::Value, DeclareBinding};
@@ -82,6 +83,7 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if score.get_i32() == 0 => true,
 			MIRInstrKind::AddTime { time } if time.amount.0.is_zero() => true,
+
 			_ => false,
 		};
 
@@ -158,6 +160,27 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 					ScoreTypeContents::Score(0),
 				))),
 			}),
+			MIRInstrKind::If {
+				condition: Condition::Equal(Value::Mutable(left1), right1),
+				body,
+			} => {
+				if let MIRInstrKind::Assign {
+					left: left2,
+					right: DeclareBinding::Value(right2),
+				} = body.as_ref()
+				{
+					if left1.is_same_val(left2) && right1.is_value_eq(right2) {
+						Some(MIRInstrKind::Assign {
+							left: left1.clone(),
+							right: DeclareBinding::Value(right1.clone()),
+						})
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
 			_ => None,
 		};
 
