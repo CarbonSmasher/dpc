@@ -6,3 +6,4 @@ pub mod inst_combine;
 pub mod scoreboard_dataflow;
 pub mod simplify;
 pub mod simplify_modifiers;
+pub mod merge_modifiers;

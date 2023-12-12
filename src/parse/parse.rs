@@ -1,7 +1,9 @@
 use anyhow::{bail, Context};
 
 use crate::common::condition::Condition;
+use crate::common::function::CallInterface;
 use crate::common::mc::entity::{SelectorType, TargetSelector};
+use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
 use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score, XPValue};
 use crate::common::ty::{
 	ArraySize, DataType, DataTypeContents, NBTArrayType, NBTType, NBTTypeContents, ScoreType,
@@ -86,6 +88,9 @@ macro_rules! consume_optional_expect {
 			let Token::$ty = &tok.0 else {
 				bail!("Unexpected token {:?} {}", tok.0, tok.1);
 			};
+			true
+		} else {
+			false
 		}
 	}};
 }
@@ -370,6 +375,42 @@ fn parse_instr<'t>(
 			Ok(InstrKind::EnableDatapack { pack: pack.clone() })
 		}
 		"lspu" => Ok(InstrKind::ListPlayerUUIDs),
+		"call" => {
+			let func = consume_extract!(toks, Str, { bail!("Missing function to call") });
+			Ok(InstrKind::Call {
+				call: CallInterface {
+					function: func.clone().into(),
+					args: Vec::new(),
+				},
+			})
+		}
+		"sboa" => {
+			let obj = consume_extract!(toks, Str, { bail!("Missing objective") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let (tok, pos) = consume!(toks, { bail!("Missing criterion") });
+			let criterion = match tok {
+				Token::Str(string) => Criterion::Compound(string.clone()),
+				Token::Ident(ident) => {
+					let criterion =
+						SingleCriterion::parse(ident).context("Unknown criterion type")?;
+					Criterion::Single(criterion)
+				}
+				other => bail!("Unexpected token {other:?} {pos}"),
+			};
+			let expect_display_name = consume_optional_expect!(toks, Comma);
+			let display_name = if expect_display_name {
+				Some(consume_extract!(toks, Str, {
+					bail!("Missing display name")
+				}))
+			} else {
+				None
+			};
+			Ok(InstrKind::AddScoreboardObjective {
+				objective: obj.clone(),
+				criterion,
+				display_name: display_name.cloned(),
+			})
+		}
 		other => bail!("Unknown instruction {other}"),
 	}
 	.context("Failed to parse instruction")?;

@@ -27,6 +27,22 @@ impl Condition {
 			Self::Not(condition) => condition.get_used_regs(),
 		}
 	}
+
+	pub fn iter_used_regs_mut(&mut self) -> Box<dyn Iterator<Item = &mut Identifier> + '_> {
+		match self {
+			Self::Equal(l, r)
+			| Self::GreaterThan(l, r)
+			| Self::GreaterThanOrEqual(l, r)
+			| Self::LessThan(l, r)
+			| Self::LessThanOrEqual(l, r) => Box::new(
+				l.get_used_regs_mut()
+					.into_iter()
+					.chain(r.get_used_regs_mut()),
+			),
+			Self::Exists(val) | Self::Bool(val) => Box::new(val.get_used_regs_mut().into_iter()),
+			Self::Not(condition) => condition.iter_used_regs_mut(),
+		}
+	}
 }
 
 impl Debug for Condition {

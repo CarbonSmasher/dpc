@@ -52,3 +52,22 @@ impl Debug for SingleCriterion {
 		)
 	}
 }
+
+impl SingleCriterion {
+	pub fn parse(string: &str) -> Option<Self> {
+		match string {
+			"air" => Some(Self::Air),
+			"armor" => Some(Self::Armor),
+			"death_count" => Some(Self::DeathCount),
+			"dummy" => Some(Self::Dummy),
+			"food" => Some(Self::Food),
+			"health" => Some(Self::Health),
+			"level" => Some(Self::Level),
+			"player_kill_count" => Some(Self::PlayerKillCount),
+			"total_kill_count" => Some(Self::TotalKillCount),
+			"trigger" => Some(Self::Trigger),
+			"xp" => Some(Self::XP),
+			_ => None,
+		}
+	}
+}

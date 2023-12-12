@@ -9,8 +9,7 @@
 	# codegenned
 	if eq 1s, %x:
 		say "hello";
-	# Should output as if matches, but constrained
-	# by one. In the future, should combine into a single range
+	# Should output as a single if matches
 	if gt %x, 1s:
 		if lt %x, 1s:
 			say "hello";

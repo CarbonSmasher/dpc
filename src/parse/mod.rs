@@ -104,6 +104,7 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 			State::Body(interface, body) => match tok {
 				Token::Curly(Side::Right) => {
 					unparsed_defs.insert(std::mem::take(interface), std::mem::take(body));
+					state = State::Root;
 				}
 				other => body.push((other.clone(), pos.clone())),
 			},

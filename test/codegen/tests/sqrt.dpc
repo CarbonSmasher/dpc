@@ -1,0 +1,66 @@
+# mir_passes lir_passes
+
+@preserve
+"test:main" {
+	call "test:init";
+
+	set sco "input" "int", 4s;
+	call "test:sqrt";
+}
+
+"test:sqrt" {
+	# Setup
+	let tmp0: score = val sco "input" "int";
+	let tmp1: score = val sco "input" "int";
+	let tmp2: score = val sco "input" "int";
+	let tmp3: score = val sco "input" "int";
+	set sco "output" "int", sco "input" "int";
+
+	# Range-specific
+	if lte sco "input" "int", 13924s:
+		call "test:sqrt1";
+	if gte sco "input" "int", 13925s:
+		if lte sco "input" "int", 16777216s:
+			call "test:sqrt2";
+	if gte sco "input" "int", 16777217s:
+		call "test:sqrt3";
+
+	# Run
+	div %tmp0, sco "output" "int";
+	add sco "output" "int", %tmp0;
+	div sco "output" "int", 2s;
+
+	div %tmp1, sco "output" "int";
+	add sco "output" "int", %tmp1;
+	div sco "output" "int", 2s;
+
+	div %tmp2, sco "output" "int";
+	add sco "output" "int", %tmp2;
+	div sco "output" "int", 2s;
+
+	div %tmp3, sco "output" "int";
+	add sco "output" "int", %tmp3;
+	div sco "output" "int", 2s;
+}
+
+"test:sqrt1" {
+	sub sco "output" "int", 1s;
+	div sco "output" "int", 119s;
+	add sco "output" "int", 1s;
+}
+
+"test:sqrt2" {
+	sub sco "output" "int", 13924s;
+	div sco "output" "int", 4214s;
+	add sco "output" "int", 118s;
+}
+
+"test:sqrt3" {
+	sub sco "output" "int", 16777216s;
+	div sco "output" "int", 50436s;
+	add sco "output" "int", 4096s;
+}
+
+"test:init" {
+	sboa "int", dummy;
+}

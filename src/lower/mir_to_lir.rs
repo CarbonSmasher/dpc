@@ -292,7 +292,7 @@ fn lower_kind(
 					.expect("If len is 1, instr should exist")
 					.clone()
 			} else {
-				let mut lir_block = LIRBlock::new(RegisterList::new());
+				let mut lir_block = LIRBlock::new(lbcx.registers.clone());
 				lir_block.contents = new_lir_instrs;
 				let block = lbcx.lir.blocks.add(lir_block);
 				let interface = lbcx.new_if_body_fn();

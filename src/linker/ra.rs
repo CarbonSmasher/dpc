@@ -124,9 +124,11 @@ impl RegAllocResult {
 }
 
 pub fn alloc_block_registers(
+	func_id: &str,
 	block: &LIRBlock,
 	racx: &mut RegAllocCx,
 ) -> anyhow::Result<RegAllocResult> {
+	let func_id = func_id.to_string().replace(":", "_").replace("/", "_");
 	let mut out_regs = HashMap::new();
 	let mut out_locals = HashMap::new();
 
@@ -178,11 +180,11 @@ pub fn alloc_block_registers(
 	let out = RegAllocResult {
 		regs: out_regs
 			.iter()
-			.map(|(x, y)| (x.clone(), format_reg_fake_player(*y)))
+			.map(|(x, y)| (x.clone(), format_reg_fake_player(*y, &func_id)))
 			.collect(),
 		locals: out_locals
 			.iter()
-			.map(|(x, y)| (x.clone(), format_local_storage_entry(*y)))
+			.map(|(x, y)| (x.clone(), format_local_storage_entry(*y, &func_id)))
 			.collect(),
 	};
 

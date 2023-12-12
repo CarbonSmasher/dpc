@@ -727,6 +727,12 @@ impl MIRInstrKind {
 					f(reg);
 				}
 			}
+			Self::If { condition, body } => {
+				for reg in condition.iter_used_regs_mut() {
+					f(reg);
+				}
+				body.replace_regs(f);
+			}
 			_ => {}
 		}
 	}

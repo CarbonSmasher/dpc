@@ -110,9 +110,8 @@ fn run_scoreboard_dataflow_iter(
 			LIRInstrKind::Use(MutableValue::Register(reg)) => {
 				finished_flow_points.extend(flow_points.remove(reg).map(|x| x.1));
 			}
-			other => {
-				// FIXME: Use Instruction get_used_regs()
-				let regs = other.get_used_regs();
+			_ => {
+				let regs = instr.get_used_regs();
 				for reg in regs {
 					finished_flow_points.extend(flow_points.remove(reg).map(|x| x.1));
 				}

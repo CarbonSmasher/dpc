@@ -16,6 +16,7 @@ use self::opt::dce::DCEPass;
 use self::opt::dse::DSEPass;
 use self::opt::inline::SimpleInlinePass;
 use self::opt::inst_combine::InstCombinePass;
+use self::opt::merge_modifiers::MergeModifiersPass;
 use self::opt::scoreboard_dataflow::ScoreboardDataflowPass;
 use self::opt::simplify::{LIRSimplifyPass, MIRSimplifyPass};
 use self::opt::simplify_modifiers::SimplifyModifiersPass;
@@ -101,7 +102,9 @@ pub fn run_lir_passes(lir: &mut LIR) -> anyhow::Result<()> {
 		Box::new(NullPass) as Box<dyn LIRPass>,
 		Box::new(LIRSimplifyPass),
 		Box::new(ScoreboardDataflowPass),
+		Box::new(MergeModifiersPass),
 		Box::new(SimplifyModifiersPass),
+		Box::new(MergeModifiersPass),
 		Box::new(LIRSimplifyPass),
 	];
 

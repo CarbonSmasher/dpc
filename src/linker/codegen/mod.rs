@@ -55,8 +55,8 @@ pub struct CodegenBlockCx<'ccx> {
 	pub regs: RegisterList,
 }
 
-pub fn codegen_block(block: &LIRBlock, ccx: &mut CodegenCx) -> anyhow::Result<Vec<String>> {
-	let ra = alloc_block_registers(block, &mut ccx.racx)?;
+pub fn codegen_block(func_id: &str, block: &LIRBlock, ccx: &mut CodegenCx) -> anyhow::Result<Vec<String>> {
+	let ra = alloc_block_registers(func_id, block, &mut ccx.racx)?;
 
 	let mut cbcx = CodegenBlockCx {
 		ccx,
