@@ -1,28 +1,27 @@
-# mir_passes lir_passes
+# mir_passes lir_passes debug
 
 @preserve
 "test:main" {
 	call "test:init";
 
-	set sco "input" "int", 4s;
-	call "test:sqrt";
+	call "test:sqrt" 4s;
 }
 
-"test:sqrt" {
+"test:sqrt" score {
 	# Setup
-	let tmp0: score = val sco "input" "int";
-	let tmp1: score = val sco "input" "int";
-	let tmp2: score = val sco "input" "int";
-	let tmp3: score = val sco "input" "int";
-	set sco "output" "int", sco "input" "int";
+	let tmp0: score = val &0;
+	let tmp1: score = val &0;
+	let tmp2: score = val &0;
+	let tmp3: score = val &0;
+	set sco "output" "int", &0;
 
 	# Range-specific
-	if lte sco "input" "int", 13924s:
+	if lte &0, 13924s:
 		call "test:sqrt1";
-	if gte sco "input" "int", 13925s:
-		if lte sco "input" "int", 16777216s:
+	if gte &0, 13925s:
+		if lte &0, 16777216s:
 			call "test:sqrt2";
-	if gte sco "input" "int", 16777217s:
+	if gte &0, 16777217s:
 		call "test:sqrt3";
 
 	# Run

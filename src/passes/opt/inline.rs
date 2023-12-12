@@ -157,7 +157,9 @@ fn cleanup_fn(
 		});
 	}
 
-	*block = [prelude, block.clone()].concat();
+	if !prelude.is_empty() {
+		*block = [prelude, block.clone()].concat();
+	}
 
 	Ok(())
 }
