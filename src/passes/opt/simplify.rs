@@ -112,16 +112,16 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				))),
 			}),
 			// A couple of canonicalizations that just help out const prop and const fold
-			// x / x = 1
-			MIRInstrKind::Div {
-				left,
-				right: Value::Mutable(right),
-			} if left.is_same_val(right) => Some(MIRInstrKind::Assign {
-				left: left.clone(),
-				right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
-					ScoreTypeContents::Score(1),
-				))),
-			}),
+			// x / x = 1 ONLY if x != 0
+			// MIRInstrKind::Div {
+			// 	left,
+			// 	right: Value::Mutable(right),
+			// } if left.is_same_val(right) => Some(MIRInstrKind::Assign {
+			// 	left: left.clone(),
+			// 	right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+			// 		ScoreTypeContents::Score(1),
+			// 	))),
+			// }),
 			// x - x = 0
 			MIRInstrKind::Sub {
 				left,
@@ -300,13 +300,13 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 					ScoreValue::Constant(ScoreTypeContents::Score(-1)),
 				))
 			}
-			// x / x == 1
-			LIRInstrKind::DivScore(left, ScoreValue::Mutable(right)) if left.is_value_eq(right) => {
-				Some(LIRInstrKind::SetScore(
-					left.clone(),
-					ScoreValue::Constant(ScoreTypeContents::Score(1)),
-				))
-			}
+			// x / x == 1 ONLY if x != 0
+			// LIRInstrKind::DivScore(left, ScoreValue::Mutable(right)) if left.is_value_eq(right) => {
+			// 	Some(LIRInstrKind::SetScore(
+			// 		left.clone(),
+			// 		ScoreValue::Constant(ScoreTypeContents::Score(1)),
+			// 	))
+			// }
 			// x * 0 == 0
 			LIRInstrKind::MulScore(left, ScoreValue::Constant(score)) if score.get_i32() == 0 => {
 				Some(LIRInstrKind::SetScore(

@@ -2,15 +2,13 @@
 
 @preserve
 "test:main" {
-	set sco ".in" "math", 100s;
-	call "test:sine";
-	set sco ".in" "math", 1s;
-	call "test:sine";
+	call "test:sine" 100s;
+	call "test:sine" 1s;
 }
 
-"test:sine" {
+"test:sine" score {
 	# Init
-	let in: score = val sco ".in" "math";
+	let in: score = val &0;
 	let sign: score = val -400s;
 
 	# Setup input

@@ -132,6 +132,10 @@ impl MutableValue {
 
 	pub fn is_same_val(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Register(left), Self::Register(right)) if left == right)
+			|| matches!((self, other), (Self::Score(left), Self::Score(right)) if left.is_value_eq(right))
+			|| matches!((self, other), (Self::Data(left), Self::Data(right)) if left.is_value_eq(right))
+			|| matches!((self, other), (Self::Arg(left), Self::Arg(right)) if left == right)
+			|| matches!((self, other), (Self::CallArg(la, lf, ..), Self::CallArg(ra, rf, ..)) if la == ra && lf == rf)
 	}
 
 	pub fn to_mutable_score_value(self) -> anyhow::Result<MutableScoreValue> {

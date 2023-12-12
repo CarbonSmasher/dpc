@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context};
 use dashmap::DashMap;
 
+use crate::common::condition::Condition;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind};
@@ -24,7 +25,9 @@ impl MIRPass for ConstComboPass {
 			prop.run_pass(data).context("ConstProp failed")?;
 			let mut fold = ConstFoldPass::new();
 			fold.run_pass(data).context("ConstFold failed")?;
-			if !prop.made_changes() && !fold.made_changes {
+			let mut cond = ConstConditionPass::new();
+			cond.run_pass(data).context("ConstCondition failed")?;
+			if !prop.made_changes() && !fold.made_changes && !cond.made_changes {
 				break;
 			}
 		}
@@ -84,35 +87,61 @@ fn run_const_prop_iter(block: &mut MIRBlock) -> bool {
 
 	let mut an = ConstAnalyzer::new();
 	for instr in &mut block.contents {
-		match &mut instr.kind {
-			MIRInstrKind::Assign {
-				right: DeclareBinding::Value(right),
-				..
-			}
-			| MIRInstrKind::Add { right, .. }
-			| MIRInstrKind::Sub { right, .. }
-			| MIRInstrKind::Mul { right, .. }
-			| MIRInstrKind::Div { right, .. }
-			| MIRInstrKind::Mod { right, .. }
-			| MIRInstrKind::Min { right, .. }
-			| MIRInstrKind::Max { right, .. }
-			| MIRInstrKind::Merge { right, .. }
-			| MIRInstrKind::Push { right, .. }
-			| MIRInstrKind::PushFront { right, .. }
-			| MIRInstrKind::Insert { right, .. } => {
-				if let Value::Mutable(MutableValue::Register(reg)) = right.clone() {
-					if let Some(val) = an.vals.get(&reg) {
-						*right = Value::Constant(val.clone());
-						run_again = true;
-					}
-				}
-			}
-			_ => {}
-		};
+		const_prop_instr(&mut instr.kind, &mut an, &mut run_again);
 		an.feed(&instr.kind);
 	}
 
 	run_again
+}
+
+fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again: &mut bool) {
+	match instr {
+		MIRInstrKind::Assign {
+			right: DeclareBinding::Value(right),
+			..
+		}
+		| MIRInstrKind::Add { right, .. }
+		| MIRInstrKind::Sub { right, .. }
+		| MIRInstrKind::Mul { right, .. }
+		| MIRInstrKind::Div { right, .. }
+		| MIRInstrKind::Mod { right, .. }
+		| MIRInstrKind::Min { right, .. }
+		| MIRInstrKind::Max { right, .. }
+		| MIRInstrKind::Merge { right, .. }
+		| MIRInstrKind::Push { right, .. }
+		| MIRInstrKind::PushFront { right, .. }
+		| MIRInstrKind::Insert { right, .. } => {
+			if let Value::Mutable(MutableValue::Register(reg)) = right.clone() {
+				if let Some(val) = an.vals.get(&reg) {
+					*right = Value::Constant(val.clone());
+					*run_again = true;
+				}
+			}
+		}
+		MIRInstrKind::If { condition, body } => match condition {
+			Condition::Equal(l, r)
+			| Condition::GreaterThan(l, r)
+			| Condition::GreaterThanOrEqual(l, r)
+			| Condition::LessThan(l, r)
+			| Condition::LessThanOrEqual(l, r) => {
+				if let Value::Mutable(MutableValue::Register(reg)) = l.clone() {
+					if let Some(val) = an.vals.get(&reg) {
+						*l = Value::Constant(val.clone());
+						*run_again = true;
+					}
+				}
+				if let Value::Mutable(MutableValue::Register(reg)) = r.clone() {
+					if let Some(val) = an.vals.get(&reg) {
+						*r = Value::Constant(val.clone());
+						*run_again = true;
+					}
+				}
+				const_prop_instr(body, an, run_again);
+			}
+			_ => {}
+		},
+		_ => {}
+	};
 }
 
 struct ConstAnalyzer<'cont> {
@@ -263,7 +292,7 @@ impl MIRPass for ConstFoldPass {
 	}
 }
 
-/// Runs an iteration of const prop. Returns true if another iteration
+/// Runs an iteration of const fold. Returns true if another iteration
 /// should be run
 fn run_const_fold_iter(
 	block: &mut MIRBlock,
@@ -418,4 +447,101 @@ fn run_const_fold_iter(
 struct FoldPoint {
 	pos: usize,
 	value: i32,
+}
+
+pub struct ConstConditionPass {
+	made_changes: bool,
+}
+
+impl ConstConditionPass {
+	pub fn new() -> Self {
+		Self {
+			made_changes: false,
+		}
+	}
+}
+
+impl Pass for ConstConditionPass {
+	fn get_name(&self) -> &'static str {
+		"const_condition"
+	}
+}
+
+impl MIRPass for ConstConditionPass {
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		for (_, block) in &mut data.mir.functions {
+			let block = data
+				.mir
+				.blocks
+				.get_mut(block)
+				.ok_or(anyhow!("Block does not exist"))?;
+
+			let mut instrs_to_remove = DashSetEmptyTracker::new();
+			loop {
+				let run_again = run_const_condition_iter(block, &mut instrs_to_remove);
+				if run_again {
+					self.made_changes = true;
+				} else {
+					break;
+				}
+			}
+			remove_indices(&mut block.contents, &instrs_to_remove);
+		}
+
+		Ok(())
+	}
+}
+
+/// Runs an iteration of const prop. Returns true if another iteration
+/// should be run
+fn run_const_condition_iter(
+	block: &mut MIRBlock,
+	instrs_to_remove: &mut DashSetEmptyTracker<usize>,
+) -> bool {
+	let mut run_again = false;
+
+	for (i, instr) in block.contents.iter_mut().enumerate() {
+		if instrs_to_remove.contains(&i) {
+			continue;
+		}
+
+		match &mut instr.kind {
+			MIRInstrKind::If { condition, body } => {
+				let result = match condition {
+					Condition::Equal(
+						Value::Constant(DataTypeContents::Score(l)),
+						Value::Constant(DataTypeContents::Score(r)),
+					) => Some(l.get_i32() == r.get_i32()),
+					Condition::GreaterThan(
+						Value::Constant(DataTypeContents::Score(l)),
+						Value::Constant(DataTypeContents::Score(r)),
+					) => Some(l.get_i32() > r.get_i32()),
+					Condition::GreaterThanOrEqual(
+						Value::Constant(DataTypeContents::Score(l)),
+						Value::Constant(DataTypeContents::Score(r)),
+					) => Some(l.get_i32() >= r.get_i32()),
+					Condition::LessThan(
+						Value::Constant(DataTypeContents::Score(l)),
+						Value::Constant(DataTypeContents::Score(r)),
+					) => Some(l.get_i32() < r.get_i32()),
+					Condition::LessThanOrEqual(
+						Value::Constant(DataTypeContents::Score(l)),
+						Value::Constant(DataTypeContents::Score(r)),
+					) => Some(l.get_i32() <= r.get_i32()),
+					_ => None,
+				};
+				if let Some(result) = result {
+					if result {
+						instr.kind = *body.clone();
+					} else {
+						instrs_to_remove.insert(i);
+					}
+					run_again = true;
+				}
+			}
+			_ => {}
+		};
+	}
+
+	run_again
 }
