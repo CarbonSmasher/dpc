@@ -23,18 +23,16 @@ pub fn codegen_modifier(
 
 			let out = match *condition {
 				IfModCondition::Score(condition) => match condition {
-					IfScoreCondition::Single { left, right } => {
-						match right {
-							ScoreValue::Constant(val) => {
-								let lit = val.get_literal_str();
-								Some(cgformat!(cbcx, keyword, " score ", left, " matches ", lit)?)
-							}
-							ScoreValue::Mutable(val) => {
-								let val = get_mut_score_val_score(&val, &cbcx.ra)?;
-								Some(cgformat!(cbcx, keyword, " score ", left, " = ", val)?)
-							}
+					IfScoreCondition::Single { left, right } => match right {
+						ScoreValue::Constant(val) => {
+							let lit = val.get_literal_str();
+							Some(cgformat!(cbcx, keyword, " score ", left, " matches ", lit)?)
 						}
-					}
+						ScoreValue::Mutable(val) => {
+							let val = get_mut_score_val_score(&val, &cbcx.ra, &cbcx.func_id)?;
+							Some(cgformat!(cbcx, keyword, " score ", left, " = ", val)?)
+						}
+					},
 					IfScoreCondition::Range { score, left, right } => {
 						let out = match (left, right) {
 							(IfScoreRangeEnd::Infinite, IfScoreRangeEnd::Infinite) => {
@@ -228,7 +226,7 @@ fn codegen_if_score_range_side(
 			}
 		}
 		ScoreValue::Mutable(val) => {
-			let val = get_mut_score_val_score(&val, &cbcx.ra)?.gen_str(cbcx)?;
+			let val = get_mut_score_val_score(&val, &cbcx.ra, &cbcx.func_id)?.gen_str(cbcx)?;
 			let sign = if lt {
 				codegen_score_lt(inclusive)
 			} else {
@@ -300,6 +298,7 @@ mod tests {
 			ccx: &mut ccx,
 			ra: RegAllocResult::new(),
 			regs: RegisterList::new(),
+			func_id: "foo".into(),
 		};
 
 		let modifier = Modifier::If {

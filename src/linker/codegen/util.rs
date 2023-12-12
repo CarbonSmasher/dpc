@@ -4,8 +4,10 @@ use crate::common::mc::{DataLocation, EntityTarget, FullDataLocation, Score};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::linker::ra::RegAllocResult;
 use crate::linker::text::{
-	format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE, REG_STORAGE_LOCATION,
+	format_arg_fake_player, format_arg_local_storage_entry, format_lit_fake_player, LIT_OBJECTIVE,
+	REG_OBJECTIVE, REG_STORAGE_LOCATION,
 };
+use crate::lower::cleanup_fn_id;
 
 use super::t::macros::cgformat;
 use super::{Codegen, CodegenBlockCx};
@@ -15,23 +17,33 @@ use super::{Codegen, CodegenBlockCx};
 pub fn get_score_val_score(
 	val: &ScoreValue,
 	ra: &RegAllocResult,
+	func_id: &str,
 ) -> anyhow::Result<(Score, ScoreLiteral)> {
 	let out = match val {
 		ScoreValue::Constant(score) => {
 			let num = score.get_i32();
 			(create_lit_score(num), ScoreLiteral(Some(num)))
 		}
-		ScoreValue::Mutable(val) => (get_mut_score_val_score(val, ra)?, ScoreLiteral(None)),
+		ScoreValue::Mutable(val) => (
+			get_mut_score_val_score(val, ra, func_id)?,
+			ScoreLiteral(None),
+		),
 	};
 
 	Ok(out)
 }
 
 #[allow(dead_code)]
-pub fn get_score_val_lit(val: &ScoreValue, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
+pub fn get_score_val_lit(
+	val: &ScoreValue,
+	cbcx: &mut CodegenBlockCx,
+	func_id: &str,
+) -> anyhow::Result<String> {
 	let out = match val {
 		ScoreValue::Constant(score) => score.get_literal_str(),
-		ScoreValue::Mutable(val) => get_mut_score_val_score(val, &cbcx.ra)?.gen_str(cbcx)?,
+		ScoreValue::Mutable(val) => {
+			get_mut_score_val_score(val, &cbcx.ra, func_id)?.gen_str(cbcx)?
+		}
 	};
 
 	Ok(out)
@@ -40,6 +52,7 @@ pub fn get_score_val_lit(val: &ScoreValue, cbcx: &mut CodegenBlockCx) -> anyhow:
 pub fn get_mut_score_val_score(
 	val: &MutableScoreValue,
 	ra: &RegAllocResult,
+	func_id: &str,
 ) -> anyhow::Result<Score> {
 	let out = match val {
 		MutableScoreValue::Score(score) => score.clone(),
@@ -50,6 +63,15 @@ pub fn get_mut_score_val_score(
 				.ok_or(anyhow!("Register {reg} not allocated"))?;
 			Score::new(EntityTarget::Player(reg.clone()), REG_OBJECTIVE.into())
 		}
+		MutableScoreValue::Arg(arg) => {
+			let arg = format_arg_fake_player(*arg, func_id);
+			Score::new(EntityTarget::Player(arg), REG_OBJECTIVE.into())
+		}
+		MutableScoreValue::CallArg(arg, func, ..) => {
+			let func_id = cleanup_fn_id(func);
+			let arg = format_arg_local_storage_entry(*arg, &func_id);
+			Score::new(EntityTarget::Player(arg), REG_OBJECTIVE.into())
+		}
 	};
 
 	Ok(out)
@@ -58,6 +80,7 @@ pub fn get_mut_score_val_score(
 pub fn get_mut_nbt_val_loc(
 	val: &MutableNBTValue,
 	ra: &RegAllocResult,
+	func_id: &str,
 ) -> anyhow::Result<FullDataLocation> {
 	let out = match val {
 		MutableNBTValue::Data(data) => data.clone(),
@@ -69,6 +92,21 @@ pub fn get_mut_nbt_val_loc(
 			FullDataLocation {
 				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
 				path: reg.clone(),
+			}
+		}
+		MutableNBTValue::Arg(arg) => {
+			let arg = format_arg_local_storage_entry(*arg, func_id);
+			FullDataLocation {
+				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
+				path: arg,
+			}
+		}
+		MutableNBTValue::CallArg(arg, func, ..) => {
+			let func_id = cleanup_fn_id(func);
+			let arg = format_arg_local_storage_entry(*arg, &func_id);
+			FullDataLocation {
+				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
+				path: arg,
 			}
 		}
 	};

@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use anyhow::bail;
+
 use crate::common::val::{MutableNBTValue, MutableScoreValue, ScoreValue};
 use crate::common::ResourceLocationTag;
 
@@ -93,17 +95,20 @@ pub enum StoreModLocation {
 }
 
 impl StoreModLocation {
-	pub fn from_mut_score_val(val: &MutableScoreValue) -> Self {
+	// TODO: Support storing in args
+	pub fn from_mut_score_val(val: &MutableScoreValue) -> anyhow::Result<Self> {
 		match val {
-			MutableScoreValue::Reg(reg) => Self::Reg(reg.clone()),
-			MutableScoreValue::Score(score) => Self::Score(score.clone()),
+			MutableScoreValue::Reg(reg) => Ok(Self::Reg(reg.clone())),
+			MutableScoreValue::Score(score) => Ok(Self::Score(score.clone())),
+			_ => bail!("Unsupported storage location"),
 		}
 	}
 
-	pub fn from_mut_nbt_val(val: &MutableNBTValue) -> Self {
+	pub fn from_mut_nbt_val(val: &MutableNBTValue) -> anyhow::Result<Self> {
 		match val {
-			MutableNBTValue::Reg(reg) => Self::LocalReg(reg.clone()),
-			MutableNBTValue::Data(data) => Self::Data(data.clone()),
+			MutableNBTValue::Reg(reg) => Ok(Self::LocalReg(reg.clone())),
+			MutableNBTValue::Data(data) => Ok(Self::Data(data.clone())),
+			_ => bail!("Unsupported storage location"),
 		}
 	}
 

@@ -15,7 +15,7 @@ impl Pass for ValidatePass {
 
 impl IRPass for ValidatePass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()> {
-		for (_, block) in &ir.functions {
+		for (func, block) in &ir.functions {
 			let block = ir
 				.blocks
 				.get_mut(block)
@@ -27,7 +27,7 @@ impl IRPass for ValidatePass {
 						if regs.contains_key(left) {
 							bail!("Redefinition of register {left}");
 						}
-						let right_ty = right.get_ty(&regs)?;
+						let right_ty = right.get_ty(&regs, &func.sig.params)?;
 						if let Some(right_ty) = right_ty {
 							if !right_ty.is_trivially_castable(ty) {
 								bail!("Register type does not match value type");
@@ -51,15 +51,15 @@ impl IRPass for ValidatePass {
 					| InstrKind::Push { left, right }
 					| InstrKind::PushFront { left, right }
 					| InstrKind::Insert { left, right, .. } => {
-						let (left_ty, right_ty) = get_op_tys(left, right, &regs)?;
+						let (left_ty, right_ty) = get_op_tys(left, right, &regs, &func.sig.params)?;
 						if !right_ty.is_trivially_castable(&left_ty) {
 							bail!("Incompatible types in instruction");
 						}
 					}
 					InstrKind::Swap { left, right } => {
 						if !right
-							.get_ty(&regs)?
-							.is_trivially_castable(&left.get_ty(&regs)?)
+							.get_ty(&regs, &func.sig.params)?
+							.is_trivially_castable(&left.get_ty(&regs, &func.sig.params)?)
 						{
 							bail!("Incompatible types in instruction");
 						}

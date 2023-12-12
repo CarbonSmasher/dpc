@@ -10,6 +10,7 @@ use std::{fmt::Debug, sync::Arc};
 
 use dashmap::DashMap;
 
+use self::function::FunctionParams;
 use self::ty::DataType;
 use self::val::{MutableValue, Value};
 
@@ -26,10 +27,14 @@ pub enum DeclareBinding {
 }
 
 impl DeclareBinding {
-	pub fn get_ty(&self, regs: &RegisterList) -> anyhow::Result<Option<DataType>> {
+	pub fn get_ty(
+		&self,
+		regs: &RegisterList,
+		params: &FunctionParams,
+	) -> anyhow::Result<Option<DataType>> {
 		let out = match self {
 			Self::Null => None,
-			Self::Value(val) => Some(val.get_ty(regs)?),
+			Self::Value(val) => Some(val.get_ty(regs, params)?),
 			Self::Cast(ty, ..) => Some(ty.clone()),
 			Self::Index { ty, .. } => Some(ty.clone()),
 		};

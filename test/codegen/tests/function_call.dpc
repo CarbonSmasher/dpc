@@ -1,0 +1,13 @@
+# lir_passes
+
+@preserve
+"test:main" {
+	let foo: score = val -44s;
+	call "test:fn" 7s, %foo, "foo";
+}
+
+"test:fn" score score nstr {
+	let x: score = val &0;
+	mul %x, &1;
+	set ent @s "DisplayName", &2;
+}

@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Context};
 
 use crate::common::condition::Condition;
-use crate::common::function::FunctionInterface;
+use crate::common::function::{FunctionInterface, FunctionParams};
 use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
@@ -41,7 +41,7 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 			.ok_or(anyhow!("Block does not exist"))?;
 		let mut lir_instrs = Vec::with_capacity(block.contents.len());
 
-		let mut lbcx = LowerBlockCx::new(&mut lir);
+		let mut lbcx = LowerBlockCx::new(&mut lir, interface.sig.params.clone());
 
 		for mir_instr in block.contents {
 			lower_kind(mir_instr.kind, &mut lir_instrs, &mut lbcx)?;
@@ -117,7 +117,23 @@ fn lower_kind(
 			lir_instrs.push(LIRInstruction::new(lower_insert(left, right, index, lbcx)?));
 		}
 		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
-		MIRInstrKind::Call { call } => lower!(lir_instrs, Call, call.function),
+		MIRInstrKind::Call { call } => {
+			// Set the arguments
+			for (i, arg) in call.args.iter().enumerate() {
+				let instrs = lower_assign(
+					MutableValue::CallArg(
+						i.try_into().expect("This should fit"),
+						call.function.clone(),
+						arg.get_ty(&lbcx.registers, &lbcx.params)?,
+					),
+					DeclareBinding::Value(arg.clone()),
+					lbcx,
+				)
+				.context("Failed to lower argument assignment")?;
+				lir_instrs.extend(instrs);
+			}
+			lower!(lir_instrs, Call, call.function);
+		}
 		MIRInstrKind::Say { message } => lower!(lir_instrs, Say, message),
 		MIRInstrKind::Tell { target, message } => lower!(lir_instrs, Tell, target, message),
 		MIRInstrKind::Kill { target } => lower!(lir_instrs, Kill, target),
@@ -473,15 +489,17 @@ struct LowerBlockCx<'lir> {
 	registers: RegisterList,
 	additional_reg_count: u32,
 	if_body_count: u32,
+	params: FunctionParams,
 }
 
 impl<'lir> LowerBlockCx<'lir> {
-	fn new(lir: &'lir mut LIR) -> Self {
+	fn new(lir: &'lir mut LIR, params: FunctionParams) -> Self {
 		Self {
 			lir,
 			registers: RegisterList::new(),
 			additional_reg_count: 0,
 			if_body_count: 0,
+			params,
 		}
 	}
 
@@ -505,13 +523,13 @@ fn lower_assign(
 ) -> anyhow::Result<Vec<LIRInstruction>> {
 	let mut out = Vec::new();
 
-	let left_ty = left.get_ty(&lbcx.registers)?;
+	let left_ty = left.get_ty(&lbcx.registers, &lbcx.params)?;
 
 	let right_val = match &right {
 		DeclareBinding::Null => None,
 		DeclareBinding::Value(val) => Some(val.clone()),
 		DeclareBinding::Cast(ty, val) => {
-			let val_ty = val.get_ty(&lbcx.registers)?;
+			let val_ty = val.get_ty(&lbcx.registers, &lbcx.params)?;
 			// If the cast is not trivial, we have to declare a new register,
 			// initialize it with the cast, and then assign the result to our declaration
 			let assign_val = if val_ty.is_trivially_castable(&ty) {
@@ -521,9 +539,9 @@ fn lower_assign(
 				let store_loc = match ty {
 					DataType::Score(..) => StoreModLocation::from_mut_score_val(
 						&left.clone().to_mutable_score_value()?,
-					),
+					)?,
 					DataType::NBT(..) => {
-						StoreModLocation::from_mut_nbt_val(&left.clone().to_mutable_nbt_value()?)
+						StoreModLocation::from_mut_nbt_val(&left.clone().to_mutable_nbt_value()?)?
 					}
 				};
 
@@ -552,7 +570,7 @@ fn lower_assign(
 			lbcx.registers.insert(new_reg.clone(), reg);
 
 			// Add the index instruction
-			match (val.get_ty(&lbcx.registers)?, index) {
+			match (val.get_ty(&lbcx.registers, &lbcx.params)?, index) {
 				(DataType::NBT(..), Value::Constant(DataTypeContents::Score(score))) => {
 					let index = match score {
 						ScoreTypeContents::Bool(val) => *val as ArraySize,
@@ -591,7 +609,7 @@ fn lower_add(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
 			LIRInstrKind::AddScore(left.to_mutable_score_value()?, right.to_score_value()?)
@@ -607,7 +625,7 @@ fn lower_sub(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
 			LIRInstrKind::SubScore(left.to_mutable_score_value()?, right.to_score_value()?)
@@ -623,7 +641,7 @@ fn lower_mul(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
 			LIRInstrKind::MulScore(left.to_mutable_score_value()?, right.to_score_value()?)
@@ -639,7 +657,7 @@ fn lower_div(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
 			LIRInstrKind::DivScore(left.to_mutable_score_value()?, right.to_score_value()?)
@@ -655,7 +673,7 @@ fn lower_mod(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
 			LIRInstrKind::ModScore(left.to_mutable_score_value()?, right.to_score_value()?)
@@ -671,7 +689,7 @@ fn lower_min(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
 			LIRInstrKind::MinScore(left.to_mutable_score_value()?, right.to_score_value()?)
@@ -687,7 +705,7 @@ fn lower_max(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::Score(..), DataType::Score(..)) => {
 			LIRInstrKind::MaxScore(left.to_mutable_score_value()?, right.to_score_value()?)
@@ -706,8 +724,8 @@ fn lower_swap(
 	let mut out = Vec::new();
 
 	match (
-		left.get_ty(&lbcx.registers)?,
-		right.get_ty(&lbcx.registers)?,
+		left.get_ty(&lbcx.registers, &lbcx.params)?,
+		right.get_ty(&lbcx.registers, &lbcx.params)?,
 	) {
 		(DataType::Score(..), DataType::Score(..)) => {
 			out.push(LIRInstruction::new(LIRInstrKind::SwapScore(
@@ -747,7 +765,7 @@ fn lower_swap(
 }
 
 fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstruction> {
-	let kind = match val.get_ty(&lbcx.registers)? {
+	let kind = match val.get_ty(&lbcx.registers, &lbcx.params)? {
 		DataType::Score(..) => LIRInstrKind::MulScore(
 			val.clone().to_mutable_score_value()?,
 			ScoreValue::Constant(ScoreTypeContents::Score(-1)),
@@ -773,7 +791,7 @@ fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstru
 }
 
 fn lower_get(value: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {
-	let kind = match value.get_ty(&lbcx.registers)? {
+	let kind = match value.get_ty(&lbcx.registers, &lbcx.params)? {
 		DataType::Score(..) => LIRInstrKind::GetScore(value.to_mutable_score_value()?),
 		DataType::NBT(..) => LIRInstrKind::GetData(value.to_mutable_nbt_value()?),
 	};
@@ -786,7 +804,7 @@ fn lower_merge(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::NBT(..), DataType::NBT(..)) => {
 			LIRInstrKind::MergeData(left.to_mutable_nbt_value()?, right.to_nbt_value()?)
@@ -802,7 +820,7 @@ fn lower_push(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::NBT(..), DataType::NBT(..)) => {
 			LIRInstrKind::PushData(left.to_mutable_nbt_value()?, right.to_nbt_value()?)
@@ -818,7 +836,7 @@ fn lower_push_front(
 	right: Value,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::NBT(..), DataType::NBT(..)) => {
 			LIRInstrKind::PushFrontData(left.to_mutable_nbt_value()?, right.to_nbt_value()?)
@@ -835,7 +853,7 @@ fn lower_insert(
 	index: i32,
 	lbcx: &LowerBlockCx,
 ) -> anyhow::Result<LIRInstrKind> {
-	let tys = get_op_tys(&left, &right, &lbcx.registers)?;
+	let tys = get_op_tys(&left, &right, &lbcx.registers, &lbcx.params)?;
 	let kind = match tys {
 		(DataType::NBT(..), DataType::NBT(..)) => {
 			LIRInstrKind::InsertData(left.to_mutable_nbt_value()?, right.to_nbt_value()?, index)
@@ -847,7 +865,7 @@ fn lower_insert(
 }
 
 fn lower_rm(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {
-	let kind = match val.get_ty(&lbcx.registers)? {
+	let kind = match val.get_ty(&lbcx.registers, &lbcx.params)? {
 		DataType::Score(..) => LIRInstrKind::ResetScore(val.to_mutable_score_value()?),
 		DataType::NBT(..) => LIRInstrKind::RemoveData(val.to_mutable_nbt_value()?),
 	};
@@ -866,8 +884,8 @@ fn lower_condition(
 	// Make this account for ScoreValue changes
 	let out = match condition {
 		Condition::Equal(l, r) => {
-			let lty = l.get_ty(&lbcx.registers)?;
-			let rty = r.get_ty(&lbcx.registers)?;
+			let lty = l.get_ty(&lbcx.registers, &lbcx.params)?;
+			let rty = r.get_ty(&lbcx.registers, &lbcx.params)?;
 			let cond = match (lty, rty) {
 				(DataType::Score(..), DataType::Score(..)) => {
 					IfModCondition::Score(IfScoreCondition::Single {
@@ -880,7 +898,7 @@ fn lower_condition(
 			(Vec::new(), cond)
 		}
 		Condition::Exists(val) => {
-			let cond = match val.get_ty(&lbcx.registers)? {
+			let cond = match val.get_ty(&lbcx.registers, &lbcx.params)? {
 				DataType::Score(..) => match val.to_score_value()? {
 					ScoreValue::Constant(..) => IfModCondition::Const(true),
 					ScoreValue::Mutable(val) => IfModCondition::Score(IfScoreCondition::Range {
@@ -948,7 +966,7 @@ fn lower_condition(
 			}),
 		),
 		Condition::Bool(val) => {
-			let ty = val.get_ty(&lbcx.registers)?;
+			let ty = val.get_ty(&lbcx.registers, &lbcx.params)?;
 			match ty {
 				DataType::Score(ScoreType::Bool) => (
 					Vec::new(),

@@ -1,4 +1,5 @@
-use super::{val::Value, Identifier};
+use super::val::{MutableValue, Value};
+use super::Identifier;
 use std::fmt::Debug;
 
 /// Condition for if and other IR instructions
@@ -41,6 +42,18 @@ impl Condition {
 			),
 			Self::Exists(val) | Self::Bool(val) => Box::new(val.get_used_regs_mut().into_iter()),
 			Self::Not(condition) => condition.iter_used_regs_mut(),
+		}
+	}
+
+	pub fn iter_mut_vals(&mut self) -> Box<dyn Iterator<Item = &mut MutableValue> + '_> {
+		match self {
+			Self::Equal(l, r)
+			| Self::GreaterThan(l, r)
+			| Self::GreaterThanOrEqual(l, r)
+			| Self::LessThan(l, r)
+			| Self::LessThanOrEqual(l, r) => Box::new(l.iter_mut_val().into_iter().chain(r.iter_mut_val())),
+			Self::Exists(val) | Self::Bool(val) => Box::new(val.iter_mut_val().into_iter()),
+			Self::Not(condition) => condition.iter_mut_vals(),
 		}
 	}
 }

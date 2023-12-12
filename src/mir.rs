@@ -1,3 +1,4 @@
+use std::iter;
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
@@ -732,6 +733,63 @@ impl MIRInstrKind {
 					f(reg);
 				}
 				body.replace_regs(f);
+			}
+			_ => {}
+		}
+	}
+
+	pub fn replace_mut_vals<F: Fn(&mut MutableValue) -> ()>(&mut self, f: F) {
+		match self {
+			Self::Assign { left, right } => {
+				let right_regs: Box<dyn Iterator<Item = _>> = match right {
+					DeclareBinding::Null => Box::new(std::iter::empty()),
+					DeclareBinding::Value(val) => Box::new(val.iter_mut_val().into_iter()),
+					DeclareBinding::Cast(_, val) => Box::new(iter::once(val)),
+					DeclareBinding::Index { val, index, .. } => {
+						Box::new(val.iter_mut_val().into_iter().chain(index.iter_mut_val()))
+					}
+				};
+				for reg in iter::once(left).chain(right_regs) {
+					f(reg);
+				}
+			}
+			Self::Add { left, right }
+			| Self::Sub { left, right }
+			| Self::Mul { left, right }
+			| Self::Div { left, right }
+			| Self::Mod { left, right }
+			| Self::Min { left, right }
+			| Self::Max { left, right }
+			| Self::Merge { left, right }
+			| Self::Push { left, right }
+			| Self::PushFront { left, right }
+			| Self::Insert { left, right, .. } => {
+				for reg in iter::once(left).chain(right.iter_mut_val()) {
+					f(reg);
+				}
+			}
+			Self::Swap { left, right } => {
+				f(left);
+				f(right);
+			}
+			Self::Abs { val }
+			| Self::Pow { base: val, .. }
+			| Self::Get { value: val }
+			| Self::Use { val } => {
+				f(val);
+			}
+			Self::Call { call } => {
+				for val in &mut call.args {
+					if let Value::Mutable(val) = val {
+						f(val);
+					}
+				}
+			}
+			Self::If { condition, body } => {
+				for val in condition.iter_mut_vals() {
+					f(val);
+				}
+				body.replace_mut_vals(f);
 			}
 			_ => {}
 		}

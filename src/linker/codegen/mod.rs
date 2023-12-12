@@ -53,15 +53,21 @@ pub struct CodegenBlockCx<'ccx> {
 	pub ccx: &'ccx mut CodegenCx,
 	pub ra: RegAllocResult,
 	pub regs: RegisterList,
+	pub func_id: String,
 }
 
-pub fn codegen_block(func_id: &str, block: &LIRBlock, ccx: &mut CodegenCx) -> anyhow::Result<Vec<String>> {
+pub fn codegen_block(
+	func_id: &str,
+	block: &LIRBlock,
+	ccx: &mut CodegenCx,
+) -> anyhow::Result<Vec<String>> {
 	let ra = alloc_block_registers(func_id, block, &mut ccx.racx)?;
 
 	let mut cbcx = CodegenBlockCx {
 		ccx,
 		ra,
 		regs: block.regs.clone(),
+		func_id: func_id.into(),
 	};
 
 	let mut out = Vec::new();
@@ -225,7 +231,7 @@ pub fn codegen_instr(
 			NBTValue::Mutable(val) => {
 				modifiers.push(Modifier::StoreResult(StoreModLocation::from_mut_score_val(
 					score,
-				)));
+				)?));
 				cgformat!(cbcx, "data get storage ", val)?
 			}
 		}),

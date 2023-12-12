@@ -22,8 +22,9 @@ pub fn parse_body(body: UnparsedBody) -> anyhow::Result<Vec<Instruction>> {
 
 	// Split into the tokens for each instruction
 	let split = body.split(|x| matches!(x.0, Token::Semicolon));
-	for instr in split {
-		let instr = parse_instr(&mut instr.iter()).context("Failed to parse instruction")?;
+	for (i, instr) in split.enumerate() {
+		let instr = parse_instr(&mut instr.iter())
+			.with_context(|| format!("Failed to parse instruction {i}"))?;
 		out.extend(instr.map(Instruction::new));
 	}
 
@@ -377,10 +378,23 @@ fn parse_instr<'t>(
 		"lspu" => Ok(InstrKind::ListPlayerUUIDs),
 		"call" => {
 			let func = consume_extract!(toks, Str, { bail!("Missing function to call") });
+
+			let mut args = Vec::new();
+			loop {
+				let first_tok = consume_optional!(toks);
+				if let Some(first_tok) = first_tok {
+					let val = parse_val_impl(first_tok, toks)
+						.context("Failed to parse argument value")?;
+					consume_optional_expect!(toks, Comma);
+					args.push(val);
+				} else {
+					break;
+				}
+			}
 			Ok(InstrKind::Call {
 				call: CallInterface {
 					function: func.clone().into(),
-					args: Vec::new(),
+					args,
 				},
 			})
 		}
@@ -494,11 +508,12 @@ fn parse_ty<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Res
 	}
 }
 
-fn parse_simple_ty<'t>(ty: &str) -> anyhow::Result<DataType> {
+pub fn parse_simple_ty(ty: &str) -> anyhow::Result<DataType> {
 	match ty {
 		"score" => Ok(DataType::Score(ScoreType::Score)),
 		"uscore" => Ok(DataType::Score(ScoreType::UScore)),
 		"bool" => Ok(DataType::Score(ScoreType::Bool)),
+		"nany" => Ok(DataType::NBT(NBTType::Any)),
 		"nbyte" => Ok(DataType::NBT(NBTType::Byte)),
 		"nbool" => Ok(DataType::NBT(NBTType::Bool)),
 		"nshort" => Ok(DataType::NBT(NBTType::Short)),
@@ -532,8 +547,15 @@ fn parse_decl_binding<'t>(
 }
 
 fn parse_val<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<Value> {
-	// Try both
 	let first_tok = consume!(toks, { bail!("Missing first value token") });
+	parse_val_impl(first_tok, toks)
+}
+
+fn parse_val_impl<'t>(
+	first_tok: &TokenAndPos,
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<Value> {
+	// Try both
 	let val = parse_mut_val_impl(first_tok, toks).context("Failed to parse mutable value");
 	match val {
 		Ok(val) => Ok(Value::Mutable(val)),
@@ -560,6 +582,11 @@ fn parse_mut_val_impl<'t>(
 		Token::Percent => {
 			let reg_name = consume_extract!(toks, Ident, { bail!("Missing register name token") });
 			MutableValue::Register(reg_name.clone().into())
+		}
+		Token::Ampersand => {
+			let index = consume_extract!(toks, Num, { bail!("Missing argument index") });
+			let index = (*index).try_into().context("Argument index is not a u16")?;
+			MutableValue::Arg(index)
 		}
 		Token::Ident(ident) => match ident.as_str() {
 			"sco" => {

@@ -8,7 +8,7 @@ use anyhow::{bail, Context};
 use crate::common::function::{FunctionAnnotations, FunctionInterface, FunctionSignature};
 use crate::ir::{Block, IR};
 use crate::parse::lex::{Side, Token};
-use crate::parse::parse::{parse_body, UnparsedBody};
+use crate::parse::parse::{parse_body, parse_simple_ty, UnparsedBody};
 
 use self::lex::{lex, reduce_tokens};
 
@@ -96,6 +96,10 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 				},
 			},
 			State::LookingForOpeningCurly(interface) => match tok {
+				Token::Ident(ident) => {
+					let ty = parse_simple_ty(ident).context("Failed to parse parameter type")?;
+					interface.sig.params.push(ty);
+				}
 				Token::Curly(Side::Left) => {
 					state = State::Body(std::mem::take(interface), UnparsedBody::new())
 				}

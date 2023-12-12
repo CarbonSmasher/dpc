@@ -13,8 +13,16 @@ pub fn format_lit_fake_player(num: i32) -> String {
 	format!("%l{num}")
 }
 
+pub fn format_arg_fake_player(num: u16, func_id: &str) -> String {
+	format!("%a{func_id}{num}")
+}
+
 pub fn format_local_storage_entry(num: u32, func_id: &str) -> String {
 	format!("s{func_id}{num}")
+}
+
+pub fn format_arg_local_storage_entry(num: u16, func_id: &str) -> String {
+	format!("a{func_id}{num}")
 }
 
 pub fn format_local_storage_path(entry: &str) -> String {

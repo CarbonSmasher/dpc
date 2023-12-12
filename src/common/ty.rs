@@ -1,6 +1,7 @@
 use std::fmt::Write;
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
+use super::function::FunctionParams;
 use super::{MutableValue, RegisterList, Value};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -519,6 +520,7 @@ pub fn get_op_tys(
 	left: &MutableValue,
 	right: &Value,
 	regs: &RegisterList,
+	params: &FunctionParams,
 ) -> anyhow::Result<(DataType, DataType)> {
-	Ok((left.get_ty(regs)?, right.get_ty(regs)?))
+	Ok((left.get_ty(regs, params)?, right.get_ty(regs, params)?))
 }
