@@ -1,3 +1,5 @@
+# ir_passes
+
 "test:main" {
 	let a: score = val -7s;
 	let b: uscore = val 6u;
@@ -13,9 +15,9 @@
 	let j: [nstr] = val [nstr][];
 	psh %j, "foo";
 	set %j, [nstr]["foo", "bar", "baz"];
-	let k: [nbyte, 10] = val b[];
+	let k: [nbyte, 10] = val b[0nb,0nb,0nb,0nb,0nb,0nb,0nb,0nb,0nb,0nb];
 	pshf %k, 0nb;
-	set %k, b[7nb, 3nb, -4nb];
+	set %k, b[7nb, 3nb, -4nb, 8nb, 3nb, 1nb, 0nb, 7nb, -12nb, 0nb];
 	let l: nfloat = val 5.0nf;
 	let m: ndouble = val -0.20045nd;
 	let n: [nint, 3] = val i[7ni, 8ni, 3ni];

@@ -90,7 +90,7 @@ impl NBTType {
 			// Anything can be trivially cast to NBT any
 			Self::Any => true,
 			Self::Byte => matches!(self, Self::Byte | Self::Bool),
-			Self::Bool => matches!(self, Self::Bool),
+			Self::Bool => matches!(self, Self::Byte | Self::Bool),
 			Self::Short => matches!(self, Self::Byte | Self::Bool | Self::Short),
 			Self::Int => matches!(self, Self::Byte | Self::Bool | Self::Short | Self::Int),
 			Self::Long => matches!(
@@ -119,6 +119,14 @@ impl NBTType {
 					false
 				}
 			}
+		}
+	}
+
+	pub fn can_contain(&self, ty: &NBTType) -> bool {
+		match self {
+			Self::Arr(arr) => arr.can_contain(ty),
+			Self::List(list) => ty.is_trivially_castable(list),
+			_ => false,
 		}
 	}
 
@@ -181,6 +189,14 @@ impl NBTArrayType {
 			Self::Long(other_size) => {
 				matches!(self, Self::Byte(this_size) | Self::Int(this_size) | Self::Long(this_size) if this_size == other_size)
 			}
+		}
+	}
+
+	pub fn can_contain(&self, ty: &NBTType) -> bool {
+		match self {
+			Self::Byte(..) => ty.is_trivially_castable(&NBTType::Byte),
+			Self::Int(..) => ty.is_trivially_castable(&NBTType::Int),
+			Self::Long(..) => ty.is_trivially_castable(&NBTType::Long),
 		}
 	}
 }

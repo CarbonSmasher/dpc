@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail};
 
-use crate::common::ty::get_op_tys;
+use crate::common::ty::{get_op_tys, DataType};
 use crate::common::{Register, RegisterList};
 use crate::ir::{InstrKind, IR};
 use crate::passes::{IRPass, Pass};
@@ -21,16 +21,16 @@ impl IRPass for ValidatePass {
 				.get_mut(block)
 				.ok_or(anyhow!("Block does not exist"))?;
 			let regs = RegisterList::new();
-			for instr in &block.contents {
+			for (i, instr) in block.contents.iter().enumerate() {
 				match &instr.kind {
 					InstrKind::Declare { left, ty, right } => {
 						if regs.contains_key(left) {
-							bail!("Redefinition of register {left}");
+							bail!("Redefinition of register {left} at {i}");
 						}
 						let right_ty = right.get_ty(&regs, &func.sig.params)?;
 						if let Some(right_ty) = right_ty {
 							if !right_ty.is_trivially_castable(ty) {
-								bail!("Register type does not match value type");
+								bail!("Register type does not match value type at {i}");
 							}
 						}
 						let reg = Register {
@@ -46,14 +46,21 @@ impl IRPass for ValidatePass {
 					| InstrKind::Div { left, right }
 					| InstrKind::Mod { left, right }
 					| InstrKind::Min { left, right }
-					| InstrKind::Max { left, right }
-					| InstrKind::Merge { left, right }
-					| InstrKind::Push { left, right }
-					| InstrKind::PushFront { left, right }
-					| InstrKind::Insert { left, right, .. } => {
+					| InstrKind::Max { left, right } => {
 						let (left_ty, right_ty) = get_op_tys(left, right, &regs, &func.sig.params)?;
 						if !right_ty.is_trivially_castable(&left_ty) {
-							bail!("Incompatible types in instruction");
+							bail!("Incompatible types in instruction at {i}");
+						}
+					}
+					InstrKind::Push { left, right }
+					| InstrKind::PushFront { left, right }
+					| InstrKind::Insert { left, right, .. } => {
+						let (left, right) = get_op_tys(left, right, &regs, &func.sig.params)?;
+						let (DataType::NBT(left), DataType::NBT(right)) = (left, right) else {
+							bail!("Incompatible types in instruction at {i}");
+						};
+						if !left.can_contain(&right) {
+							bail!("Incompatible types in instruction at {i}");
 						}
 					}
 					InstrKind::Swap { left, right } => {
@@ -61,7 +68,7 @@ impl IRPass for ValidatePass {
 							.get_ty(&regs, &func.sig.params)?
 							.is_trivially_castable(&left.get_ty(&regs, &func.sig.params)?)
 						{
-							bail!("Incompatible types in instruction");
+							bail!("Incompatible types in instruction at {i}");
 						}
 					}
 					_ => {}
