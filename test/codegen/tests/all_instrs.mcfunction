@@ -57,3 +57,14 @@ trigger foo set 0
 datapack disable foo
 datapack enable foo
 list uuids
+scoreboard objectives add foo dummy
+scoreboard objectives add bar foo.bar
+setworldspawn 0 ~6 8 ~3
+summon minecraft:zombie ~ ~ ~ {CustomName:"Foo"}
+summon minecraft:zombie
+scoreboard players set atest_foo0 _r 7
+data modify storage dpc:r atest_foo1 set value 82
+function test:foo
+function #minecraft:tick
+give @s stick{foo:3b} 6
+give @s stick

@@ -6,10 +6,12 @@ use anyhow::{bail, Context};
 use crate::common::condition::Condition;
 use crate::common::function::CallInterface;
 use crate::common::mc::entity::{SelectorType, TargetSelector};
+use crate::common::mc::item::ItemData;
+use crate::common::mc::pos::{AbsOrRelCoord, Angle, DoubleCoordinates, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
 use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score, XPValue};
 use crate::common::ty::{
-	ArraySize, DataType, DataTypeContents, NBTArrayType, NBTArrayTypeContents,
+	ArraySize, DataType, DataTypeContents, Double, NBTArrayType, NBTArrayTypeContents,
 	NBTCompoundTypeContents, NBTType, NBTTypeContents, ScoreType, ScoreTypeContents,
 };
 use crate::common::val::{MutableValue, Value};
@@ -414,9 +416,11 @@ fn parse_instr<'t>(
 			loop {
 				let first_tok = consume_optional!(toks);
 				if let Some(first_tok) = first_tok {
-					let val = parse_val_impl(first_tok, toks)
-						.context("Failed to parse argument value")?;
-					consume_optional_expect!(toks, Comma);
+					let val = if let Token::Comma = &first_tok.0 {
+						parse_val(toks).context("Failed to parse argument value")?
+					} else {
+						parse_val_impl(first_tok, toks).context("Failed to parse argument value")?
+					};
 					args.push(val);
 				} else {
 					break;
@@ -427,6 +431,13 @@ fn parse_instr<'t>(
 					function: func.clone().into(),
 					args,
 				},
+			})
+		}
+		"callx" => {
+			let func = consume_extract!(toks, Str, { bail!("Missing function to call") });
+
+			Ok(InstrKind::CallExtern {
+				func: func.clone().into(),
 			})
 		}
 		"sboa" => {
@@ -454,6 +465,40 @@ fn parse_instr<'t>(
 				objective: obj.clone(),
 				criterion,
 				display_name: display_name.cloned(),
+			})
+		}
+		"sws" => {
+			let pos = parse_int_coords(toks).context("Failed to parse position")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let angle = parse_angle(toks).context("Failed to parse angle")?;
+			Ok(InstrKind::SetWorldSpawn { pos, angle })
+		}
+		"smn" => {
+			let entity = consume_extract!(toks, Str, { bail!("Missing entity") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let pos = parse_double_coords(toks).context("Failed to parse position")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			consume_expect!(toks, Token::Curly(Side::Left), {
+				bail!("Missing NBT opening")
+			});
+			let (_, nbt) = parse_compound_lit(toks).context("Failed to parse NBT")?;
+			Ok(InstrKind::SummonEntity {
+				entity: entity.clone().into(),
+				pos,
+				nbt,
+			})
+		}
+		"itmg" => {
+			let target = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let item = parse_item_data(toks).context("Failed to parse item")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let amt = consume_extract!(toks, Num, { bail!("Missing amount") });
+			let amt: u32 = (*amt).try_into().context("Amount is not a u32")?;
+			Ok(InstrKind::GiveItem {
+				target,
+				item,
+				amount: amt,
 			})
 		}
 		other => bail!("Unknown instruction {other}"),
@@ -858,7 +903,9 @@ fn parse_lit_impl<'t>(
 		}
 		Token::Curly(Side::Left) => {
 			let comp = parse_compound_lit(toks).context("Failed to parse compound literal")?;
-			Ok(DataTypeContents::NBT(comp))
+			Ok(DataTypeContents::NBT(NBTTypeContents::Compound(
+				comp.0, comp.1,
+			)))
 		}
 		other => bail!("Unexpected token {other:?} {pos}"),
 	}
@@ -973,7 +1020,7 @@ fn parse_list_lit<'t>(
 // Does the rest of the compound lit parsing after the first bracket
 fn parse_compound_lit<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
-) -> anyhow::Result<NBTTypeContents> {
+) -> anyhow::Result<(Arc<HashMap<String, NBTType>>, NBTCompoundTypeContents)> {
 	let mut ty_out = HashMap::new();
 	let mut out = HashMap::new();
 
@@ -1018,10 +1065,7 @@ fn parse_compound_lit<'t>(
 		}
 	}
 
-	Ok(NBTTypeContents::Compound(
-		Arc::new(ty_out),
-		NBTCompoundTypeContents(Arc::new(out)),
-	))
+	Ok((Arc::new(ty_out), NBTCompoundTypeContents(Arc::new(out))))
 }
 
 fn parse_entity_target<'t>(
@@ -1101,4 +1145,98 @@ fn parse_simple_condition<'t>(
 	consume_expect!(toks, Comma, { bail!("Missing comma") });
 	let right = parse_val(toks).context("Failed to parse condition right hand side")?;
 	Ok((left, right))
+}
+
+fn parse_double_coords<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<DoubleCoordinates> {
+	let x = parse_coord_part_double(toks).context("Failed to parse first part of coordinate")?;
+	let y = parse_coord_part_double(toks).context("Failed to parse second part of coordinate")?;
+	let z = parse_coord_part_double(toks).context("Failed to parse third part of coordinate")?;
+	Ok(DoubleCoordinates::XYZ(x, y, z))
+}
+
+fn parse_int_coords<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<IntCoordinates> {
+	let x = parse_coord_part_int(toks).context("Failed to parse first part of coordinate")?;
+	let y = parse_coord_part_int(toks).context("Failed to parse second part of coordinate")?;
+	let z = parse_coord_part_int(toks).context("Failed to parse third part of coordinate")?;
+	Ok(IntCoordinates::XYZ(x, y, z))
+}
+
+fn parse_angle<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<Angle> {
+	let (rel, tok) = parse_coord_part_inner(toks).context("Failed to parse inner angle")?;
+	if let Token::Decimal(val) = &tok.0 {
+		let val = *val as f32;
+		let out = if rel {
+			Angle::new_relative(val)
+		} else {
+			Angle::new_absolute(val)
+		};
+		Ok(out)
+	} else {
+		bail!("Unexpected token {:?} {}", tok.0, tok.1);
+	}
+}
+
+fn parse_coord_part_int<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<AbsOrRelCoord<i64>> {
+	let (rel, tok) = parse_coord_part_inner(toks).context("Failed to parse coordinate")?;
+	if let Token::Num(val) = &tok.0 {
+		let val: i64 = (*val)
+			.try_into()
+			.context("Coordinate value is not an i32")?;
+		let out = if rel {
+			AbsOrRelCoord::Rel(val)
+		} else {
+			AbsOrRelCoord::Abs(val)
+		};
+		Ok(out)
+	} else {
+		bail!("Unexpected token {:?} {}", tok.0, tok.1);
+	}
+}
+
+fn parse_coord_part_double<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<AbsOrRelCoord<Double>> {
+	let (rel, tok) = parse_coord_part_inner(toks).context("Failed to parse coordinate")?;
+	if let Token::Decimal(val) = &tok.0 {
+		let out = if rel {
+			AbsOrRelCoord::Rel(*val)
+		} else {
+			AbsOrRelCoord::Abs(*val)
+		};
+		Ok(out)
+	} else {
+		bail!("Unexpected token {:?} {}", tok.0, tok.1);
+	}
+}
+
+fn parse_coord_part_inner<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<(bool, TokenAndPos)> {
+	let first = consume!(toks, { bail!("Missing first coordinate part token") });
+	if let Token::Tilde = first.0 {
+		let next = consume!(toks, { bail!("Missing last coordinate part token") });
+		Ok((true, next.clone()))
+	} else {
+		Ok((false, first.clone()))
+	}
+}
+
+fn parse_item_data<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<ItemData> {
+	let item = consume_extract!(toks, Str, { bail!("Missing item ID") });
+	consume_expect!(toks, Token::Curly(Side::Left), {
+		bail!("Missing opening bracket")
+	});
+	let (_, nbt) = parse_compound_lit(toks).context("Failed to parse item data")?;
+	Ok(ItemData {
+		item: item.clone().into(),
+		nbt,
+	})
 }

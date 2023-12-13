@@ -55,4 +55,15 @@
 	dpd "foo";
 	dpe "foo";
 	lspu;
+	sboa "foo", dummy;
+	sboa "bar", "foo.bar";
+	sws 0 ~6 8, ~3.0;
+	smn "minecraft:zombie", ~0.0 ~0.0 ~0.0, {"CustomName":"Foo"};
+	smn "minecraft:zombie", ~0.0 ~0.0 ~0.0, {};
+	call "test:foo", 7s, 82ni;
+	callx "#minecraft:tick";
+	itmg @s, "stick" {"foo":3nb}, 6;
+	itmg @s, "stick" {}, 1;
 }
+
+"test:foo" score nint {}

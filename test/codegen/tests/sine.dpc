@@ -2,8 +2,8 @@
 
 @preserve
 "test:main" {
-	call "test:sine" 100s;
-	call "test:sine" 1s;
+	call "test:sine", 100s;
+	call "test:sine", 1s;
 }
 
 "test:sine" score {

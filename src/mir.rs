@@ -180,6 +180,9 @@ pub enum MIRInstrKind {
 	Call {
 		call: CallInterface,
 	},
+	CallExtern {
+		func: ResourceLocation,
+	},
 	If {
 		condition: Condition,
 		body: Box<MIRInstrKind>,
@@ -472,6 +475,7 @@ impl Debug for MIRInstrKind {
 			Self::Insert { left, right, index } => format!("ins {left:?}, {right:?}, {index}"),
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Call { call } => format!("call {call:?}"),
+			Self::CallExtern { func } => format!("callx {func}"),
 			Self::If { condition, body } => format!("if {condition:?} then {body:?}"),
 			Self::Say { message } => format!("say {message}"),
 			Self::Tell { target, message } => format!("tell {target:?} {message}"),

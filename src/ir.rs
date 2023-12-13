@@ -160,6 +160,9 @@ pub enum InstrKind {
 	Call {
 		call: CallInterface,
 	},
+	CallExtern {
+		func: ResourceLocation,
+	},
 	Say {
 		message: String,
 	},
@@ -447,6 +450,7 @@ impl Debug for InstrKind {
 			Self::Insert { left, right, index } => format!("ins {left:?}, {right:?}, {index}"),
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Call { call } => format!("call {call:?}"),
+			Self::CallExtern { func } => format!("callx {func}"),
 			Self::Say { message } => format!("say {message}"),
 			Self::Tell { target, message } => format!("tell {target:?}, {message}"),
 			Self::Me { message } => format!("me {message}"),

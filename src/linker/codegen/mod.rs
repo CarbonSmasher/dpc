@@ -524,7 +524,7 @@ pub fn codegen_instr(
 				bail!("Invalid item count");
 			}
 			if *amount != 1 {
-				cgwrite!(&mut out, cbcx, amount)?;
+				cgwrite!(&mut out, cbcx, " ", amount)?;
 			}
 			Some(out)
 		}

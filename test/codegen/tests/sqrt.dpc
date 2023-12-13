@@ -4,8 +4,8 @@
 "test:main" {
 	call "test:init";
 
-	call "test:sqrt" 4s;
-	call "test:sqrt" 1234997s;
+	call "test:sqrt", 4s;
+	call "test:sqrt", 1234997s;
 }
 
 "test:sqrt" score {

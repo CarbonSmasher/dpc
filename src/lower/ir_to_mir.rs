@@ -80,6 +80,7 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 		}
 		InstrKind::Use { val } => lower!(Use, val),
 		InstrKind::Call { call } => lower!(Call, call),
+		InstrKind::CallExtern { func } => lower!(CallExtern, func),
 		InstrKind::Say { message } => lower!(Say, message),
 		InstrKind::Tell { target, message } => {
 			lower!(Tell, target, message)

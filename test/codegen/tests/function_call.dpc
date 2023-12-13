@@ -3,7 +3,7 @@
 @preserve
 "test:main" {
 	let foo: score = val -44s;
-	call "test:fn" 7s, %foo, "foo";
+	call "test:fn", 7s, %foo, "foo";
 }
 
 "test:fn" score score nstr {

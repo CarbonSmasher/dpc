@@ -134,6 +134,7 @@ fn lower_kind(
 			}
 			lower!(lir_instrs, Call, call.function);
 		}
+		MIRInstrKind::CallExtern { func } => lower!(lir_instrs, Call, func),
 		MIRInstrKind::Say { message } => lower!(lir_instrs, Say, message),
 		MIRInstrKind::Tell { target, message } => lower!(lir_instrs, Tell, target, message),
 		MIRInstrKind::Kill { target } => lower!(lir_instrs, Kill, target),

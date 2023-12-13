@@ -275,7 +275,7 @@ cg_impl!(
 	f,
 	cbcx,
 	(|| {
-		cgwrite!(f, cbcx, self.block)?;
+		cgwrite!(f, cbcx, self.item)?;
 
 		if !self.nbt.is_empty() {
 			cgwrite!(f, cbcx, self.nbt.get_literal_str())?;
