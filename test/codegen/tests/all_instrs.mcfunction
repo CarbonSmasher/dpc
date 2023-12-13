@@ -9,7 +9,7 @@ scoreboard players operation %rtest_main0 _r < %l1 _l
 scoreboard players operation %rtest_main0 _r > %l1 _l
 scoreboard players set %rtest_main1 _r 3
 scoreboard players operation %rtest_main0 _r >< %rtest_main1 _r
-scoreboard players reset %rtest_main0 _r
+scoreboard players reset %rtest_main0
 execute if score %rtest_main0 _r matches ..-1 run scoreboard players operation %rtest_main0 _r *= %l-1 _l
 scoreboard players operation %rtest_main1 _r = %rtest_main0 _r
 scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r

@@ -12,13 +12,14 @@ use crate::common::mc::modifier::{Modifier, StoreModLocation};
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::{DatapackListMode, Score};
 use crate::common::ty::NBTTypeContents;
+use crate::common::val::MutableScoreValue;
 use crate::common::{val::NBTValue, val::ScoreValue, RegisterList};
 use crate::linker::codegen::util::cg_data_modify_rhs;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 
 use self::modifier::codegen_modifier;
 use self::t::macros::cgwrite;
-use self::util::SpaceSepListCG;
+use self::util::{get_mut_score_val_score, SpaceSepListCG};
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 
@@ -172,7 +173,18 @@ pub fn codegen_instr(
 			" >< ",
 			right
 		)?),
-		LIRInstrKind::ResetScore(val) => Some(cgformat!(cbcx, "scoreboard players reset ", val)?),
+		LIRInstrKind::ResetScore(val) => {
+			// It is faster to reset the player than the score.
+			// Since we use fake players for registers that only have the
+			// one register objective, we can reset the whole player for
+			// a performance and code size gain
+			if let MutableScoreValue::Reg(..) = val {
+				let score = get_mut_score_val_score(val, &cbcx.ra, &cbcx.func_id)?;
+				Some(cgformat!(cbcx, "scoreboard players reset ", score.holder)?)
+			} else {
+				Some(cgformat!(cbcx, "scoreboard players reset ", val)?)
+			}
+		}
 		LIRInstrKind::SetData(left, right) => {
 			let rhs = cg_data_modify_rhs(cbcx, right)?;
 			Some(cgformat!(cbcx, "data modify ", left, " set ", rhs)?)
