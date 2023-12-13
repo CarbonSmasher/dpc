@@ -4,7 +4,7 @@ use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
 use crate::common::condition::Condition;
 use crate::common::function::{CallInterface, FunctionInterface};
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
-use crate::common::mc::entity::{AttributeType, UUID};
+use crate::common::mc::entity::{AttributeType, EffectDuration, UUID};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::Criterion;
@@ -426,6 +426,17 @@ pub enum InstrKind {
 		respect_teams: bool,
 		target: EntityTarget,
 	},
+	ClearEffect {
+		target: EntityTarget,
+		effect: Option<ResourceLocation>,
+	},
+	GiveEffect {
+		target: EntityTarget,
+		effect: ResourceLocation,
+		duration: EffectDuration,
+		amplifier: u8,
+		hide_particles: bool,
+	},
 }
 
 impl Debug for InstrKind {
@@ -621,8 +632,18 @@ impl Debug for InstrKind {
 			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
 			Self::If { condition, body } => format!("if {condition:?}: {body:?}"),
 			Self::Remove { val } => format!("rm {val:?}"),
-			Self::AddXP{target, amount, value} => format!("xpa {target:?} {amount} {value}"),
-			Self::GetXP{target, value} => format!("xpg {target:?} {value}"),
+			Self::AddXP { target, amount, value } => format!("xpa {target:?} {amount} {value}"),
+			Self::GetXP { target, value } => format!("xpg {target:?} {value}"),
+			Self::ClearEffect { target, effect } => format!("effc {target:?} {effect:?}"),
+			Self::GiveEffect {
+				target,
+				effect,
+				duration,
+				amplifier,
+				hide_particles
+			} => {
+				format!("effg {target:?} {effect} {duration:?} {amplifier} {hide_particles}")
+			}
 		};
 		write!(f, "{text}")
 	}

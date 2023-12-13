@@ -487,6 +487,24 @@ fn lower_kind(
 				target,
 			}));
 		}
+		MIRInstrKind::ClearEffect { target, effect } => {
+			lower!(lir_instrs, ClearEffect, target, effect)
+		}
+		MIRInstrKind::GiveEffect {
+			target,
+			effect,
+			duration,
+			amplifier,
+			hide_particles,
+		} => lower!(
+			lir_instrs,
+			GiveEffect,
+			target,
+			effect,
+			duration,
+			amplifier,
+			hide_particles
+		),
 	}
 	Ok(())
 }

@@ -5,7 +5,7 @@ use anyhow::{bail, Context};
 
 use crate::common::condition::Condition;
 use crate::common::function::CallInterface;
-use crate::common::mc::entity::{SelectorType, TargetSelector};
+use crate::common::mc::entity::{EffectDuration, SelectorType, TargetSelector};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::pos::{AbsOrRelCoord, Angle, DoubleCoordinates, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
@@ -499,6 +499,48 @@ fn parse_instr<'t>(
 				target,
 				item,
 				amount: amt,
+			})
+		}
+		"effc" => {
+			let target = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_optional_expect!(toks, Comma);
+			let effect = consume_optional_extract!(toks, Str);
+			Ok(InstrKind::ClearEffect {
+				target,
+				effect: effect.map(|x| x.clone().into()),
+			})
+		}
+		"effg" => {
+			let target = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let effect = consume_extract!(toks, Str, { bail!("Missing effect name") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let (tok, pos) = consume!(toks, { bail!("Missing effect duration") });
+			let duration = match tok {
+				Token::Ident(ident) => match ident.as_str() {
+					"infinite" => EffectDuration::Infinite,
+					other => bail!("Unknown effect duration {other}"),
+				},
+				Token::Num(num) => {
+					let num = (*num)
+						.try_into()
+						.context("Effect duration is not within i32 range")?;
+					EffectDuration::Seconds(num)
+				}
+				other => bail!("Unexpected token {other:?} {pos}"),
+			};
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let amp = consume_extract!(toks, Num, { bail!("Missing amount") });
+			let amp: u8 = (*amp).try_into().context("Amplifier is not a u8")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let hide_particles =
+				parse_bool(toks).context("Failed to parse hide particles setting")?;
+			Ok(InstrKind::GiveEffect {
+				target,
+				effect: effect.clone().into(),
+				duration,
+				amplifier: amp,
+				hide_particles,
 			})
 		}
 		other => bail!("Unknown instruction {other}"),
@@ -1239,4 +1281,13 @@ fn parse_item_data<'t>(
 		item: item.clone().into(),
 		nbt,
 	})
+}
+
+fn parse_bool<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<bool> {
+	let ident = consume_extract!(toks, Ident, { bail!("Missing boolean token") });
+	match ident.as_str() {
+		"true" => Ok(true),
+		"false" => Ok(false),
+		other => bail!("Unknown boolean value {other}"),
+	}
 }

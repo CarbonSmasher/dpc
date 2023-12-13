@@ -166,3 +166,28 @@ impl Debug for AttributeType {
 		)
 	}
 }
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum EffectDuration {
+	Seconds(i32),
+	Infinite,
+}
+
+impl Debug for EffectDuration {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Seconds(seconds) => seconds.to_string(),
+				Self::Infinite => "infinite".into(),
+			}
+		)
+	}
+}
+
+impl EffectDuration {
+	pub fn is_default(&self) -> bool {
+		matches!(self, Self::Seconds(amt) if *amt == 30)
+	}
+}

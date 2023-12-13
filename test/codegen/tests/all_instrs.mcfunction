@@ -68,3 +68,11 @@ function test:foo
 function #minecraft:tick
 give @s stick{foo:3b} 6
 give @s stick
+effect clear
+effect clear @s speed
+effect give @s speed 4 8 true
+effect give @s speed 4 8
+effect give @s speed 4
+effect give @s speed
+effect give @s speed infinite
+effect give @s speed infinite 1 true

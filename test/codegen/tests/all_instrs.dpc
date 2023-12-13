@@ -64,6 +64,14 @@
 	callx "#minecraft:tick";
 	itmg @s, "stick" {"foo":3nb}, 6;
 	itmg @s, "stick" {}, 1;
+	effc @s;
+	effc @s, "speed";
+	effg @s, "speed", 4, 8, true;
+	effg @s, "speed", 4, 8, false;
+	effg @s, "speed", 4, 1, false;
+	effg @s, "speed", 30, 1, false;
+	effg @s, "speed", infinite, 1, false;
+	effg @s, "speed", infinite, 1, true;
 }
 
 "test:foo" score nint {}

@@ -6,7 +6,7 @@ use crate::common::mc::block::{
 	BlockData, BlockFilter, BlockProperties, BlockStateValue, BlockStates, CloneMaskMode,
 	CloneMode, FillMode, SetBlockMode,
 };
-use crate::common::mc::entity::{AttributeType, SelectorSort, SelectorType, UUID};
+use crate::common::mc::entity::{AttributeType, EffectDuration, SelectorSort, SelectorType, UUID};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::{AlignAxes, AnchorLocation};
 use crate::common::mc::scoreboard_and_teams::SingleCriterion;
@@ -95,6 +95,7 @@ macro_rules! impl_cg_str {
 impl_disp!(str);
 impl_disp!(String);
 impl_disp!(i32);
+impl_disp!(u8);
 impl_disp!(u32);
 impl_disp!(f32);
 impl_disp!(f64);
@@ -184,6 +185,7 @@ impl_dbg!(AttributeType);
 impl_dbg!(DatapackPriority);
 impl_dbg!(DatapackOrder);
 impl_dbg!(DatapackListMode);
+impl_dbg!(EffectDuration);
 
 // Selectors
 impl_disp!(SelectorSort);

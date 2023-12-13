@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Debug};
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::FunctionInterface;
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
-use crate::common::mc::entity::{AttributeType, UUID};
+use crate::common::mc::entity::{AttributeType, EffectDuration, UUID};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::Modifier;
 use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates};
@@ -212,6 +212,8 @@ pub enum LIRInstrKind {
 		respect_teams: bool,
 		target: EntityTarget,
 	},
+	ClearEffect(EntityTarget, Option<ResourceLocation>),
+	GiveEffect(EntityTarget, ResourceLocation, EffectDuration, u8, bool),
 	// Items
 	GiveItem(EntityTarget, ItemData, u32),
 	Enchant(EntityTarget, ResourceLocation, i32),
@@ -413,6 +415,10 @@ impl Debug for LIRInstrKind {
 				respect_teams,
 				target,
 			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
+			Self::ClearEffect(target, effect) => format!("effc {target:?} {effect:?}"),
+			Self::GiveEffect(target, effect, duration, amplifier, hide_particles) => {
+				format!("effg {target:?} {effect} {duration:?} {amplifier} {hide_particles}")
+			}
 		};
 		write!(f, "{text}")
 	}

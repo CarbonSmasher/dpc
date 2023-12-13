@@ -329,6 +329,21 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 				body: Box::new(instr),
 			}
 		}
+		InstrKind::ClearEffect { target, effect } => lower!(ClearEffect, target, effect),
+		InstrKind::GiveEffect {
+			target,
+			effect,
+			duration,
+			amplifier,
+			hide_particles,
+		} => lower!(
+			GiveEffect,
+			target,
+			effect,
+			duration,
+			amplifier,
+			hide_particles
+		),
 	};
 
 	Ok((prelude, kind))

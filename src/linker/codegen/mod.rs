@@ -750,6 +750,33 @@ pub fn codegen_instr(
 			cgwrite!(&mut out, cbcx, respect_teams, " ", target)?;
 			Some(out)
 		}
+		LIRInstrKind::ClearEffect(tgt, effect) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "effect clear")?;
+			if !tgt.is_blank_this() || effect.is_some() {
+				cgwrite!(&mut out, cbcx, " ", tgt)?;
+			}
+			if let Some(effect) = effect {
+				cgwrite!(&mut out, cbcx, " ", effect)?;
+			}
+
+			Some(out)
+		}
+		LIRInstrKind::GiveEffect(tgt, effect, duration, amplifier, hide_particles) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "effect give ", tgt, " ", effect)?;
+			if !duration.is_default() || *amplifier != 1 || *hide_particles {
+				cgwrite!(&mut out, cbcx, " ", duration)?;
+			}
+			if *amplifier != 1 || *hide_particles {
+				cgwrite!(&mut out, cbcx, " ", amplifier)?;
+			}
+			if *hide_particles {
+				cgwrite!(&mut out, cbcx, " true")?;
+			}
+
+			Some(out)
+		}
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 
