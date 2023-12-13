@@ -1,6 +1,10 @@
-use crate::common::{
-	val::{MutableScoreValue, MutableValue},
-	Identifier,
+use crate::{
+	common::{
+		function::CallInterface,
+		val::{MutableScoreValue, MutableValue},
+		Identifier,
+	},
+	mir::MIRInstrKind,
 };
 
 pub mod const_passes;
@@ -36,5 +40,13 @@ impl MutableScoreValue {
 			Self::Arg(arg) => Some(OptimizableValue::Arg(*arg)),
 			_ => None,
 		}
+	}
+}
+
+pub fn get_instr_call(instr: &MIRInstrKind) -> Option<&CallInterface> {
+	match instr {
+		MIRInstrKind::Call { call } => Some(call),
+		MIRInstrKind::If { body, .. } => get_instr_call(body),
+		_ => None,
 	}
 }

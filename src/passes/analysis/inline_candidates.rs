@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use crate::common::ResourceLocation;
-use crate::mir::{MIRInstrKind, MIR};
+use crate::mir::MIR;
+use crate::passes::opt::get_instr_call;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
 use anyhow::anyhow;
@@ -58,7 +59,8 @@ fn check_recursion<'fun>(
 		.ok_or(anyhow!("Block does not exist"))?;
 
 	for instr in &block.contents {
-		if let MIRInstrKind::Call { call } = &instr.kind {
+		let call = get_instr_call(&instr.kind);
+		if let Some(call) = call {
 			// Recursion!
 			if call_stack.set.contains(&call.function) {
 				candidates.remove(&call.function);

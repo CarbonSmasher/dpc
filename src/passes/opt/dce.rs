@@ -1,8 +1,9 @@
 use anyhow::anyhow;
 use dashmap::DashSet;
 
-use crate::mir::MIRInstrKind;
 use crate::passes::{MIRPass, MIRPassData, Pass};
+
+use super::get_instr_call;
 
 pub struct DCEPass;
 
@@ -24,7 +25,8 @@ impl MIRPass for DCEPass {
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			for instr in &block.contents {
-				if let MIRInstrKind::Call { call } = &instr.kind {
+				let call = get_instr_call(&instr.kind);
+				if let Some(call) = call {
 					used.insert(call.function.clone());
 				}
 			}
