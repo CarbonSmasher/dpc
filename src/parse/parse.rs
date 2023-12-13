@@ -9,6 +9,7 @@ use crate::common::mc::entity::{EffectDuration, SelectorType, TargetSelector};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::pos::{AbsOrRelCoord, Angle, DoubleCoordinates, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
+use crate::common::mc::time::{Time, TimeUnit};
 use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score, XPValue};
 use crate::common::ty::{
 	ArraySize, DataType, DataTypeContents, Double, NBTArrayType, NBTArrayTypeContents,
@@ -542,6 +543,14 @@ fn parse_instr<'t>(
 				amplifier: amp,
 				hide_particles,
 			})
+		}
+		"tima" => {
+			let time = parse_time(toks).context("Failed to parse time")?;
+			Ok(InstrKind::AddTime { time })
+		}
+		"tims" => {
+			let time = parse_time(toks).context("Failed to parse time")?;
+			Ok(InstrKind::SetTime { time })
 		}
 		other => bail!("Unknown instruction {other}"),
 	}
@@ -1290,4 +1299,18 @@ fn parse_bool<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::R
 		"false" => Ok(false),
 		other => bail!("Unknown boolean value {other}"),
 	}
+}
+
+fn parse_time<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<Time> {
+	let num = consume_extract!(toks, Decimal, { bail!("Missing time token") });
+	let num = *num as f32;
+	let suffix = consume_extract!(toks, Ident, { bail!("Missing time suffix token") });
+	let unit = match suffix.as_str() {
+		"t" => TimeUnit::Ticks,
+		"s" => TimeUnit::Seconds,
+		"d" => TimeUnit::Days,
+		other => bail!("Unknown time unit suffix {other}"),
+	};
+
+	Ok(Time::new(num, unit))
 }

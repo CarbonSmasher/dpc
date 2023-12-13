@@ -1,0 +1,13 @@
+# lir_passes mir_passes
+
+@preserve
+"test:main" {
+	tims 0.0s;
+	tims 0.0t;
+	tima 0.0s;
+	tima 0.0d;
+	tims 8.5s;
+	tims 234875.0t;
+	tims 12000.0t;
+	tims 24000.0t;
+}

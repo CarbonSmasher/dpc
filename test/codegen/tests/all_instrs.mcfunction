@@ -76,3 +76,5 @@ effect give @s speed 4
 effect give @s speed
 effect give @s speed infinite
 effect give @s speed infinite 1 true
+time set 85
+time add 4d

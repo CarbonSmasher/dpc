@@ -20,6 +20,30 @@ impl Time {
 	pub fn instant() -> Self {
 		Self::new_ticks(0.0)
 	}
+
+	pub fn convert(mut self, unit: TimeUnit) -> Self {
+		let to_ticks = self.unit.get_tick_conversion_factor();
+		self.amount *= to_ticks;
+		let from_ticks = unit.get_tick_conversion_factor();
+		self.amount /= from_ticks;
+		self.unit = unit;
+		self
+	}
+
+	fn codegen_str(self) -> String {
+		let mut amount = format!("{}", self.amount);
+		// Trim leading zero
+		if amount.starts_with("0.") {
+			amount = amount[1..].into();
+		}
+		let suffix = match self.unit {
+			TimeUnit::Days => "d",
+			TimeUnit::Seconds => "s",
+			// Ticks are always default and can be omitted
+			TimeUnit::Ticks => "",
+		};
+		format!("{}{suffix}", amount)
+	}
 }
 
 impl Debug for Time {
@@ -39,13 +63,18 @@ impl Codegen for Time {
 		F: std::fmt::Write,
 	{
 		let _ = cbcx;
-		write!(f, "{}", self.amount)?;
-		match self.unit {
-			TimeUnit::Days => write!(f, "d")?,
-			TimeUnit::Seconds => write!(f, "s")?,
-			// Ticks are always default and can be omitted
-			TimeUnit::Ticks => {}
-		}
+		// Try different formats and pick the shortest one
+		let ticks = self.clone().convert(TimeUnit::Ticks).codegen_str();
+		let seconds = self.clone().convert(TimeUnit::Seconds).codegen_str();
+		let days = self.clone().convert(TimeUnit::Days).codegen_str();
+
+		let shortest = [ticks, seconds, days]
+			.iter()
+			.min_by_key(|x| x.len())
+			.expect("Iterator is not empty")
+			.clone();
+		write!(f, "{shortest}")?;
+
 		Ok(())
 	}
 }
@@ -63,6 +92,16 @@ impl Debug for TimeUnit {
 			Self::Days => write!(f, "d"),
 			Self::Seconds => write!(f, "s"),
 			Self::Ticks => write!(f, "t"),
+		}
+	}
+}
+
+impl TimeUnit {
+	pub fn get_tick_conversion_factor(&self) -> f32 {
+		match self {
+			Self::Ticks => 1.0,
+			Self::Seconds => 20.0,
+			Self::Days => 24000.0,
 		}
 	}
 }
