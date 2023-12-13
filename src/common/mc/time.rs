@@ -1,19 +1,16 @@
 use std::fmt::Debug;
 
-use crate::{linker::codegen::Codegen, util::EqFloat};
+use crate::linker::codegen::Codegen;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub struct Time {
-	pub amount: EqFloat,
+	pub amount: f32,
 	pub unit: TimeUnit,
 }
 
 impl Time {
 	pub fn new(amount: f32, unit: TimeUnit) -> Self {
-		Self {
-			amount: EqFloat(amount),
-			unit,
-		}
+		Self { amount, unit }
 	}
 
 	pub fn new_ticks(amount: f32) -> Self {
@@ -27,7 +24,7 @@ impl Time {
 
 impl Debug for Time {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.amount.0)?;
+		write!(f, "{}", self.amount)?;
 		self.unit.fmt(f)
 	}
 }
@@ -42,7 +39,7 @@ impl Codegen for Time {
 		F: std::fmt::Write,
 	{
 		let _ = cbcx;
-		write!(f, "{}", self.amount.0)?;
+		write!(f, "{}", self.amount)?;
 		match self.unit {
 			TimeUnit::Days => write!(f, "d")?,
 			TimeUnit::Seconds => write!(f, "s")?,

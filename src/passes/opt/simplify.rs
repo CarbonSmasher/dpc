@@ -82,7 +82,12 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				left: _,
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if score.get_i32() == 0 => true,
-			MIRInstrKind::AddTime { time } if time.amount.0.is_zero() => true,
+			MIRInstrKind::AddTime { time } if time.amount.is_zero() => true,
+			MIRInstrKind::AddXP { amount, .. } | MIRInstrKind::TriggerAdd { amount, .. }
+				if amount.is_zero() =>
+			{
+				true
+			}
 
 			_ => false,
 		};
@@ -150,16 +155,16 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				base: left.clone(),
 				exp: 2,
 			}),
-			// x % x = 0
-			MIRInstrKind::Mod {
-				left,
-				right: Value::Mutable(right),
-			} if left.is_same_val(right) => Some(MIRInstrKind::Assign {
-				left: left.clone(),
-				right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
-					ScoreTypeContents::Score(0),
-				))),
-			}),
+			// x % x = 0 ONLY if x != 0
+			// MIRInstrKind::Mod {
+			// 	left,
+			// 	right: Value::Mutable(right),
+			// } if left.is_same_val(right) => Some(MIRInstrKind::Assign {
+			// 	left: left.clone(),
+			// 	right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+			// 		ScoreTypeContents::Score(0),
+			// 	))),
+			// }),
 			MIRInstrKind::If {
 				condition: Condition::Equal(Value::Mutable(left1), right1),
 				body,
