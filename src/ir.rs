@@ -219,6 +219,15 @@ pub enum InstrKind {
 		amount: i32,
 		value: XPValue,
 	},
+	AddXP {
+		target: EntityTarget,
+		amount: i32,
+		value: XPValue,
+	},
+	GetXP {
+		target: EntityTarget,
+		value: XPValue,
+	},
 	Enchant {
 		target: EntityTarget,
 		enchantment: ResourceLocation,
@@ -608,6 +617,8 @@ impl Debug for InstrKind {
 			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
 			Self::If { condition, body } => format!("if {condition:?}: {body:?}"),
 			Self::Remove { val } => format!("rm {val:?}"),
+			Self::AddXP{target, amount, value} => format!("xpa {target:?} {amount} {value}"),
+			Self::GetXP{target, value} => format!("xpg {target:?} {value}"),
 		};
 		write!(f, "{text}")
 	}

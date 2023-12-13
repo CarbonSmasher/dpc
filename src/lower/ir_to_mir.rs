@@ -145,6 +145,12 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 			amount,
 			value,
 		} => lower!(SetXP, target, amount, value),
+		InstrKind::AddXP {
+			target,
+			amount,
+			value,
+		} => lower!(AddXP, target, amount, value),
+		InstrKind::GetXP { target, value } => lower!(GetXP, target, value),
 		InstrKind::SetBlock { data } => lower!(SetBlock, data),
 		InstrKind::Fill { data } => lower!(Fill, data),
 		InstrKind::Clone { data } => lower!(Clone, data),

@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use anyhow::{bail, Context};
 
 use crate::common::condition::Condition;
@@ -6,8 +9,8 @@ use crate::common::mc::entity::{SelectorType, TargetSelector};
 use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
 use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score, XPValue};
 use crate::common::ty::{
-	ArraySize, DataType, DataTypeContents, NBTArrayType, NBTType, NBTTypeContents, ScoreType,
-	ScoreTypeContents,
+	ArraySize, DataType, DataTypeContents, NBTArrayType, NBTArrayTypeContents,
+	NBTCompoundTypeContents, NBTType, NBTTypeContents, ScoreType, ScoreTypeContents,
 };
 use crate::common::val::{MutableValue, Value};
 use crate::common::DeclareBinding;
@@ -295,6 +298,34 @@ fn parse_instr<'t>(
 				value: kind,
 			})
 		}
+		"xpa" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let amt = consume_extract!(toks, Num, { bail!("Missing amount") });
+			let amt: i32 = (*amt).try_into().context("Amount is not an i32")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let kind = consume_extract!(toks, Ident, { bail!("Missing XP value") });
+			let Some(kind) = XPValue::parse(kind) else {
+				bail!("Invalid XP value");
+			};
+			Ok(InstrKind::AddXP {
+				target: tgt,
+				amount: amt,
+				value: kind,
+			})
+		}
+		"xpg" => {
+			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let kind = consume_extract!(toks, Ident, { bail!("Missing XP value") });
+			let Some(kind) = XPValue::parse(kind) else {
+				bail!("Invalid XP value");
+			};
+			Ok(InstrKind::GetXP {
+				target: tgt,
+				value: kind,
+			})
+		}
 		"taga" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
@@ -473,7 +504,16 @@ fn parse_pow<'t>(
 }
 
 fn parse_ty<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<DataType> {
-	let (tok, pos) = consume!(toks, { bail!("Missing first value token") });
+	let first_tok = consume!(toks, { bail!("Missing first value token") });
+	parse_ty_impl(first_tok, toks)
+}
+
+fn parse_ty_impl<'t>(
+	first_tok: &TokenAndPos,
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<DataType> {
+	let (tok, pos) = first_tok;
+
 	match tok {
 		Token::Ident(ident) => parse_simple_ty(ident),
 		// Array and list types
@@ -491,7 +531,9 @@ fn parse_ty<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Res
 					let len: ArraySize = (*len)
 						.try_into()
 						.context("Array length is not an array size")?;
-					consume_expect!(toks, Token::Square(Side::Right), { bail!("Missing comma") });
+					consume_expect!(toks, Token::Square(Side::Right), {
+						bail!("Missing closing bracket")
+					});
 					let DataType::NBT(ty) = ty else { bail!("Type cannot be used in an array") };
 					let ty = match ty {
 						NBTType::Byte => NBTArrayType::Byte(len),
@@ -503,6 +545,10 @@ fn parse_ty<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Res
 				}
 				other => bail!("Unexpected token {other:?} {pos}"),
 			}
+		}
+		Token::Curly(Side::Left) => {
+			let comp = parse_compound_ty(toks).context("Failed to parse compound type")?;
+			Ok(DataType::NBT(comp))
 		}
 		other => bail!("Unexpected token {other:?} {pos}"),
 	}
@@ -524,6 +570,51 @@ pub fn parse_simple_ty(ty: &str) -> anyhow::Result<DataType> {
 		"nstr" => Ok(DataType::NBT(NBTType::String)),
 		other => bail!("Unknown type {other}"),
 	}
+}
+
+// Does the rest of the compound ty parsing after the first bracket
+fn parse_compound_ty<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<NBTType> {
+	let mut out = HashMap::new();
+
+	loop {
+		let first_tok = consume_optional!(toks);
+		if let Some(first_tok) = first_tok {
+			if let Token::Curly(Side::Right) = first_tok.0 {
+				break;
+			}
+
+			let Token::Str(key) = &first_tok.0 else {
+				bail!("Unexpected token {:?} {}", first_tok.0, first_tok.1);
+			};
+
+			consume_expect!(toks, Token::Colon, { bail!("Missing colon") });
+
+			let ty = parse_ty(toks).context("Failed to parse type")?;
+
+			let DataType::NBT(ty) = ty else {
+				bail!("Non-NBT types cannot be used in a compound");
+			};
+
+			out.insert(key.clone(), ty);
+
+			let next = consume_optional!(toks);
+			if let Some(next) = next {
+				match &next.0 {
+					Token::Comma => {}
+					Token::Curly(Side::Right) => {
+						break;
+					}
+					other => bail!("Unexpected token {other:?} {}", next.1),
+				}
+			}
+		} else {
+			break;
+		}
+	}
+
+	Ok(NBTType::Compound(Arc::new(out)))
 }
 
 fn parse_decl_binding<'t>(
@@ -732,13 +823,205 @@ fn parse_lit_impl<'t>(
 			"false" => Ok(DataTypeContents::Score(ScoreTypeContents::Bool(false))),
 			"truen" => Ok(DataTypeContents::NBT(NBTTypeContents::Bool(true))),
 			"falsen" => Ok(DataTypeContents::NBT(NBTTypeContents::Bool(false))),
+			"b" => {
+				consume_expect!(toks, Token::Square(Side::Left), {
+					bail!("Missing opening bracket")
+				});
+				Ok(DataTypeContents::NBT(NBTTypeContents::Arr(
+					parse_array_lit(NBTArrayTypeContents::Byte(Vec::new(), 0), toks)?,
+				)))
+			}
+			"i" => {
+				consume_expect!(toks, Token::Square(Side::Left), {
+					bail!("Missing opening bracket")
+				});
+				Ok(DataTypeContents::NBT(NBTTypeContents::Arr(
+					parse_array_lit(NBTArrayTypeContents::Int(Vec::new(), 0), toks)?,
+				)))
+			}
+			"l" => {
+				consume_expect!(toks, Token::Square(Side::Left), {
+					bail!("Missing opening bracket")
+				});
+				Ok(DataTypeContents::NBT(NBTTypeContents::Arr(
+					parse_array_lit(NBTArrayTypeContents::Long(Vec::new(), 0), toks)?,
+				)))
+			}
 			other => bail!("Unknown data value {other}"),
 		},
 		Token::Str(string) => Ok(DataTypeContents::NBT(NBTTypeContents::String(
 			string.clone().into(),
 		))),
+		Token::Square(Side::Left) => {
+			let list = parse_list_lit(toks).context("Failed to parse list literal")?;
+			Ok(DataTypeContents::NBT(list))
+		}
+		Token::Curly(Side::Left) => {
+			let comp = parse_compound_lit(toks).context("Failed to parse compound literal")?;
+			Ok(DataTypeContents::NBT(comp))
+		}
 		other => bail!("Unexpected token {other:?} {pos}"),
 	}
+}
+
+// Does the rest of the array lit parsing after the first ident and bracket
+fn parse_array_lit<'t>(
+	mut contents: NBTArrayTypeContents,
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<NBTArrayTypeContents> {
+	loop {
+		let first_tok = consume_optional!(toks);
+		if let Some(first_tok) = first_tok {
+			if let Token::Square(Side::Right) = first_tok.0 {
+				break;
+			}
+
+			let val = parse_lit_impl(first_tok, toks).context("Failed to parse argument value")?;
+			match (&mut contents, val) {
+				(
+					NBTArrayTypeContents::Byte(vec, _),
+					DataTypeContents::NBT(NBTTypeContents::Byte(val)),
+				) => vec.push(val),
+				(
+					NBTArrayTypeContents::Int(vec, _),
+					DataTypeContents::NBT(NBTTypeContents::Int(val)),
+				) => vec.push(val),
+				(
+					NBTArrayTypeContents::Long(vec, _),
+					DataTypeContents::NBT(NBTTypeContents::Long(val)),
+				) => vec.push(val),
+				_ => bail!("Incompatible types in NBT array literal"),
+			}
+
+			let next = consume_optional!(toks);
+			if let Some(next) = next {
+				match &next.0 {
+					Token::Comma => {}
+					Token::Square(Side::Right) => {
+						break;
+					}
+					other => bail!("Unexpected token {other:?} {}", next.1),
+				}
+			}
+		} else {
+			break;
+		}
+	}
+
+	contents.rectify_size();
+
+	Ok(contents)
+}
+
+// Does the rest of the list lit parsing after the first bracket
+fn parse_list_lit<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<NBTTypeContents> {
+	let mut out = Vec::new();
+	// First figure out the type
+	let ty = parse_ty(toks).context("Failed to parse list literal type")?;
+	let DataType::NBT(ty) = ty else {
+		bail!("Non-NBT types cannot be used in a list");
+	};
+	consume_expect!(toks, Token::Square(Side::Right), {
+		bail!("Missing closing type bracket")
+	});
+	consume_expect!(toks, Token::Square(Side::Left), {
+		bail!("Missing list opening bracket")
+	});
+
+	loop {
+		let first_tok = consume_optional!(toks);
+		if let Some(first_tok) = first_tok {
+			if let Token::Square(Side::Right) = first_tok.0 {
+				break;
+			}
+
+			let val = parse_lit_impl(first_tok, toks).context("Failed to parse argument value")?;
+
+			let val_ty = val.get_ty();
+			let DataType::NBT(val_ty) = val_ty else {
+				bail!("Non-NBT types cannot be used in a list");
+			};
+			if !val_ty.is_trivially_castable(&ty) {
+				bail!("List item is incompatible with list type");
+			}
+
+			let DataTypeContents::NBT(val) = val else {
+				bail!("Non-NBT types cannot be used in a list");
+			};
+			out.push(val);
+
+			let next = consume_optional!(toks);
+			if let Some(next) = next {
+				match &next.0 {
+					Token::Comma => {}
+					Token::Square(Side::Right) => {
+						break;
+					}
+					other => bail!("Unexpected token {other:?} {}", next.1),
+				}
+			}
+		} else {
+			break;
+		}
+	}
+
+	Ok(NBTTypeContents::List(ty, out))
+}
+
+// Does the rest of the compound lit parsing after the first bracket
+fn parse_compound_lit<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<NBTTypeContents> {
+	let mut ty_out = HashMap::new();
+	let mut out = HashMap::new();
+
+	loop {
+		let first_tok = consume_optional!(toks);
+		if let Some(first_tok) = first_tok {
+			if let Token::Curly(Side::Right) = first_tok.0 {
+				break;
+			}
+
+			let Token::Str(key) = &first_tok.0 else {
+				bail!("Unexpected token {:?} {}", first_tok.0, first_tok.1);
+			};
+
+			consume_expect!(toks, Token::Colon, { bail!("Missing colon") });
+
+			let val = parse_lit(toks).context("Failed to parse compound inner literal")?;
+
+			let DataType::NBT(ty) = val.get_ty() else {
+				bail!("Non-NBT types cannot be used in a compound");
+			};
+
+			ty_out.insert(key.clone(), ty);
+
+			let DataTypeContents::NBT(val) = val else {
+				bail!("Non-NBT types cannot be used in a compound");
+			};
+			out.insert(key.clone(), val);
+
+			let next = consume_optional!(toks);
+			if let Some(next) = next {
+				match &next.0 {
+					Token::Comma => {}
+					Token::Curly(Side::Right) => {
+						break;
+					}
+					other => bail!("Unexpected token {other:?} {}", next.1),
+				}
+			}
+		} else {
+			break;
+		}
+	}
+
+	Ok(NBTTypeContents::Compound(
+		Arc::new(ty_out),
+		NBTCompoundTypeContents(Arc::new(out)),
+	))
 }
 
 fn parse_entity_target<'t>(

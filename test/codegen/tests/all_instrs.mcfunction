@@ -42,6 +42,8 @@ kill foo
 enchant foo minecraft:power 5
 xp set foo 6 levels
 xp set foo 98 points
+xp add foo 45 levels
+xp query foo points
 tag foo add bar
 tag foo remove bar
 tag foo list

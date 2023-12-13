@@ -146,6 +146,12 @@ fn lower_kind(
 		} => {
 			lower!(lir_instrs, SetXP, target, amount, value)
 		}
+		MIRInstrKind::AddXP {
+			target,
+			amount,
+			value,
+		} => lower!(lir_instrs, AddXP, target, amount, value),
+		MIRInstrKind::GetXP { target, value } => lower!(lir_instrs, GetXP, target, value),
 		MIRInstrKind::Pow { base, exp } => {
 			match exp {
 				// x ^ 0 == 1

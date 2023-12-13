@@ -40,6 +40,8 @@
 	ench "foo", "minecraft:power", 5;
 	xps "foo", 6, levels;
 	xps "foo", 98, points;
+	xpa "foo", 45, levels;
+	xpg "foo", points;
 	taga "foo", "bar";
 	tagr "foo", "bar";
 	tagl "foo";

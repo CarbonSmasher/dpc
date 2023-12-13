@@ -39,7 +39,11 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 			annotations: FunctionAnnotations,
 		},
 		LookingForOpeningCurly(FunctionInterface),
-		Body(FunctionInterface, UnparsedBody),
+		Body {
+			func: FunctionInterface,
+			body: UnparsedBody,
+			curly_count: u32,
+		},
 	}
 
 	enum AnnotationState {
@@ -101,14 +105,31 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 					interface.sig.params.push(ty);
 				}
 				Token::Curly(Side::Left) => {
-					state = State::Body(std::mem::take(interface), UnparsedBody::new())
+					state = State::Body {
+						func: std::mem::take(interface),
+						body: UnparsedBody::new(),
+						curly_count: 1,
+					}
 				}
 				_ => bail!("Unexpected token {tok:?} {pos}"),
 			},
-			State::Body(interface, body) => match tok {
+			State::Body {
+				func,
+				body,
+				curly_count,
+			} => match tok {
+				Token::Curly(Side::Left) => {
+					*curly_count += 1;
+					body.push((tok.clone(), pos.clone()));
+				}
 				Token::Curly(Side::Right) => {
-					unparsed_defs.insert(std::mem::take(interface), std::mem::take(body));
-					state = State::Root;
+					*curly_count -= 1;
+					if *curly_count <= 0 {
+						unparsed_defs.insert(std::mem::take(func), std::mem::take(body));
+						state = State::Root;
+					} else {
+						body.push((tok.clone(), pos.clone()));
+					}
 				}
 				other => body.push((other.clone(), pos.clone())),
 			},

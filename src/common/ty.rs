@@ -1,6 +1,8 @@
 use std::fmt::Write;
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
+use itertools::Itertools;
+
 use super::function::FunctionParams;
 use super::{MutableValue, RegisterList, Value};
 
@@ -310,7 +312,10 @@ impl NBTTypeContents {
 			Self::Double(val) => format!("{val}"),
 			Self::String(string) => write_string(string.to_string()),
 			Self::Arr(arr) => arr.get_literal_str(),
-			Self::List(_, list) => fmt_arr(list.iter().map(|x| x.get_literal_str())),
+			Self::List(_, list) => {
+				let arr = fmt_arr(list.iter().map(|x| x.get_literal_str()));
+				format!("[{arr}]")
+			}
 			Self::Compound(_, comp) => comp.get_literal_str(),
 		}
 	}
@@ -391,6 +396,14 @@ impl NBTArrayTypeContents {
 		matches!((self, other), (Self::Byte(l, ..), Self::Byte(r, ..)) if l == r)
 			|| matches!((self, other), (Self::Int(l, ..), Self::Int(r, ..)) if l == r)
 			|| matches!((self, other), (Self::Long(l, ..), Self::Long(r, ..)) if l == r)
+	}
+
+	pub fn rectify_size(&mut self) {
+		match self {
+			Self::Byte(vec, len) => *len = vec.len(),
+			Self::Int(vec, len) => *len = vec.len(),
+			Self::Long(vec, len) => *len = vec.len(),
+		}
 	}
 }
 
@@ -504,7 +517,7 @@ fn fmt_compound<W: std::fmt::Write, I, F: Fn(&mut W, &I) -> std::fmt::Result>(
 	fun: F,
 ) -> std::fmt::Result {
 	write!(f, "{{")?;
-	for (i, (k, v)) in vals.iter().enumerate() {
+	for (i, (k, v)) in vals.iter().sorted_by_key(|x| x.0).enumerate() {
 		write!(f, "{k}:")?;
 		fun(f, v)?;
 		if i != vals.len() - 1 {

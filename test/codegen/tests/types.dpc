@@ -10,10 +10,22 @@
 	let g: nint = val 6ni;
 	let h: nlong = val 3242389nl;
 	let i: nstr = val "hello world";
-	let j: [nstr] = null;
+	let j: [nstr] = val [nstr][];
 	psh %j, "foo";
-	let k: [nbyte, 10] = null;
+	set %j, [nstr]["foo", "bar", "baz"];
+	let k: [nbyte, 10] = val b[];
 	pshf %k, 0nb;
+	set %k, b[7nb, 3nb, -4nb];
 	let l: nfloat = val 5.0nf;
 	let m: ndouble = val -0.20045nd;
+	let n: [nint, 3] = val i[7ni, 8ni, 3ni];
+	let o: {
+		"foo":nstr,
+		"bar":[nint],
+		"baz":{"foo":nbool}
+	} = val {
+		"foo": "bar",
+		"bar": [nint][4ni, 6ni],
+		"baz": {"foo":falsen}
+	};
 }

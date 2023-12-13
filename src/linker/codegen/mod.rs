@@ -252,6 +252,12 @@ pub fn codegen_instr(
 			let amount = if amount < &0 { 0 } else { *amount };
 			Some(cgformat!(cbcx, "xp set ", target, " ", amount, " ", value)?)
 		}
+		LIRInstrKind::AddXP(target, amount, value) => {
+			Some(cgformat!(cbcx, "xp add ", target, " ", amount, " ", value)?)
+		}
+		LIRInstrKind::GetXP(target, value) => {
+			Some(cgformat!(cbcx, "xp query ", target, " ", value)?)
+		}
 		LIRInstrKind::Call(fun) => Some(format!("function {fun}")),
 		LIRInstrKind::BanPlayers(targets, reason) => {
 			let list = SpaceSepListCG(targets);

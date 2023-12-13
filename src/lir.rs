@@ -175,6 +175,8 @@ pub enum LIRInstrKind {
 	// Entities
 	Kill(EntityTarget),
 	SetXP(EntityTarget, i32, XPValue),
+	AddXP(EntityTarget, i32, XPValue),
+	GetXP(EntityTarget, XPValue),
 	AddTag(EntityTarget, Identifier),
 	RemoveTag(EntityTarget, Identifier),
 	ListTags(EntityTarget),
@@ -316,6 +318,8 @@ impl Debug for LIRInstrKind {
 			Self::Kill(target) => format!("kill {target:?}"),
 			Self::Reload => "reload".into(),
 			Self::SetXP(target, amount, value) => format!("xps {target:?} {amount} {value}"),
+			Self::AddXP(target, amount, value) => format!("xpa {target:?} {amount} {value}"),
+			Self::GetXP(target, value) => format!("xpg {target:?} {value}"),
 			Self::AddTag(target, tag) => format!("taga {target:?} {tag}"),
 			Self::RemoveTag(target, tag) => format!("tagr {target:?} {tag}"),
 			Self::ListTags(target) => format!("tagl {target:?}"),
