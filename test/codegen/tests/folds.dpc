@@ -1,0 +1,25 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	let x: score = val 7s;
+
+	# If-assign folds
+	if eq %x, sco "foo" "bar":
+		set %x, sco "foo" "bar";
+	use %x;
+	if not eq %x, sco "foo" "bar":
+		set %x, sco "foo" "bar";
+	if gt %x, sco "foo" "bar":
+		set %x, sco "foo" "bar";
+	if lt %x, sco "foo" "bar":
+		set %x, sco "foo" "bar";
+	
+	# Math folds
+	add %x, %x;
+	sub %x, %x;
+	div %x, 1s;
+	mod %x, 1s;
+
+	use %x;
+}

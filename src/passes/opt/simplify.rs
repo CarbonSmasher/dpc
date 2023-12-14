@@ -186,6 +186,77 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 					None
 				}
 			}
+			MIRInstrKind::If {
+				condition: Condition::Not(condition),
+				body,
+			} => {
+				if let Condition::Equal(Value::Mutable(left1), right1) = condition.as_ref() {
+					if let MIRInstrKind::Assign {
+						left: left2,
+						right: DeclareBinding::Value(right2),
+					} = body.as_ref()
+					{
+						if left1.is_same_val(left2) && right1.is_value_eq(right2) {
+							Some(MIRInstrKind::Assign {
+								left: left1.clone(),
+								right: DeclareBinding::Value(right1.clone()),
+							})
+						} else {
+							None
+						}
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			MIRInstrKind::If {
+				condition:
+					Condition::GreaterThan(Value::Mutable(left1), right1)
+					| Condition::GreaterThanOrEqual(Value::Mutable(left1), right1),
+				body,
+			} => {
+				if let MIRInstrKind::Assign {
+					left: left2,
+					right: DeclareBinding::Value(right2),
+				} = body.as_ref()
+				{
+					if left1.is_same_val(left2) && right1.is_value_eq(right2) {
+						Some(MIRInstrKind::Min {
+							left: left1.clone(),
+							right: right1.clone(),
+						})
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			MIRInstrKind::If {
+				condition:
+					Condition::LessThan(Value::Mutable(left1), right1)
+					| Condition::LessThanOrEqual(Value::Mutable(left1), right1),
+				body,
+			} => {
+				if let MIRInstrKind::Assign {
+					left: left2,
+					right: DeclareBinding::Value(right2),
+				} = body.as_ref()
+				{
+					if left1.is_same_val(left2) && right1.is_value_eq(right2) {
+						Some(MIRInstrKind::Max {
+							left: left1.clone(),
+							right: right1.clone(),
+						})
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
 			_ => None,
 		};
 
