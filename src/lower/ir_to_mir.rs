@@ -345,6 +345,8 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 			hide_particles
 		),
 		InstrKind::ReturnValue { index, value } => lower!(ReturnValue, index, value),
+		InstrKind::Command { command } => lower!(Command, command),
+		InstrKind::Comment { comment } => lower!(Comment, comment),
 	};
 
 	Ok((prelude, kind))

@@ -383,6 +383,18 @@ fn parse_instr<'t>(
 			})
 		}
 		"sbol" => Ok(InstrKind::ListScoreboardObjectives),
+		"cmd" => {
+			let cmd = consume_extract!(toks, Str, { bail!("Missing command") });
+			Ok(InstrKind::Command {
+				command: cmd.clone(),
+			})
+		}
+		"cmt" => {
+			let cmt = consume_extract!(toks, Str, { bail!("Missing comment") });
+			Ok(InstrKind::Comment {
+				comment: cmt.clone(),
+			})
+		}
 		"trga" => {
 			let obj = consume_extract!(toks, Str, { bail!("Missing objective") });
 			consume_expect!(toks, Comma, { bail!("Missing comma") });

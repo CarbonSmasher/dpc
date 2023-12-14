@@ -777,6 +777,8 @@ pub fn codegen_instr(
 
 			Some(out)
 		}
+		LIRInstrKind::Command(cmd) => Some(cmd.clone()),
+		LIRInstrKind::Comment(cmt) => Some(format!("#{cmt}")),
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

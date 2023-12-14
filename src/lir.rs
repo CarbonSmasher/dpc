@@ -148,6 +148,8 @@ pub enum LIRInstrKind {
 	ReturnRun(ResourceLocation),
 	TriggerAdd(String, i32),
 	TriggerSet(String, i32),
+	Command(String),
+	Comment(String),
 	// Chat
 	Say(String),
 	Tell(EntityTarget, String),
@@ -419,6 +421,8 @@ impl Debug for LIRInstrKind {
 			Self::GiveEffect(target, effect, duration, amplifier, hide_particles) => {
 				format!("effg {target:?} {effect} {duration:?} {amplifier} {hide_particles}")
 			}
+			Self::Command(cmd) => format!("cmd {cmd}"),
+			Self::Comment(cmt) => format!("cmt {cmt}"),
 		};
 		write!(f, "{text}")
 	}

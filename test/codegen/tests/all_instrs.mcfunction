@@ -78,3 +78,5 @@ effect give @s speed infinite
 effect give @s speed infinite 1 true
 time set 85
 time add 4d
+# This does something
+execute store result score #foo bar run data get entity @s Health

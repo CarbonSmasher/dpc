@@ -528,6 +528,8 @@ fn lower_kind(
 			lir_instrs.extend(instrs);
 		}
 		MIRInstrKind::NoOp => {}
+		MIRInstrKind::Command { command } => lower!(lir_instrs, Command, command),
+		MIRInstrKind::Comment { comment } => lower!(lir_instrs, Comment, comment),
 	}
 	Ok(())
 }

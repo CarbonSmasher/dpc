@@ -441,6 +441,12 @@ pub enum InstrKind {
 		index: u16,
 		value: Value,
 	},
+	Command {
+		command: String,
+	},
+	Comment {
+		comment: String,
+	},
 }
 
 impl Debug for InstrKind {
@@ -649,6 +655,8 @@ impl Debug for InstrKind {
 				format!("effg {target:?} {effect} {duration:?} {amplifier} {hide_particles}")
 			}
 			Self::ReturnValue { index, value } => format!("retv {index} {value:?}"),
+			Self::Command { command } => format!("cmd {command}"),
+			Self::Comment { comment } => format!("cmt {comment}"),
 		};
 		write!(f, "{text}")
 	}

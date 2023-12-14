@@ -74,6 +74,8 @@
 	effg @s, "speed", infinite, 1, true;
 	tims 85.0t;
 	tima 4.0d;
+	cmt " This does something";
+	cmd "execute store result score #foo bar run data get entity @s Health";
 }
 
 "test:foo" score nint {}

@@ -467,6 +467,12 @@ pub enum MIRInstrKind {
 		value: Value,
 	},
 	NoOp,
+	Command {
+		command: String,
+	},
+	Comment {
+		comment: String,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -676,6 +682,8 @@ impl Debug for MIRInstrKind {
 			}
 			Self::ReturnValue { index, value } => format!("retv {index} {value:?}"),
 			Self::NoOp => "noop".into(),
+			Self::Command { command } => format!("cmd {command}"),
+			Self::Comment { comment } => format!("cmt {comment}"),
 		};
 		write!(f, "{text}")
 	}
