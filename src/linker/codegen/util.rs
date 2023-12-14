@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 
-use crate::common::mc::{DataLocation, EntityTarget, FullDataLocation, Score};
+use crate::common::mc::{DataLocation, DataPath, EntityTarget, FullDataLocation, Score};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::linker::ra::RegAllocResult;
 use crate::linker::text::{
@@ -101,14 +101,14 @@ pub fn get_mut_nbt_val_loc(
 				.ok_or(anyhow!("Local register {reg} not allocated"))?;
 			FullDataLocation {
 				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
-				path: reg.clone(),
+				path: DataPath::String(reg.clone()),
 			}
 		}
 		MutableNBTValue::Arg(arg) => {
 			let arg = format_arg_local_storage_entry(*arg, func_id);
 			FullDataLocation {
 				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
-				path: arg,
+				path: DataPath::String(arg),
 			}
 		}
 		MutableNBTValue::CallArg(arg, func, ..) => {
@@ -116,14 +116,14 @@ pub fn get_mut_nbt_val_loc(
 			let arg = format_arg_local_storage_entry(*arg, &func_id);
 			FullDataLocation {
 				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
-				path: arg,
+				path: DataPath::String(arg),
 			}
 		}
 		MutableNBTValue::ReturnValue(ret) => {
 			let ret = format_ret_local_storage_entry(*ret, func_id);
 			FullDataLocation {
 				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
-				path: ret,
+				path: DataPath::String(ret),
 			}
 		}
 		MutableNBTValue::CallReturnValue(ret, func, ..) => {
@@ -131,7 +131,7 @@ pub fn get_mut_nbt_val_loc(
 			let ret = format_arg_local_storage_entry(*ret, &func_id);
 			FullDataLocation {
 				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
-				path: ret,
+				path: DataPath::String(ret),
 			}
 		}
 	};

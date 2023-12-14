@@ -10,7 +10,9 @@ use crate::common::mc::item::ItemData;
 use crate::common::mc::pos::{AbsOrRelCoord, Angle, DoubleCoordinates, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
 use crate::common::mc::time::{Time, TimeUnit};
-use crate::common::mc::{DataLocation, Difficulty, EntityTarget, FullDataLocation, Score, XPValue};
+use crate::common::mc::{
+	DataLocation, DataPath, Difficulty, EntityTarget, FullDataLocation, Score, XPValue,
+};
 use crate::common::ty::{
 	ArraySize, DataType, DataTypeContents, Double, NBTArrayType, NBTArrayTypeContents,
 	NBTCompoundTypeContents, NBTType, NBTTypeContents, ScoreType, ScoreTypeContents,
@@ -840,7 +842,7 @@ fn parse_full_data_location<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<FullDataLocation> {
 	let loc = parse_data_location(toks).context("Failed to parse data location")?;
-	let path = consume_extract!(toks, Str, { bail!("Missing data path token") });
+	let path = parse_data_path(toks).context("Failed to parse data path")?;
 	Ok(FullDataLocation {
 		loc,
 		path: path.clone(),
@@ -852,11 +854,37 @@ fn impl_parse_full_data_location<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<FullDataLocation> {
 	let loc = impl_parse_data_location(loc, toks).context("Failed to parse data location")?;
-	let path = consume_extract!(toks, Str, { bail!("Missing data path token") });
+	let path = parse_data_path(toks).context("Failed to parse data path")?;
 	Ok(FullDataLocation {
 		loc,
 		path: path.clone(),
 	})
+}
+
+fn parse_data_path<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<DataPath> {
+	let (tok, pos) = consume!(toks, { bail!("Missing first data path token") });
+	match tok {
+		Token::Str(path) => Ok(DataPath::String(path.clone())),
+		Token::Ident(ident) => match ident.as_str() {
+			"acc" => {
+				let path = parse_data_path(toks).context("Failed to parse data path to access")?;
+				let prop = consume_extract!(toks, Str, { bail!("Missing data path property") });
+				Ok(DataPath::Access(Box::new(path), prop.clone()))
+			}
+			"idx" => {
+				let index = consume_extract!(toks, Num, { bail!("Missing data path index") });
+				let index = (*index)
+					.try_into()
+					.context("Argument index is not a usize")?;
+				let path = parse_data_path(toks).context("Failed to parse data path to index")?;
+				Ok(DataPath::Index(Box::new(path), index))
+			}
+			other => bail!("Unexpected identifier {other:?} {pos}"),
+		},
+		other => bail!("Unexpected token {other:?} {pos}"),
+	}
 }
 
 #[allow(dead_code)]

@@ -6,4 +6,6 @@
 	set %x, ent @s "foo";
 	set %y, sco @s "bar";
 	set %x, stg "foo:bar" "bar";
+	set %x, stg "foo:bar" idx 6 "bar";
+	set %x, stg "foo:bar" acc idx 5 "foo" "name";
 }

@@ -5,3 +5,5 @@ scoreboard players reset %rtest_main0
 data modify storage dpc:r stest_main0 set from entity @s foo
 scoreboard players operation %rtest_main0 _r = @s bar
 data modify storage dpc:r stest_main0 set from storage foo:bar bar
+data modify storage dpc:r stest_main0 set from storage foo:bar bar[6]
+data modify storage dpc:r stest_main0 set from storage foo:bar foo[5].name

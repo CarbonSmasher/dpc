@@ -12,7 +12,7 @@ use crate::common::mc::modifier::{AlignAxes, AnchorLocation};
 use crate::common::mc::scoreboard_and_teams::SingleCriterion;
 use crate::common::mc::{
 	DataLocation, DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, FullDataLocation,
-	Gamemode, Heightmap, Weather, XPValue,
+	Gamemode, Heightmap, Weather, XPValue, DataPath,
 };
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 
@@ -174,6 +174,7 @@ cg_impl!(
 		Ok(())
 	})
 );
+impl_dbg!(DataPath);
 impl_disp!(XPValue);
 impl_disp!(Difficulty);
 impl_disp!(Gamemode);

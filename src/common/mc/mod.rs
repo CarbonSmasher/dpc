@@ -13,6 +13,7 @@ use crate::common::Identifier;
 use self::pos::IntCoordinates;
 
 use self::entity::TargetSelector;
+use super::ty::ArraySize;
 use super::ResourceLocation;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -63,7 +64,22 @@ impl Debug for Score {
 	}
 }
 
-pub type DataPath = String;
+#[derive(Clone, PartialEq, Eq)]
+pub enum DataPath {
+	String(String),
+	Access(Box<DataPath>, String),
+	Index(Box<DataPath>, ArraySize),
+}
+
+impl Debug for DataPath {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::String(string) => write!(f, "{string}"),
+			Self::Access(path, prop) => write!(f, "{path:?}.{prop}"),
+			Self::Index(path, idx) => write!(f, "{path:?}[{idx}]"),
+		}
+	}
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataLocation {
