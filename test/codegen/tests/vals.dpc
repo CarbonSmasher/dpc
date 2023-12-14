@@ -8,4 +8,8 @@
 	set %x, stg "foo:bar" "bar";
 	set %x, stg "foo:bar" idx 6 "bar";
 	set %x, stg "foo:bar" acc idx 5 "foo" "name";
+
+	# Casts
+	let g: score = cast score stg "foo:bar" "baz";
+	let h: nint = cast nint sco @r "name";
 }
