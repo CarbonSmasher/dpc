@@ -287,7 +287,7 @@ impl MIRPass for ConstFoldPass {
 			}
 			remove_indices(&mut block.contents, &instrs_to_remove);
 		}
-
+		
 		Ok(())
 	}
 }
@@ -315,9 +315,12 @@ fn run_const_fold_iter(
 					right: Value::Constant(DataTypeContents::Score(right)),
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						left.value = left.value.overflowing_add(right.get_i32()).0;
-						instrs_to_remove.insert(i);
-						run_again = true;
+						if !left.finished {
+							left.value = left.value.overflowing_add(right.get_i32()).0;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
 					}
 				}
 				MIRInstrKind::Sub {
@@ -325,9 +328,12 @@ fn run_const_fold_iter(
 					right: Value::Constant(DataTypeContents::Score(right)),
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						left.value = left.value.overflowing_sub(right.get_i32()).0;
-						instrs_to_remove.insert(i);
-						run_again = true;
+						if !left.finished {
+							left.value = left.value.overflowing_sub(right.get_i32()).0;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
 					}
 				}
 				MIRInstrKind::Mul {
@@ -335,9 +341,12 @@ fn run_const_fold_iter(
 					right: Value::Constant(DataTypeContents::Score(right)),
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						left.value = left.value.overflowing_mul(right.get_i32()).0;
-						instrs_to_remove.insert(i);
-						run_again = true;
+						if !left.finished {
+							left.value = left.value.overflowing_mul(right.get_i32()).0;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
 					}
 				}
 				MIRInstrKind::Div {
@@ -345,10 +354,13 @@ fn run_const_fold_iter(
 					right: Value::Constant(DataTypeContents::Score(right)),
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						if right.get_i32() != 0 {
-							left.value = left.value / right.get_i32();
-							instrs_to_remove.insert(i);
-							run_again = true;
+						if !left.finished {
+							if right.get_i32() != 0 {
+								left.value = left.value / right.get_i32();
+								instrs_to_remove.insert(i);
+								left.has_folded = true;
+								run_again = true;
+							}
 						}
 					}
 				}
@@ -357,10 +369,13 @@ fn run_const_fold_iter(
 					right: Value::Constant(DataTypeContents::Score(right)),
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						if right.get_i32() != 0 {
-							left.value = left.value % right.get_i32();
-							instrs_to_remove.insert(i);
-							run_again = true;
+						if !left.finished {
+							if right.get_i32() != 0 {
+								left.value = left.value % right.get_i32();
+								instrs_to_remove.insert(i);
+								left.has_folded = true;
+								run_again = true;
+							}
 						}
 					}
 				}
@@ -369,9 +384,12 @@ fn run_const_fold_iter(
 					right: Value::Constant(DataTypeContents::Score(right)),
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						left.value = std::cmp::min(left.value, right.get_i32());
-						instrs_to_remove.insert(i);
-						run_again = true;
+						if !left.finished {
+							left.value = std::cmp::min(left.value, right.get_i32());
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
 					}
 				}
 				MIRInstrKind::Max {
@@ -379,18 +397,24 @@ fn run_const_fold_iter(
 					right: Value::Constant(DataTypeContents::Score(right)),
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						left.value = std::cmp::max(left.value, right.get_i32());
-						instrs_to_remove.insert(i);
-						run_again = true;
+						if !left.finished {
+							left.value = std::cmp::max(left.value, right.get_i32());
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
 					}
 				}
 				MIRInstrKind::Abs {
 					val: MutableValue::Register(left),
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						left.value = left.value.abs();
-						instrs_to_remove.insert(i);
-						run_again = true;
+						if !left.finished {
+							left.value = left.value.abs();
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
 					}
 				}
 				MIRInstrKind::Pow {
@@ -398,9 +422,12 @@ fn run_const_fold_iter(
 					exp,
 				} => {
 					if let Some(mut left) = fold_points.get_mut(left) {
-						left.value = left.value.pow((*exp).into());
-						instrs_to_remove.insert(i);
-						run_again = true;
+						if !left.finished {
+							left.value = left.value.pow((*exp).into());
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
 					}
 				}
 				_ => {}
@@ -409,18 +436,29 @@ fn run_const_fold_iter(
 			match an_result {
 				ConstAnalyzerResult::Add(reg, val) => {
 					if let DataTypeContents::Score(val) = val {
-						fold_points.insert(
-							reg,
-							FoldPoint {
-								pos: i,
-								value: val.get_i32(),
-							},
-						);
+						if let Some(mut existing) = fold_points.get_mut(&reg) {
+							// We have to finish an existing fold point if it has already folded
+							// instructions into itself.
+							existing.finished = true;
+						} else {
+							fold_points.insert(
+								reg,
+								FoldPoint {
+									pos: i,
+									value: val.get_i32(),
+									finished: false,
+									has_folded: false,
+								},
+							);
+						}
 					}
 				}
 				ConstAnalyzerResult::Remove(regs) => {
 					for reg in regs {
-						fold_points.remove(&reg);
+						if let Some(mut point) = fold_points.get_mut(&reg) {
+							point.finished = true;
+							point.has_folded = true;
+						}
 					}
 				}
 				_ => (),
@@ -444,9 +482,12 @@ fn run_const_fold_iter(
 	run_again
 }
 
+#[derive(Debug)]
 struct FoldPoint {
 	pos: usize,
 	value: i32,
+	finished: bool,
+	has_folded: bool,
 }
 
 pub struct ConstConditionPass {

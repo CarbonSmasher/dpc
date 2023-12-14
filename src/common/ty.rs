@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use itertools::Itertools;
 
-use super::function::FunctionParams;
+use super::function::FunctionSignature;
 use super::{MutableValue, RegisterList, Value};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -554,7 +554,7 @@ pub fn get_op_tys(
 	left: &MutableValue,
 	right: &Value,
 	regs: &RegisterList,
-	params: &FunctionParams,
+	sig: &FunctionSignature,
 ) -> anyhow::Result<(DataType, DataType)> {
-	Ok((left.get_ty(regs, params)?, right.get_ty(regs, params)?))
+	Ok((left.get_ty(regs, sig)?, right.get_ty(regs, sig)?))
 }

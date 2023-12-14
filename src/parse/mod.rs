@@ -5,7 +5,9 @@ use std::collections::HashMap;
 
 use anyhow::{bail, Context};
 
-use crate::common::function::{FunctionAnnotations, FunctionInterface, FunctionSignature};
+use crate::common::function::{
+	FunctionAnnotations, FunctionInterface, FunctionSignature, ReturnType,
+};
 use crate::ir::{Block, IR};
 use crate::parse::lex::{Side, Token};
 use crate::parse::parse::{parse_body, parse_simple_ty, UnparsedBody};
@@ -38,7 +40,10 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 			state: AnnotationState,
 			annotations: FunctionAnnotations,
 		},
-		LookingForOpeningCurly(FunctionInterface),
+		LookingForOpeningCurly {
+			interface: FunctionInterface,
+			looking_for_ret: bool,
+		},
 		Body {
 			func: FunctionInterface,
 			body: UnparsedBody,
@@ -66,8 +71,10 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 					}
 				}
 				Token::Str(name) => {
-					state =
-						State::LookingForOpeningCurly(FunctionInterface::new(name.clone().into()));
+					state = State::LookingForOpeningCurly {
+						interface: FunctionInterface::new(name.clone().into()),
+						looking_for_ret: false,
+					};
 				}
 				_ => bail!("Unexpected token {tok:?} {pos}"),
 			},
@@ -79,11 +86,14 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 					Token::At => *ann_state = AnnotationState::LookingForName,
 					// Function start
 					Token::Str(name) => {
-						state = State::LookingForOpeningCurly(FunctionInterface::with_all(
-							name.clone().into(),
-							FunctionSignature::new(),
-							std::mem::take(annotations),
-						));
+						state = State::LookingForOpeningCurly {
+							interface: FunctionInterface::with_all(
+								name.clone().into(),
+								FunctionSignature::new(),
+								std::mem::take(annotations),
+							),
+							looking_for_ret: false,
+						};
 					}
 					_ => bail!("Unexpected token {tok:?} {pos}"),
 				},
@@ -99,10 +109,28 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 					_ => bail!("Unexpected token {tok:?} {pos}"),
 				},
 			},
-			State::LookingForOpeningCurly(interface) => match tok {
+			State::LookingForOpeningCurly {
+				interface,
+				looking_for_ret,
+			} => match tok {
 				Token::Ident(ident) => {
-					let ty = parse_simple_ty(ident).context("Failed to parse parameter type")?;
-					interface.sig.params.push(ty);
+					let ty = parse_simple_ty(ident)
+						.context("Failed to parse parameter / return type")?;
+					if *looking_for_ret {
+						match &mut interface.sig.ret {
+							ReturnType::Standard(tys) => tys.push(ty),
+							ReturnType::Void => interface.sig.ret = ReturnType::Standard(vec![ty]),
+						}
+					} else {
+						interface.sig.params.push(ty);
+					}
+				}
+				Token::Colon => {
+					if *looking_for_ret {
+						bail!("Unexpected token {tok:?} {pos}");
+					} else {
+						*looking_for_ret = true;
+					}
 				}
 				Token::Curly(Side::Left) => {
 					state = State::Body {

@@ -437,6 +437,10 @@ pub enum InstrKind {
 		amplifier: u8,
 		hide_particles: bool,
 	},
+	ReturnValue {
+		index: u16,
+		value: Value,
+	},
 }
 
 impl Debug for InstrKind {
@@ -644,6 +648,7 @@ impl Debug for InstrKind {
 			} => {
 				format!("effg {target:?} {effect} {duration:?} {amplifier} {hide_particles}")
 			}
+			Self::ReturnValue { index, value } => format!("retv {index} {value:?}"),
 		};
 		write!(f, "{text}")
 	}

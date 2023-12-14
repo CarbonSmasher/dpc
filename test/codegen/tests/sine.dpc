@@ -2,11 +2,15 @@
 
 @preserve
 "test:main" {
-	call "test:sine", 100s;
-	call "test:sine", 1s;
+	let x: score = null;
+	call %x run "test:sine", 104s;
+	use %x;
+	let y: score = null;
+	call %y run "test:sine", 104s;
+	use %y;
 }
 
-"test:sine" score {
+"test:sine" score : score {
 	# Init
 	let in: score = val &0;
 	let sign: score = val -400s;
@@ -30,5 +34,5 @@
 	if eq %sign, 400s:
 		add %out, 1s;
 
-	set sco ".out" "math", %out;
+	retv 0, %out;
 }

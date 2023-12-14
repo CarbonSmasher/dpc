@@ -4,8 +4,9 @@ use crate::common::mc::{DataLocation, EntityTarget, FullDataLocation, Score};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::linker::ra::RegAllocResult;
 use crate::linker::text::{
-	format_arg_fake_player, format_arg_local_storage_entry, format_lit_fake_player, LIT_OBJECTIVE,
-	REG_OBJECTIVE, REG_STORAGE_LOCATION,
+	format_arg_fake_player, format_arg_local_storage_entry, format_lit_fake_player,
+	format_ret_fake_player, format_ret_local_storage_entry, LIT_OBJECTIVE, REG_OBJECTIVE,
+	REG_STORAGE_LOCATION,
 };
 use crate::lower::cleanup_fn_id;
 
@@ -72,6 +73,15 @@ pub fn get_mut_score_val_score(
 			let arg = format_arg_local_storage_entry(*arg, &func_id);
 			Score::new(EntityTarget::Player(arg), REG_OBJECTIVE.into())
 		}
+		MutableScoreValue::ReturnValue(ret) => {
+			let ret = format_ret_fake_player(*ret, func_id);
+			Score::new(EntityTarget::Player(ret), REG_OBJECTIVE.into())
+		}
+		MutableScoreValue::CallReturnValue(ret, func, ..) => {
+			let func_id = cleanup_fn_id(func);
+			let ret = format_ret_local_storage_entry(*ret, &func_id);
+			Score::new(EntityTarget::Player(ret), REG_OBJECTIVE.into())
+		}
 	};
 
 	Ok(out)
@@ -107,6 +117,21 @@ pub fn get_mut_nbt_val_loc(
 			FullDataLocation {
 				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
 				path: arg,
+			}
+		}
+		MutableNBTValue::ReturnValue(ret) => {
+			let ret = format_ret_local_storage_entry(*ret, func_id);
+			FullDataLocation {
+				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
+				path: ret,
+			}
+		}
+		MutableNBTValue::CallReturnValue(ret, func, ..) => {
+			let func_id = cleanup_fn_id(func);
+			let ret = format_arg_local_storage_entry(*ret, &func_id);
+			FullDataLocation {
+				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
+				path: ret,
 			}
 		}
 	};

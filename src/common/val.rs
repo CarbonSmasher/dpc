@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use anyhow::{bail, Context};
 
-use super::function::FunctionParams;
+use super::function::{FunctionSignature, ReturnType};
 use super::mc::{FullDataLocation, Score};
 use super::{ty, Identifier, RegisterList, ResourceLocation};
 
@@ -15,10 +15,10 @@ pub enum Value {
 }
 
 impl Value {
-	pub fn get_ty(&self, regs: &RegisterList, params: &FunctionParams) -> anyhow::Result<DataType> {
+	pub fn get_ty(&self, regs: &RegisterList, sig: &FunctionSignature) -> anyhow::Result<DataType> {
 		let out = match self {
 			Self::Constant(contents) => contents.get_ty(),
-			Self::Mutable(val) => val.get_ty(regs, params)?,
+			Self::Mutable(val) => val.get_ty(regs, sig)?,
 		};
 
 		Ok(out)
@@ -98,10 +98,12 @@ pub enum MutableValue {
 	Data(FullDataLocation),
 	Arg(u16),
 	CallArg(u16, ResourceLocation, DataType),
+	ReturnValue(u16),
+	CallReturnValue(u16, ResourceLocation, DataType),
 }
 
 impl MutableValue {
-	pub fn get_ty(&self, regs: &RegisterList, params: &FunctionParams) -> anyhow::Result<DataType> {
+	pub fn get_ty(&self, regs: &RegisterList, sig: &FunctionSignature) -> anyhow::Result<DataType> {
 		let out = match self {
 			Self::Register(id) => {
 				let reg = regs
@@ -111,11 +113,19 @@ impl MutableValue {
 			}
 			Self::Score(..) => DataType::Score(ty::ScoreType::Score),
 			Self::Data(..) => DataType::NBT(ty::NBTType::Any),
-			Self::Arg(num) => params
+			Self::Arg(num) => sig
+				.params
 				.get(*num as usize)
 				.context("Argument index out of range")?
 				.clone(),
-			Self::CallArg(_, _, ty) => ty.clone(),
+			Self::ReturnValue(num) => match &sig.ret {
+				ReturnType::Standard(tys) => tys
+					.get(*num as usize)
+					.context("Return value index out of range")?
+					.clone(),
+				ReturnType::Void => bail!("Function does not return a value"),
+			},
+			Self::CallArg(_, _, ty) | Self::CallReturnValue(_, _, ty) => ty.clone(),
 		};
 
 		Ok(out)
@@ -151,6 +161,10 @@ impl MutableValue {
 			Self::CallArg(arg, func, ty @ DataType::Score(..)) => {
 				Ok(MutableScoreValue::CallArg(arg, func, ty))
 			}
+			Self::ReturnValue(ret) => Ok(MutableScoreValue::ReturnValue(ret)),
+			Self::CallReturnValue(ret, func, ty @ DataType::Score(..)) => {
+				Ok(MutableScoreValue::CallReturnValue(ret, func, ty))
+			}
 			_ => bail!("Value cannot be converted to a score value"),
 		}
 	}
@@ -162,6 +176,10 @@ impl MutableValue {
 			Self::Arg(arg) => Ok(MutableNBTValue::Arg(arg)),
 			Self::CallArg(arg, func, ty @ DataType::NBT(..)) => {
 				Ok(MutableNBTValue::CallArg(arg, func, ty))
+			}
+			Self::ReturnValue(ret) => Ok(MutableNBTValue::ReturnValue(ret)),
+			Self::CallReturnValue(ret, func, ty @ DataType::NBT(..)) => {
+				Ok(MutableNBTValue::CallReturnValue(ret, func, ty))
 			}
 			_ => bail!("Value cannot be converted to a NBT value"),
 		}
@@ -176,6 +194,8 @@ impl Debug for MutableValue {
 			Self::Data(data) => format!("{data:?}"),
 			Self::Arg(num) => format!("&{num}"),
 			Self::CallArg(idx, ..) => format!("&&{idx}"),
+			Self::ReturnValue(idx) => format!("*{idx}"),
+			Self::CallReturnValue(idx, ..) => format!("**{idx}"),
 		};
 		write!(f, "{text}")
 	}
@@ -224,6 +244,8 @@ pub enum MutableScoreValue {
 	Reg(Identifier),
 	Arg(u16),
 	CallArg(u16, ResourceLocation, DataType),
+	ReturnValue(u16),
+	CallReturnValue(u16, ResourceLocation, DataType),
 }
 
 impl MutableScoreValue {
@@ -231,7 +253,10 @@ impl MutableScoreValue {
 		match self {
 			Self::Score(..) => Vec::new(),
 			Self::Reg(reg) => vec![reg],
-			Self::Arg(..) | Self::CallArg(..) => Vec::new(),
+			Self::Arg(..)
+			| Self::CallArg(..)
+			| Self::ReturnValue(..)
+			| Self::CallReturnValue(..) => Vec::new(),
 		}
 	}
 
@@ -239,7 +264,10 @@ impl MutableScoreValue {
 		match self {
 			Self::Score(..) => Vec::new(),
 			Self::Reg(reg) => vec![reg],
-			Self::Arg(..) | Self::CallArg(..) => Vec::new(),
+			Self::Arg(..)
+			| Self::CallArg(..)
+			| Self::ReturnValue(..)
+			| Self::CallReturnValue(..) => Vec::new(),
 		}
 	}
 
@@ -256,6 +284,8 @@ impl Debug for MutableScoreValue {
 			Self::Reg(reg) => format!("%{reg}"),
 			Self::Arg(idx) => format!("&{idx}"),
 			Self::CallArg(idx, ..) => format!("&&{idx}"),
+			Self::ReturnValue(idx) => format!("*{idx}"),
+			Self::CallReturnValue(idx, ..) => format!("**{idx}"),
 		};
 		write!(f, "{text}")
 	}
@@ -297,6 +327,8 @@ pub enum MutableNBTValue {
 	Reg(Identifier),
 	Arg(u16),
 	CallArg(u16, ResourceLocation, DataType),
+	ReturnValue(u16),
+	CallReturnValue(u16, ResourceLocation, DataType),
 }
 
 impl MutableNBTValue {
@@ -304,7 +336,10 @@ impl MutableNBTValue {
 		match self {
 			Self::Data(..) => Vec::new(),
 			Self::Reg(reg) => vec![reg],
-			Self::Arg(..) | Self::CallArg(..) => Vec::new(),
+			Self::Arg(..)
+			| Self::CallArg(..)
+			| Self::ReturnValue(..)
+			| Self::CallReturnValue(..) => Vec::new(),
 		}
 	}
 
@@ -321,6 +356,8 @@ impl Debug for MutableNBTValue {
 			Self::Reg(reg) => format!("${reg}"),
 			Self::Arg(idx) => format!("&{idx}"),
 			Self::CallArg(idx, ..) => format!("&&{idx}"),
+			Self::ReturnValue(idx) => format!("*{idx}"),
+			Self::CallReturnValue(idx, ..) => format!("**{idx}"),
 		};
 		write!(f, "{text}")
 	}

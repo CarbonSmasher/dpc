@@ -10,7 +10,7 @@ use std::{fmt::Debug, sync::Arc};
 
 use dashmap::DashMap;
 
-use self::function::FunctionParams;
+use self::function::FunctionSignature;
 use self::ty::DataType;
 use self::val::{MutableValue, Value};
 
@@ -30,11 +30,11 @@ impl DeclareBinding {
 	pub fn get_ty(
 		&self,
 		regs: &RegisterList,
-		params: &FunctionParams,
+		sig: &FunctionSignature,
 	) -> anyhow::Result<Option<DataType>> {
 		let out = match self {
 			Self::Null => None,
-			Self::Value(val) => Some(val.get_ty(regs, params)?),
+			Self::Value(val) => Some(val.get_ty(regs, sig)?),
 			Self::Cast(ty, ..) => Some(ty.clone()),
 			Self::Index { ty, .. } => Some(ty.clone()),
 		};

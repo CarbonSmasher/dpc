@@ -2,65 +2,64 @@
 
 @preserve
 "test:main" {
-	call "test:init";
-
-	call "test:sqrt", 4s;
-	call "test:sqrt", 1234997s;
+	let x: score = null;
+	call %x run "test:sqrt", 4s;
+	use %x;
 }
 
-"test:sqrt" score {
+"test:sqrt" score : score {
 	# Setup
 	let tmp0: score = val &0;
 	let tmp1: score = val &0;
 	let tmp2: score = val &0;
 	let tmp3: score = val &0;
-	set sco "output" "int", &0;
+	let out: score = val &0;
 
 	# Range-specific
 	if lte &0, 13924s:
-		call "test:sqrt1";
+		call %out run "test:sqrt1", %out;
 	if gte &0, 13925s:
 		if lte &0, 16777216s:
-			call "test:sqrt2";
+			call %out run "test:sqrt2", %out;
 	if gte &0, 16777217s:
-		call "test:sqrt3";
+		call %out run "test:sqrt3", %out;
 
 	# Run
-	div %tmp0, sco "output" "int";
-	add sco "output" "int", %tmp0;
-	div sco "output" "int", 2s;
+	div %tmp0, %out;
+	add %out, %tmp0;
+	div %out, 2s;
 
-	div %tmp1, sco "output" "int";
-	add sco "output" "int", %tmp1;
-	div sco "output" "int", 2s;
+	div %tmp1, %out;
+	add %out, %tmp1;
+	div %out, 2s;
 
-	div %tmp2, sco "output" "int";
-	add sco "output" "int", %tmp2;
-	div sco "output" "int", 2s;
+	div %tmp2, %out;
+	add %out, %tmp2;
+	div %out, 2s;
 
-	div %tmp3, sco "output" "int";
-	add sco "output" "int", %tmp3;
-	div sco "output" "int", 2s;
+	div %tmp3, %out;
+	add %out, %tmp3;
+	div %out, 2s;
+	retv 0, %out;
 }
 
-"test:sqrt1" {
-	sub sco "output" "int", 1s;
-	div sco "output" "int", 119s;
-	add sco "output" "int", 1s;
+"test:sqrt1" score : score {
+	sub &0, 1s;
+	div &0, 119s;
+	add &0, 1s;
+	retv 0, &0;
 }
 
-"test:sqrt2" {
-	sub sco "output" "int", 13924s;
-	div sco "output" "int", 4214s;
-	add sco "output" "int", 118s;
+"test:sqrt2" score : score {
+	sub &0, 13924s;
+	div &0, 4214s;
+	add &0, 118s;
+	retv 0, &0;
 }
 
-"test:sqrt3" {
-	sub sco "output" "int", 16777216s;
-	div sco "output" "int", 50436s;
-	add sco "output" "int", 4096s;
-}
-
-"test:init" {
-	sboa "int", dummy;
+"test:sqrt3" score : score {
+	sub &0, 16777216s;
+	div &0, 50436s;
+	add &0, 4096s;
+	retv 0, &0;
 }

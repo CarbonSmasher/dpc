@@ -411,8 +411,35 @@ fn parse_instr<'t>(
 		}
 		"lspu" => Ok(InstrKind::ListPlayerUUIDs),
 		"call" => {
+			// Return
+			let mut ret = Vec::new();
+			loop {
+				let first_tok = consume_optional!(toks);
+				if let Some(first_tok) = first_tok {
+					let val = match &first_tok.0 {
+						Token::Comma => {
+							parse_mut_val(toks).context("Failed to parse call return value")?
+						}
+						Token::Ident(string) => {
+							if let "run" = string.as_str() {
+								break;
+							} else {
+								parse_mut_val_impl(first_tok, toks)
+									.context("Failed to parse call return value")?
+							}
+						}
+						_ => parse_mut_val_impl(first_tok, toks)
+							.context("Failed to parse call return value")?,
+					};
+					ret.push(val);
+				} else {
+					break;
+				}
+			}
+
 			let func = consume_extract!(toks, Str, { bail!("Missing function to call") });
 
+			// Args
 			let mut args = Vec::new();
 			loop {
 				let first_tok = consume_optional!(toks);
@@ -431,6 +458,7 @@ fn parse_instr<'t>(
 				call: CallInterface {
 					function: func.clone().into(),
 					args,
+					ret,
 				},
 			})
 		}
@@ -551,6 +579,16 @@ fn parse_instr<'t>(
 		"tims" => {
 			let time = parse_time(toks).context("Failed to parse time")?;
 			Ok(InstrKind::SetTime { time })
+		}
+		"retv" => {
+			let idx = consume_extract!(toks, Num, { bail!("Missing return index") });
+			let idx: u16 = (*idx).try_into().context("Return index is not a u16")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let val = parse_val(toks).context("Failed to parse return value")?;
+			Ok(InstrKind::ReturnValue {
+				index: idx,
+				value: val,
+			})
 		}
 		other => bail!("Unknown instruction {other}"),
 	}

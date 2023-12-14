@@ -1,0 +1,32 @@
+# mir_passes lir_passes debug
+
+@preserve
+"test:main" {
+	# let x: score = val 5s;
+	# call %x run "test:triple", %x;
+	# use %x;
+
+	let a: score = val 121s;
+	let b: score = val 130s;
+	let c: score = val 100s;
+	let avg: score = null;
+	call %avg run "test:average", %a, %b, %c;
+	use %avg;
+}
+
+"test:triple" score : score {
+	mul &0, 3s;
+	retv 0, &0;
+}
+
+"test:average" score score score : score {
+	mul &0, 10s;
+	mul &1, 10s;
+	mul &2, 10s;
+	let sum: score = val &0;
+	add %sum, &1;
+	add %sum, &2;
+	div %sum, 3s;
+	div %sum, 10s;
+	retv 0, %sum;
+}

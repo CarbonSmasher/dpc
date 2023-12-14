@@ -36,6 +36,7 @@ fn known() {
 			call: CallInterface {
 				function: "foo:bar".into(),
 				args: Vec::new(),
+				ret: Vec::new(),
 			},
 		};
 	}
@@ -194,6 +195,7 @@ fn known() {
 			call: CallInterface {
 				function: "foo:baz".into(),
 				args: Vec::new(),
+				ret: Vec::new(),
 			},
 		};
 		InstrKind::Declare {
@@ -226,6 +228,7 @@ fn known() {
 			call: CallInterface {
 				function: "foo:bar".into(),
 				args: Vec::new(),
+				ret: Vec::new(),
 			},
 		};
 	}
@@ -352,6 +355,7 @@ fn fuzz() {
 						call: CallInterface {
 							function: format!("foo:{func}").into(),
 							args: Vec::new(),
+							ret: Vec::new(),
 						},
 					}
 				}

@@ -462,6 +462,11 @@ pub enum MIRInstrKind {
 		amplifier: u8,
 		hide_particles: bool,
 	},
+	ReturnValue {
+		index: u16,
+		value: Value,
+	},
+	NoOp,
 }
 
 impl Debug for MIRInstrKind {
@@ -669,6 +674,8 @@ impl Debug for MIRInstrKind {
 			} => {
 				format!("effg {target:?} {effect} {duration:?} {amplifier} {hide_particles}")
 			}
+			Self::ReturnValue { index, value } => format!("retv {index} {value:?}"),
+			Self::NoOp => "noop".into(),
 		};
 		write!(f, "{text}")
 	}
@@ -696,6 +703,7 @@ impl MIRInstrKind {
 			Self::Use { val } => val.get_used_regs(),
 			Self::Call { call } => call.get_used_regs(),
 			Self::Remove { val } => val.get_used_regs(),
+			Self::ReturnValue { value, .. } => value.get_used_regs(),
 			Self::If { condition, body } => {
 				[condition.get_used_regs(), body.get_used_regs()].concat()
 			}
@@ -770,6 +778,11 @@ impl MIRInstrKind {
 				}
 				body.replace_regs(f);
 			}
+			Self::ReturnValue { value, .. } => {
+				for reg in value.get_used_regs_mut() {
+					f(reg);
+				}
+			}
 			_ => {}
 		}
 	}
@@ -811,7 +824,11 @@ impl MIRInstrKind {
 			Self::Abs { val }
 			| Self::Pow { base: val, .. }
 			| Self::Get { value: val }
-			| Self::Use { val } => {
+			| Self::Use { val }
+			| Self::ReturnValue {
+				value: Value::Mutable(val),
+				..
+			} => {
 				f(val);
 			}
 			Self::Call { call } => {

@@ -344,6 +344,7 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 			amplifier,
 			hide_particles
 		),
+		InstrKind::ReturnValue { index, value } => lower!(ReturnValue, index, value),
 	};
 
 	Ok((prelude, kind))

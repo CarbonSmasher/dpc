@@ -1,3 +1,4 @@
+use super::val::MutableValue;
 use super::{ty::DataType, ResourceLocation};
 use super::{Identifier, Value};
 use std::fmt::Debug;
@@ -103,7 +104,7 @@ impl Debug for FunctionSignature {
 #[derive(Clone, PartialEq, Eq)]
 pub enum ReturnType {
 	Void,
-	Standard(DataType),
+	Standard(Vec<DataType>),
 }
 
 impl Debug for ReturnType {
@@ -119,22 +120,31 @@ impl Debug for ReturnType {
 pub struct CallInterface {
 	pub function: ResourceLocation,
 	pub args: FunctionArgs,
+	pub ret: Vec<MutableValue>,
 }
 
 impl CallInterface {
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		let mut out = Vec::new();
 		for arg in &self.args {
-			out.extend(arg.get_used_regs())
+			out.extend(arg.get_used_regs());
+		}
+		for ret in &self.ret {
+			out.extend(ret.get_used_regs());
 		}
 		out
 	}
 
 	pub fn iter_used_regs_mut(&mut self) -> impl Iterator<Item = &mut Identifier> {
-		self.args
+		let args = self.args
 			.iter_mut()
 			.map(|x| x.get_used_regs_mut().into_iter())
-			.flatten()
+			.flatten();
+		let ret = self.ret
+			.iter_mut()
+			.map(|x| x.get_used_regs_mut().into_iter())
+			.flatten();
+		args.chain(ret)
 	}
 }
 

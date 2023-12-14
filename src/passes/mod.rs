@@ -76,6 +76,7 @@ pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 		Box::new(InlineCandidatesPass),
 		Box::new(PrintInstrCountPass),
 		Box::new(SimpleInlinePass),
+		Box::new(ConstComboPass),
 		Box::new(PrintInstrCountPass),
 		Box::new(DSEPass),
 		Box::new(MIRSimplifyPass),

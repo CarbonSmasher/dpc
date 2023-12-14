@@ -4,9 +4,9 @@ use anyhow::{anyhow, Context};
 
 use crate::common::block::{BlockAllocator, BlockID};
 use crate::common::function::{
-	FunctionAnnotations, FunctionArgs, FunctionInterface, FunctionParams, FunctionSignature,
+	FunctionAnnotations, FunctionArgs, FunctionInterface, FunctionSignature,
 };
-use crate::common::val::MutableValue;
+use crate::common::val::{MutableValue, Value};
 use crate::common::{DeclareBinding, Identifier, Register, RegisterList, ResourceLocation};
 use crate::lower::{cleanup_fn_id, fmt_lowered_arg};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
@@ -109,7 +109,8 @@ fn run_simple_inline_iter(
 				&call.args,
 				&mut inlined_contents,
 				&regs,
-				&interface.sig.params,
+				&interface.sig,
+				&call.ret,
 			)
 			.context("Failed to clean up inlined function blocks")?;
 			instrs_to_remove.push((i, inlined_contents));
@@ -127,7 +128,8 @@ fn cleanup_fn(
 	args: &FunctionArgs,
 	block: &mut Vec<MIRInstruction>,
 	regs: &RegisterList,
-	params: &FunctionParams,
+	sig: &FunctionSignature,
+	ret_destinations: &[MutableValue],
 ) -> anyhow::Result<()> {
 	// Set the arguments
 	let mut prelude = Vec::new();
@@ -135,7 +137,7 @@ fn cleanup_fn(
 		let reg = fmt_lowered_arg(func_id, i.try_into().expect("This should fit"));
 		prelude.push(MIRInstruction::new(MIRInstrKind::Declare {
 			left: reg.clone(),
-			ty: arg.get_ty(regs, params)?,
+			ty: arg.get_ty(regs, sig)?,
 		}));
 
 		prelude.push(MIRInstruction::new(MIRInstrKind::Assign {
@@ -155,6 +157,23 @@ fn cleanup_fn(
 				*val = MutableValue::Register(fmt_lowered_arg(func_id, *idx));
 			}
 		});
+
+		if let MIRInstrKind::ReturnValue { index, value } = &instr.kind {
+			if let Some(dest) = ret_destinations.get(*index as usize) {
+				// We want to replace regs and args on the right hand side, but not on
+				// the destination since its part of the calling function
+				let mut value = value.clone();
+				if let Value::Mutable(MutableValue::Arg(idx)) = &mut value {
+					value = Value::Mutable(MutableValue::Register(fmt_lowered_arg(func_id, *idx)));
+				}
+				instr.kind = MIRInstrKind::Assign {
+					left: dest.clone(),
+					right: DeclareBinding::Value(value),
+				}
+			} else {
+				instr.kind = MIRInstrKind::NoOp;
+			}
+		}
 	}
 
 	if !prelude.is_empty() {
