@@ -1268,9 +1268,13 @@ fn parse_condition<'t>(
 			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
 			Ok(Condition::Equal(l, r))
 		}
-		"exists" => {
+		"exi" => {
 			let val = parse_val(toks).context("Failed to parse exists value")?;
 			Ok(Condition::Exists(val))
+		}
+		"bool" => {
+			let val = parse_val(toks).context("Failed to parse exists value")?;
+			Ok(Condition::Bool(val))
 		}
 		"gt" => {
 			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
@@ -1287,6 +1291,28 @@ fn parse_condition<'t>(
 		"lte" => {
 			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
 			Ok(Condition::LessThanOrEqual(l, r))
+		}
+		"ent" => {
+			let ent = parse_entity_target(toks).context("Failed to parse target")?;
+			Ok(Condition::Entity(ent))
+		}
+		"pred" => {
+			let pred = consume_extract!(toks, Str, { bail!("Missing predicate") });
+			Ok(Condition::Predicate(pred.clone().into()))
+		}
+		"dim" => {
+			let dim = consume_extract!(toks, Str, { bail!("Missing dimension") });
+			Ok(Condition::Dimension(dim.clone().into()))
+		}
+		"bio" => {
+			let loc = parse_int_coords(toks).context("Failed to parse location")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let biome = consume_extract!(toks, Str, { bail!("Missing biome") });
+			Ok(Condition::Biome(loc, biome.clone().into()))
+		}
+		"load" => {
+			let loc = parse_int_coords(toks).context("Failed to parse location")?;
+			Ok(Condition::Loaded(loc))
 		}
 		other => bail!("Unknown condition type {other}"),
 	}

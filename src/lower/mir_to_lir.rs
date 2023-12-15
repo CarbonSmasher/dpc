@@ -1028,6 +1028,11 @@ fn lower_condition(
 				_ => bail!("Condition does not allow this type"),
 			}
 		}
+		Condition::Entity(ent) => (Vec::new(), IfModCondition::Entity(ent)),
+		Condition::Predicate(pred) => (Vec::new(), IfModCondition::Predicate(pred)),
+		Condition::Biome(loc, biome) => (Vec::new(), IfModCondition::Biome(loc, biome)),
+		Condition::Loaded(loc) => (Vec::new(), IfModCondition::Loaded(loc)),
+		Condition::Dimension(dim) => (Vec::new(), IfModCondition::Dimension(dim)),
 	};
 
 	Ok((out.0, out.1, negate))

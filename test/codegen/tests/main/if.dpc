@@ -2,7 +2,7 @@
 	let x: score = val 7s;
 	if eq %x, 7s: say "hello";
 	let y: score = null;
-	if exists %y:
+	if exi %y:
 		if not eq 5s, %y:
 			set %x, 3s;
 }

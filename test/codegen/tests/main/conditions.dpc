@@ -1,0 +1,39 @@
+"test:main" {
+	# Basic
+	if eq 1s, 1s:
+		say "hi";
+	if gt 1s, 1s:
+		say "hi";
+	if gte 1s, 1s:
+		say "hi";
+	if lt 1s, 1s:
+		say "hi";
+	if lte 1s, 1s:
+		say "hi";
+	if exi 1s:
+		say "hi";
+	if bool true:
+		say "hi";
+
+	# Not
+	if not bool true:
+		say "hi";
+	if not not not not bool true:
+		say "hi";
+	if not not not bool true:
+		say "hi";
+
+	# Game-related conditions
+	if ent @s:
+		say "hi";
+	if pred "foo:bar":
+		say "hi";
+	if ent @s:
+		say "hi";
+	if dim "minecraft:the_end":
+		say "hi";
+	if bio ~0 ~0 7, "minecraft:forest":
+		say "hi";
+	if load ~0 ~0 7:
+		say "hi";
+}

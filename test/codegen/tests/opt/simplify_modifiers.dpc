@@ -3,7 +3,7 @@
 "test:main" {
 	let x: score = val 0s;
 	# Check for optimal check range
-	if exists %x:
+	if exi %x:
 		say "hello";
 	# Should be reordered so that a matches can be
 	# codegenned

@@ -1,11 +1,13 @@
+use super::mc::pos::IntCoordinates;
+use super::mc::EntityTarget;
 use super::val::{MutableValue, Value};
-use super::Identifier;
+use super::{Identifier, ResourceLocation, ResourceLocationTag};
 use std::fmt::Debug;
+use std::iter;
 
 /// Condition for if and other IR instructions
 #[derive(Clone, PartialEq)]
 pub enum Condition {
-	// TODO: More conditions
 	Not(Box<Condition>),
 	Equal(Value, Value),
 	Exists(Value),
@@ -14,6 +16,11 @@ pub enum Condition {
 	LessThan(Value, Value),
 	LessThanOrEqual(Value, Value),
 	Bool(Value),
+	Entity(EntityTarget),
+	Predicate(ResourceLocation),
+	Biome(IntCoordinates, ResourceLocationTag),
+	Loaded(IntCoordinates),
+	Dimension(ResourceLocation),
 }
 
 impl Condition {
@@ -26,6 +33,11 @@ impl Condition {
 			| Self::LessThanOrEqual(l, r) => [l.get_used_regs(), r.get_used_regs()].concat(),
 			Self::Exists(val) | Self::Bool(val) => val.get_used_regs(),
 			Self::Not(condition) => condition.get_used_regs(),
+			Self::Entity(..)
+			| Self::Predicate(..)
+			| Self::Biome(..)
+			| Self::Loaded(..)
+			| Self::Dimension(..) => Vec::new(),
 		}
 	}
 
@@ -42,6 +54,11 @@ impl Condition {
 			),
 			Self::Exists(val) | Self::Bool(val) => Box::new(val.get_used_regs_mut().into_iter()),
 			Self::Not(condition) => condition.iter_used_regs_mut(),
+			Self::Entity(..)
+			| Self::Predicate(..)
+			| Self::Biome(..)
+			| Self::Loaded(..)
+			| Self::Dimension(..) => Box::new(iter::empty()),
 		}
 	}
 
@@ -54,6 +71,11 @@ impl Condition {
 			| Self::LessThanOrEqual(l, r) => Box::new(l.iter_mut_val().into_iter().chain(r.iter_mut_val())),
 			Self::Exists(val) | Self::Bool(val) => Box::new(val.iter_mut_val().into_iter()),
 			Self::Not(condition) => condition.iter_mut_vals(),
+			Self::Entity(..)
+			| Self::Predicate(..)
+			| Self::Biome(..)
+			| Self::Loaded(..)
+			| Self::Dimension(..) => Box::new(iter::empty()),
 		}
 	}
 }
@@ -62,13 +84,18 @@ impl Debug for Condition {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Equal(l, r) => write!(f, "{l:?} == {r:?}"),
-			Self::Exists(val) => write!(f, "exists {val:?}"),
+			Self::Exists(val) => write!(f, "exi {val:?}"),
 			Self::Not(condition) => write!(f, "not {condition:?}"),
 			Self::GreaterThan(l, r) => write!(f, "{l:?} > {r:?}"),
 			Self::GreaterThanOrEqual(l, r) => write!(f, "{l:?} >= {r:?}"),
 			Self::LessThan(l, r) => write!(f, "{l:?} < {r:?}"),
 			Self::LessThanOrEqual(l, r) => write!(f, "{l:?} <= {r:?}"),
 			Self::Bool(val) => write!(f, "bool {val:?}"),
+			Self::Entity(ent) => write!(f, "ent {ent:?}"),
+			Self::Predicate(pred) => write!(f, "pred {pred:?}"),
+			Self::Biome(loc, biome) => write!(f, "bio {loc:?} {biome}"),
+			Self::Loaded(loc) => write!(f, "load {loc:?}"),
+			Self::Dimension(dim) => write!(f, "dim {dim}"),
 		}
 	}
 }
