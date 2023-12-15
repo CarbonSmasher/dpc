@@ -516,6 +516,18 @@ fn parse_instr<'t>(
 			let angle = parse_angle(toks).context("Failed to parse angle")?;
 			Ok(InstrKind::SetWorldSpawn { pos, angle })
 		}
+		"ssp" => {
+			let target = parse_entity_target(toks).context("Failed to parse target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let pos = parse_int_coords(toks).context("Failed to parse position")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let angle = parse_angle(toks).context("Failed to parse angle")?;
+			Ok(InstrKind::SetSpawnpoint {
+				targets: vec![target],
+				pos,
+				angle,
+			})
+		}
 		"smn" => {
 			let entity = consume_extract!(toks, Str, { bail!("Missing entity") });
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
@@ -542,6 +554,15 @@ fn parse_instr<'t>(
 				target,
 				item,
 				amount: amt,
+			})
+		}
+		"itmc" => {
+			// TODO: Flesh this out
+			let target = parse_entity_target(toks).context("Failed to parse target")?;
+			Ok(InstrKind::ClearItems {
+				targets: vec![target],
+				item: None,
+				max_count: None,
 			})
 		}
 		"effc" => {

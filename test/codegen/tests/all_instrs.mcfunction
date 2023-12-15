@@ -80,3 +80,5 @@ time set 85
 time add 4d
 # This does something
 execute store result score #foo bar run data get entity @s Health
+clear
+spawnpoint @r ~ ~ ~5

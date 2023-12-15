@@ -76,6 +76,8 @@
 	tima 4.0d;
 	cmt " This does something";
 	cmd "execute store result score #foo bar run data get entity @s Health";
+	itmc @s;
+	ssp @r, ~0 ~0 ~5, 0.0;
 }
 
 "test:foo" score nint {}
