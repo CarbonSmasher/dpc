@@ -937,6 +937,10 @@ fn impl_parse_data_location<'t>(
 			let tgt = parse_entity_target(toks).context("Failed to parse entity target")?;
 			Ok(DataLocation::Entity(tgt))
 		}
+		"blk" => {
+			let block = parse_int_coords(toks).context("Failed to parse block coordinates")?;
+			Ok(DataLocation::Block(block))
+		}
 		"stg" => {
 			let loc = consume_extract!(toks, Str, { bail!("Missing storage location token") });
 			Ok(DataLocation::Storage(loc.clone().into()))
