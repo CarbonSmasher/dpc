@@ -2,28 +2,48 @@ mod common;
 
 use anyhow::{bail, Context};
 use dpc::{codegen_ir, common::function::FunctionInterface, parse::Parser};
-use include_dir::{include_dir, Dir};
+use include_dir::{include_dir, Dir, DirEntry, File};
 
 use crate::common::{get_control_comment, TEST_ENTRYPOINT};
 
 static TESTS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/test/codegen/tests");
 
+/// Recursive function to collect tests from the include directory
+/// since it isn't recursive by default
+fn collect_tests<'dir>(dir: &'dir Dir<'dir>, out: &mut Vec<&'dir File<'dir>>) {
+	for entry in dir.entries() {
+		match entry {
+			DirEntry::Dir(dir) => collect_tests(dir, out),
+			DirEntry::File(file) => out.push(file),
+		}
+	}
+}
+
 fn main() {
+	let mut tests = Vec::new();
+	collect_tests(&TESTS, &mut tests);
+
 	let mut test_names = Vec::new();
-	for file in TESTS.files() {
+	for file in tests {
 		let path = file.path();
 		let file_name = path
 			.file_name()
 			.expect("Failed to get filename of file")
 			.to_string_lossy();
-		let file_stem = path
-			.file_stem()
-			.expect("Failed to get file stem of file")
+		let full_path = path
+			.strip_prefix(TESTS.path())
+			.expect("Failed to make test path relative")
 			.to_string_lossy();
 		if file_name.ends_with(".dpc") {
-			test_names.push(file_stem);
+			let full_path = full_path
+				.strip_suffix(".dpc")
+				.expect("File name should end with dpc")
+				.to_string();
+			test_names.push(full_path);
 		}
 	}
+
+	println!("Running {} tests", test_names.len());
 	for test in test_names {
 		println!("     - Running codegen test '{test}'");
 		run_test(&test).expect(&format!("Test {test} failed"))
