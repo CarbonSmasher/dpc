@@ -737,6 +737,10 @@ pub fn codegen_instr(
 		}
 		LIRInstrKind::Command(cmd) => Some(cmd.clone()),
 		LIRInstrKind::Comment(cmt) => Some(format!("#{cmt}")),
+		LIRInstrKind::SetGameruleBool(rule, value) => Some(format!("gamerule {rule} {value}")),
+		LIRInstrKind::SetGameruleInt(rule, value) => Some(format!("gamerule {rule} {value}")),
+		LIRInstrKind::GetGamerule(rule) => Some(format!("gamerule {rule}")),
+		LIRInstrKind::Locate(ty, loc) => Some(format!("locate {ty:?} {loc}")),
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

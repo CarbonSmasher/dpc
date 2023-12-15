@@ -284,3 +284,36 @@ impl Debug for DatapackListMode {
 		}
 	}
 }
+
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum Location {
+	Structure,
+	Biome,
+	POI,
+}
+
+impl Location {
+	pub fn parse(string: &str) -> Option<Self> {
+		match string {
+			"struct" => Some(Self::Structure),
+			"bio" => Some(Self::Biome),
+			"poi" => Some(Self::POI),
+			_ => None,
+		}
+	}
+}
+
+impl Debug for Location {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Structure => "structure",
+				Self::Biome => "biome",
+				Self::POI => "poi",
+			}
+		)
+	}
+}

@@ -13,7 +13,7 @@ use crate::common::mc::pos::{
 use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
 use crate::common::mc::time::{Time, TimeUnit};
 use crate::common::mc::{
-	DataLocation, DataPath, Difficulty, EntityTarget, FullDataLocation, Score, XPValue,
+	DataLocation, DataPath, Difficulty, EntityTarget, FullDataLocation, Location, Score, XPValue,
 };
 use crate::common::ty::{
 	ArraySize, DataType, DataTypeContents, Double, NBTArrayType, NBTArrayTypeContents,
@@ -678,6 +678,41 @@ fn parse_instr<'t>(
 				source: src,
 				dest,
 				facing: face,
+			})
+		}
+		"grsb" => {
+			let rule = consume_extract!(toks, Str, { bail!("Missing rule") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let value = parse_bool(toks).context("Missing value")?;
+			Ok(InstrKind::SetGameruleBool {
+				rule: rule.clone(),
+				value,
+			})
+		}
+		"grsi" => {
+			let rule = consume_extract!(toks, Str, { bail!("Missing rule") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let value = consume_extract!(toks, Num, { bail!("Missing value") });
+			let value: i32 = (*value).try_into().context("Value is not an i32")?;
+
+			Ok(InstrKind::SetGameruleInt {
+				rule: rule.clone(),
+				value,
+			})
+		}
+		"grg" => {
+			let rule = consume_extract!(toks, Str, { bail!("Missing rule") });
+
+			Ok(InstrKind::GetGamerule { rule: rule.clone() })
+		}
+		"loc" => {
+			let ty = consume_extract!(toks, Ident, { bail!("Missing location type") });
+			let ty = Location::parse(ty).context("Invalid location type")?;
+			let location = consume_extract!(toks, Str, { bail!("Missing location") });
+
+			Ok(InstrKind::Locate {
+				location_type: ty,
+				location: location.clone().into(),
 			})
 		}
 		other => bail!("Unknown instruction {other}"),

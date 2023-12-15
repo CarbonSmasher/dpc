@@ -84,6 +84,10 @@
 	tpr @s, 0.0 0.0 0.0, 0.4 ~4.0;
 	tpfl @s, 0.0 0.0 0.0, 0.4 ~4.0 7.4;
 	tpfe @s, 0.0 0.0 0.0, @p;
+	grsb "doFireTick", true;
+	grsi "randomTickSpeed", 2345;
+	grg "doDaylightCycle";
+	loc bio "minecraft:taiga";
 }
 
 "test:foo" score nint {}

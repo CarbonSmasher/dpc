@@ -13,8 +13,8 @@ use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntC
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{
-	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode, Weather,
-	XPValue,
+	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode,
+	Location, Weather, XPValue,
 };
 use crate::common::ty::{DataType, NBTCompoundTypeContents};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
@@ -473,6 +473,21 @@ pub enum MIRInstrKind {
 	Comment {
 		comment: String,
 	},
+	SetGameruleBool {
+		rule: String,
+		value: bool,
+	},
+	SetGameruleInt {
+		rule: String,
+		value: i32,
+	},
+	GetGamerule {
+		rule: String,
+	},
+	Locate {
+		location_type: Location,
+		location: ResourceLocation,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -684,6 +699,16 @@ impl Debug for MIRInstrKind {
 			Self::NoOp => "noop".into(),
 			Self::Command { command } => format!("cmd {command}"),
 			Self::Comment { comment } => format!("cmt {comment}"),
+			Self::SetGameruleBool {
+				rule,
+				value,
+			} => format!("grsb {rule} {value}"),
+			Self::SetGameruleInt {
+				rule,
+				value,
+			} => format!("grsi {rule} {value}"),
+			Self::GetGamerule { rule } => format!("grg {rule}"),
+			Self::Locate { location_type, location } => format!("loc {location_type:?} {location}"),
 		};
 		write!(f, "{text}")
 	}

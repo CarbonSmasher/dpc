@@ -530,6 +530,17 @@ fn lower_kind(
 		MIRInstrKind::NoOp => {}
 		MIRInstrKind::Command { command } => lower!(lir_instrs, Command, command),
 		MIRInstrKind::Comment { comment } => lower!(lir_instrs, Comment, comment),
+		MIRInstrKind::SetGameruleBool { rule, value } => {
+			lower!(lir_instrs, SetGameruleBool, rule, value)
+		}
+		MIRInstrKind::SetGameruleInt { rule, value } => {
+			lower!(lir_instrs, SetGameruleInt, rule, value)
+		}
+		MIRInstrKind::GetGamerule { rule } => lower!(lir_instrs, GetGamerule, rule),
+		MIRInstrKind::Locate {
+			location_type,
+			location,
+		} => lower!(lir_instrs, Locate, location_type, location),
 	}
 	Ok(())
 }

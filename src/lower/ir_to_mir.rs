@@ -347,6 +347,13 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 		InstrKind::ReturnValue { index, value } => lower!(ReturnValue, index, value),
 		InstrKind::Command { command } => lower!(Command, command),
 		InstrKind::Comment { comment } => lower!(Comment, comment),
+		InstrKind::SetGameruleBool { rule, value } => lower!(SetGameruleBool, rule, value),
+		InstrKind::SetGameruleInt { rule, value } => lower!(SetGameruleInt, rule, value),
+		InstrKind::GetGamerule { rule } => lower!(GetGamerule, rule),
+		InstrKind::Locate {
+			location_type,
+			location,
+		} => lower!(Locate, location_type, location),
 	};
 
 	Ok((prelude, kind))

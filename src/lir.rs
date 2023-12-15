@@ -11,7 +11,7 @@ use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{
 	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode, Weather,
-	XPValue,
+	XPValue, Location,
 };
 use crate::common::ty::{ArraySize, NBTCompoundTypeContents};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
@@ -238,6 +238,10 @@ pub enum LIRInstrKind {
 	DefaultGamemode(Gamemode),
 	SetWorldSpawn(IntCoordinates, Angle),
 	SetSpawnpoint(Vec<EntityTarget>, IntCoordinates, Angle),
+	SetGameruleBool(String, bool),
+	SetGameruleInt(String, i32),
+	GetGamerule(String),
+	Locate(Location, ResourceLocation),
 	// Teams and scoreboards
 	AddScoreboardObjective(String, Criterion, Option<String>),
 	RemoveScoreboardObjective(String),
@@ -424,6 +428,10 @@ impl Debug for LIRInstrKind {
 			}
 			Self::Command(cmd) => format!("cmd {cmd}"),
 			Self::Comment(cmt) => format!("cmt {cmt}"),
+			Self::SetGameruleBool(rule, value) => format!("grsb {rule} {value}"),
+			Self::SetGameruleInt(rule, value) => format!("grsi {rule} {value}"),
+			Self::GetGamerule(rule) => format!("grg {rule}"),
+			Self::Locate(ty, loc) => format!("loc {ty:?} {loc}"),
 		};
 		write!(f, "{text}")
 	}
