@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::linker::codegen::Codegen;
+use crate::output::codegen::Codegen;
 
 #[derive(Clone, PartialEq)]
 pub struct Time {
@@ -57,7 +57,7 @@ impl Codegen for Time {
 	fn gen_writer<F>(
 		&self,
 		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
+		cbcx: &mut crate::output::codegen::CodegenBlockCx,
 	) -> anyhow::Result<()>
 	where
 		F: std::fmt::Write,
@@ -129,7 +129,7 @@ impl Codegen for TimePreset {
 	fn gen_writer<F>(
 		&self,
 		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
+		cbcx: &mut crate::output::codegen::CodegenBlockCx,
 	) -> anyhow::Result<()>
 	where
 		F: std::fmt::Write,
@@ -165,7 +165,7 @@ impl Codegen for TimeQuery {
 	fn gen_writer<F>(
 		&self,
 		f: &mut F,
-		cbcx: &mut crate::linker::codegen::CodegenBlockCx,
+		cbcx: &mut crate::output::codegen::CodegenBlockCx,
 	) -> anyhow::Result<()>
 	where
 		F: std::fmt::Write,

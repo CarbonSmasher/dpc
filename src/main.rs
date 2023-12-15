@@ -9,7 +9,7 @@ use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::val::{MutableValue, Value};
 use dpc::common::{DeclareBinding, Identifier};
 use dpc::ir::{Block, InstrKind, Instruction, IR};
-use dpc::linker::link;
+use dpc::output::link;
 use dpc::lower::ir_to_mir::lower_ir;
 use dpc::lower::mir_to_lir::lower_mir;
 use dpc::{def_compound, push_instrs};

@@ -14,7 +14,7 @@ use crate::common::mc::{DatapackListMode, Score};
 use crate::common::ty::NBTTypeContents;
 use crate::common::val::MutableScoreValue;
 use crate::common::{val::NBTValue, val::ScoreValue, RegisterList};
-use crate::linker::codegen::util::cg_data_modify_rhs;
+use crate::output::codegen::util::cg_data_modify_rhs;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 
 use self::modifier::codegen_modifier;
@@ -46,7 +46,8 @@ impl CodegenCx {
 	}
 }
 
-/// Different requirements that can be imposed on the linker so that it generates functions
+/// Different requirements that can be imposed on the output so that it generates
+/// certain functions only when necessary
 #[derive(Hash, PartialEq, Eq, Clone, Copy)]
 pub enum CodegenRequirement {}
 

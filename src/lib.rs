@@ -1,20 +1,18 @@
 use anyhow::Context;
 use ir::IR;
-use linker::datapack::Datapack;
+use output::datapack::Datapack;
 
-use crate::{
-	linker::link,
-	lower::{ir_to_mir::lower_ir, mir_to_lir::lower_mir},
-	passes::{run_ir_passes, run_lir_passes, run_mir_passes},
-};
+use crate::lower::{ir_to_mir::lower_ir, mir_to_lir::lower_mir};
+use crate::output::link;
+use crate::passes::{run_ir_passes, run_lir_passes, run_mir_passes};
 
 pub mod common;
 pub mod ir;
-pub mod linker;
 pub mod lir;
 pub mod lower;
 pub mod macros;
 pub mod mir;
+pub mod output;
 pub mod parse;
 pub mod passes;
 mod util;

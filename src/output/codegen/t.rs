@@ -26,7 +26,7 @@ pub mod macros {
 	macro_rules! cgformat {
 		($cbcx:expr, $($t:expr),*) => {{
 			let mut out = String::new();
-			$crate::linker::codegen::t::macros::cgwrite!(&mut out, $cbcx, $($t),*)?;
+			$crate::output::codegen::t::macros::cgwrite!(&mut out, $cbcx, $($t),*)?;
 			Ok::<String, anyhow::Error>(out)
 		}};
 	}

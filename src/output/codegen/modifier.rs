@@ -5,7 +5,7 @@ use crate::common::mc::modifier::{
 };
 use crate::common::ty::ScoreTypeContents;
 use crate::common::val::{MutableNBTValue, ScoreValue};
-use crate::linker::text::REG_OBJECTIVE;
+use crate::output::text::REG_OBJECTIVE;
 
 use super::t::macros::cgformat;
 use super::util::{create_lit_score, get_mut_score_val_score};
@@ -297,7 +297,7 @@ mod tests {
 	use crate::common::mc::{EntityTarget, Score};
 	use crate::common::RegisterList;
 	use crate::common::{ty::ScoreTypeContents, val::MutableScoreValue};
-	use crate::linker::{codegen::CodegenCx, ra::RegAllocResult};
+	use crate::output::{codegen::CodegenCx, ra::RegAllocResult};
 
 	#[test]
 	fn test_if_score_codegen() {

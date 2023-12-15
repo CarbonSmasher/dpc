@@ -2,8 +2,8 @@ use anyhow::anyhow;
 
 use crate::common::mc::{DataLocation, DataPath, EntityTarget, FullDataLocation, Score};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
-use crate::linker::ra::RegAllocResult;
-use crate::linker::text::{
+use crate::output::ra::RegAllocResult;
+use crate::output::text::{
 	format_arg_fake_player, format_arg_local_storage_entry, format_lit_fake_player,
 	format_ret_fake_player, format_ret_local_storage_entry, LIT_OBJECTIVE, REG_OBJECTIVE,
 	REG_STORAGE_LOCATION,

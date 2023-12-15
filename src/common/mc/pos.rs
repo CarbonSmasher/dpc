@@ -2,7 +2,7 @@ use num_traits::{Num, Zero};
 
 use std::fmt::Debug;
 
-use crate::linker::codegen::{Codegen, CodegenBlockCx};
+use crate::output::codegen::{Codegen, CodegenBlockCx};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Coordinates<T> {
