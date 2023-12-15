@@ -96,6 +96,12 @@ pub type IntCoordinates = Coordinates<i64>;
 #[derive(Clone, PartialEq)]
 pub struct Coordinates2D<T>(AbsOrRelCoord<T>, AbsOrRelCoord<T>);
 
+impl<T> Coordinates2D<T> {
+	pub fn new(x: AbsOrRelCoord<T>, y: AbsOrRelCoord<T>) -> Self {
+		Self(x, y)
+	}
+}
+
 impl<T: Num> Coordinates2D<T> {
 	pub fn are_zero(&self) -> bool {
 		self.0.is_relative_zero() && self.1.is_relative_zero()

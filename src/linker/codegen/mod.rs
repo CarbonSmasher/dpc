@@ -451,12 +451,9 @@ pub fn codegen_instr(
 		LIRInstrKind::ReturnRun(fun) => Some(cgformat!(cbcx, "return run ", fun)?),
 		LIRInstrKind::TeleportToEntity(src, dest) => {
 			let mut out = String::new();
-			if src.is_empty() {
-				bail!("Target list empty");
-			}
 			cgwrite!(&mut out, cbcx, "tp ")?;
-			if !src.first().expect("Not empty").is_blank_this() {
-				cgwrite!(&mut out, cbcx, SpaceSepListCG(src), " ")?;
+			if !src.is_blank_this() {
+				cgwrite!(&mut out, cbcx, src, " ")?;
 			}
 			cgwrite!(&mut out, cbcx, dest)?;
 
@@ -464,12 +461,9 @@ pub fn codegen_instr(
 		}
 		LIRInstrKind::TeleportToLocation(src, dest) => {
 			let mut out = String::new();
-			if src.is_empty() {
-				bail!("Target list empty");
-			}
 			cgwrite!(&mut out, cbcx, "tp ")?;
-			if !src.first().expect("Not empty").is_blank_this() {
-				cgwrite!(&mut out, cbcx, SpaceSepListCG(src), " ")?;
+			if !src.is_blank_this() {
+				cgwrite!(&mut out, cbcx, src, " ")?;
 			}
 			cgwrite!(&mut out, cbcx, dest)?;
 
@@ -477,55 +471,19 @@ pub fn codegen_instr(
 		}
 		LIRInstrKind::TeleportWithRotation(src, dest, rot) => {
 			let mut out = String::new();
-			if src.is_empty() {
-				bail!("Target list empty");
-			}
-			cgwrite!(
-				&mut out,
-				cbcx,
-				"tp ",
-				SpaceSepListCG(src),
-				" ",
-				dest,
-				" ",
-				rot
-			)?;
+			cgwrite!(&mut out, cbcx, "tp ", src, " ", dest, " ", rot)?;
 
 			Some(out)
 		}
 		LIRInstrKind::TeleportFacingLocation(src, dest, face) => {
 			let mut out = String::new();
-			if src.is_empty() {
-				bail!("Target list empty");
-			}
-			cgwrite!(
-				&mut out,
-				cbcx,
-				"tp ",
-				SpaceSepListCG(src),
-				" ",
-				dest,
-				" facing ",
-				face
-			)?;
+			cgwrite!(&mut out, cbcx, "tp ", src, " ", dest, " facing ", face)?;
 
 			Some(out)
 		}
 		LIRInstrKind::TeleportFacingEntity(src, dest, face) => {
 			let mut out = String::new();
-			if src.is_empty() {
-				bail!("Target list empty");
-			}
-			cgwrite!(
-				&mut out,
-				cbcx,
-				"tp ",
-				SpaceSepListCG(src),
-				" ",
-				dest,
-				" facing ",
-				face
-			)?;
+			cgwrite!(&mut out, cbcx, "tp ", src, " ", dest, " facing ", face)?;
 
 			Some(out)
 		}

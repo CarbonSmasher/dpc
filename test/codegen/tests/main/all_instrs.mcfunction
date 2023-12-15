@@ -82,3 +82,9 @@ time add 4d
 execute store result score #foo bar run data get entity @s Health
 clear
 spawnpoint @r ~ ~ ~5
+tp @a @s
+tp @e
+tp 0.0 0.0 ~
+tp @s 0.0 0.0 0.0 0.4 ~4.0
+tp @s 0.0 0.0 0.0 facing 0.4 ~4.0 7.4
+tp @s 0.0 0.0 0.0 facing @p

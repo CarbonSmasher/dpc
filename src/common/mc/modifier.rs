@@ -86,6 +86,7 @@ impl Debug for Modifier {
 	}
 }
 
+// TODO: Type and scale
 #[derive(Clone)]
 pub enum StoreModLocation {
 	Reg(Identifier),

@@ -78,6 +78,12 @@
 	cmd "execute store result score #foo bar run data get entity @s Health";
 	itmc @s;
 	ssp @r, ~0 ~0 ~5, 0.0;
+	tpe @a, @s;
+	tpe @s, @e;
+	tpl @s, 0.0 0.0 ~0.0;
+	tpr @s, 0.0 0.0 0.0, 0.4 ~4.0;
+	tpfl @s, 0.0 0.0 0.0, 0.4 ~4.0 7.4;
+	tpfe @s, 0.0 0.0 0.0, @p;
 }
 
 "test:foo" score nint {}

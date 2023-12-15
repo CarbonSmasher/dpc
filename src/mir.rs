@@ -327,25 +327,25 @@ pub enum MIRInstrKind {
 		gamemode: Gamemode,
 	},
 	TeleportToEntity {
-		source: Vec<EntityTarget>,
+		source: EntityTarget,
 		dest: EntityTarget,
 	},
 	TeleportToLocation {
-		source: Vec<EntityTarget>,
+		source: EntityTarget,
 		dest: DoubleCoordinates,
 	},
 	TeleportWithRotation {
-		source: Vec<EntityTarget>,
+		source: EntityTarget,
 		dest: DoubleCoordinates,
 		rotation: DoubleCoordinates2D,
 	},
 	TeleportFacingLocation {
-		source: Vec<EntityTarget>,
+		source: EntityTarget,
 		dest: DoubleCoordinates,
 		facing: DoubleCoordinates,
 	},
 	TeleportFacingEntity {
-		source: Vec<EntityTarget>,
+		source: EntityTarget,
 		dest: DoubleCoordinates,
 		facing: EntityTarget,
 	},

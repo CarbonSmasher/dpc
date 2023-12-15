@@ -7,7 +7,9 @@ use crate::common::condition::Condition;
 use crate::common::function::CallInterface;
 use crate::common::mc::entity::{EffectDuration, SelectorType, TargetSelector};
 use crate::common::mc::item::ItemData;
-use crate::common::mc::pos::{AbsOrRelCoord, Angle, DoubleCoordinates, IntCoordinates};
+use crate::common::mc::pos::{
+	AbsOrRelCoord, Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates,
+};
 use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
 use crate::common::mc::time::{Time, TimeUnit};
 use crate::common::mc::{
@@ -623,6 +625,59 @@ fn parse_instr<'t>(
 			Ok(InstrKind::ReturnValue {
 				index: idx,
 				value: val,
+			})
+		}
+		"tpe" => {
+			let src = parse_entity_target(toks).context("Failed to parse source target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let dest = parse_entity_target(toks).context("Failed to parse dest target")?;
+
+			Ok(InstrKind::TeleportToEntity { source: src, dest })
+		}
+		"tpl" => {
+			let src = parse_entity_target(toks).context("Failed to parse source target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let dest = parse_double_coords(toks).context("Failed to parse dest location")?;
+
+			Ok(InstrKind::TeleportToLocation { source: src, dest })
+		}
+		"tpr" => {
+			let src = parse_entity_target(toks).context("Failed to parse source target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let dest = parse_double_coords(toks).context("Failed to parse dest location")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let rot = parse_double_coords_2d(toks).context("Failed to parse rotation")?;
+
+			Ok(InstrKind::TeleportWithRotation {
+				source: src,
+				dest,
+				rotation: rot,
+			})
+		}
+		"tpfl" => {
+			let src = parse_entity_target(toks).context("Failed to parse source target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let dest = parse_double_coords(toks).context("Failed to parse dest location")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let face = parse_double_coords(toks).context("Failed to parse facing location")?;
+
+			Ok(InstrKind::TeleportFacingLocation {
+				source: src,
+				dest,
+				facing: face,
+			})
+		}
+		"tpfe" => {
+			let src = parse_entity_target(toks).context("Failed to parse source target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let dest = parse_double_coords(toks).context("Failed to parse dest location")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let face = parse_entity_target(toks).context("Failed to parse facing target")?;
+
+			Ok(InstrKind::TeleportFacingEntity {
+				source: src,
+				dest,
+				facing: face,
 			})
 		}
 		other => bail!("Unknown instruction {other}"),
@@ -1335,6 +1390,14 @@ fn parse_double_coords<'t>(
 	let y = parse_coord_part_double(toks).context("Failed to parse second part of coordinate")?;
 	let z = parse_coord_part_double(toks).context("Failed to parse third part of coordinate")?;
 	Ok(DoubleCoordinates::XYZ(x, y, z))
+}
+
+fn parse_double_coords_2d<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<DoubleCoordinates2D> {
+	let x = parse_coord_part_double(toks).context("Failed to parse first part of coordinate")?;
+	let y = parse_coord_part_double(toks).context("Failed to parse second part of coordinate")?;
+	Ok(DoubleCoordinates2D::new(x, y))
 }
 
 fn parse_int_coords<'t>(
