@@ -11,8 +11,8 @@ use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::{AlignAxes, AnchorLocation};
 use crate::common::mc::scoreboard_and_teams::SingleCriterion;
 use crate::common::mc::{
-	DataLocation, DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, FullDataLocation,
-	Gamemode, Heightmap, Weather, XPValue, DataPath,
+	DataLocation, DataPath, DatapackListMode, DatapackOrder, DatapackPriority, Difficulty,
+	FullDataLocation, Gamemode, Heightmap, Weather, XPValue,
 };
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 
@@ -170,7 +170,11 @@ cg_impl!(
 	f,
 	cbcx,
 	(|| {
-		cgwrite!(f, cbcx, self.loc, " ", self.path)?;
+		cgwrite!(f, cbcx, self.loc)?;
+		if let DataPath::This = self.path {
+		} else {
+			cgwrite!(f, cbcx, " ", self.path)?;
+		}
 		Ok(())
 	})
 );

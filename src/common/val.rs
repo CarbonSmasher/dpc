@@ -6,7 +6,7 @@ use super::function::{FunctionSignature, ReturnType};
 use super::mc::{FullDataLocation, Score};
 use super::{ty, Identifier, RegisterList, ResourceLocation};
 
-use super::ty::{DataType, DataTypeContents, NBTTypeContents, ScoreTypeContents};
+use super::ty::{ArraySize, DataType, DataTypeContents, NBTTypeContents, ScoreTypeContents};
 
 #[derive(Clone, PartialEq)]
 pub enum Value {
@@ -96,6 +96,8 @@ pub enum MutableValue {
 	Register(Identifier),
 	Score(Score),
 	Data(FullDataLocation),
+	Property(Box<MutableValue>, String),
+	Index(Box<MutableValue>, ArraySize),
 	Arg(u16),
 	CallArg(u16, ResourceLocation, DataType),
 	ReturnValue(u16),
@@ -112,7 +114,10 @@ impl MutableValue {
 				reg.ty.clone()
 			}
 			Self::Score(..) => DataType::Score(ty::ScoreType::Score),
-			Self::Data(..) => DataType::NBT(ty::NBTType::Any),
+			// TODO: Deduce actual type for property and index
+			Self::Data(..) | Self::Property(..) | Self::Index(..) => {
+				DataType::NBT(ty::NBTType::Any)
+			}
 			Self::Arg(num) => sig
 				.params
 				.get(*num as usize)
@@ -134,6 +139,7 @@ impl MutableValue {
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
 			Self::Register(reg) => vec![&reg],
+			Self::Property(val, ..) | Self::Index(val, ..) => val.get_used_regs(),
 			_ => Vec::new(),
 		}
 	}
@@ -141,6 +147,7 @@ impl MutableValue {
 	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
 		match self {
 			Self::Register(reg) => vec![reg],
+			Self::Property(val, ..) | Self::Index(val, ..) => val.get_used_regs_mut(),
 			_ => Vec::new(),
 		}
 	}
@@ -150,7 +157,11 @@ impl MutableValue {
 			|| matches!((self, other), (Self::Score(left), Self::Score(right)) if left.is_value_eq(right))
 			|| matches!((self, other), (Self::Data(left), Self::Data(right)) if left.is_value_eq(right))
 			|| matches!((self, other), (Self::Arg(left), Self::Arg(right)) if left == right)
+			|| matches!((self, other), (Self::Property(lv, lp), Self::Property(rv, rp)) if lv.is_same_val(rv) && lp == rp)
+			|| matches!((self, other), (Self::Index(lv, li), Self::Index(rv, ri)) if lv.is_same_val(rv) && li == ri)
 			|| matches!((self, other), (Self::CallArg(la, lf, ..), Self::CallArg(ra, rf, ..)) if la == ra && lf == rf)
+			|| matches!((self, other), (Self::ReturnValue(left), Self::ReturnValue(right)) if left == right)
+			|| matches!((self, other), (Self::CallReturnValue(la, lf, ..), Self::CallReturnValue(ra, rf, ..)) if la == ra && lf == rf)
 	}
 
 	pub fn to_mutable_score_value(self) -> anyhow::Result<MutableScoreValue> {
@@ -173,6 +184,14 @@ impl MutableValue {
 		match self {
 			Self::Register(reg) => Ok(MutableNBTValue::Reg(reg)),
 			Self::Data(data) => Ok(MutableNBTValue::Data(data)),
+			Self::Property(val, prop) => Ok(MutableNBTValue::Property(
+				Box::new(val.to_mutable_nbt_value()?),
+				prop,
+			)),
+			Self::Index(val, idx) => Ok(MutableNBTValue::Index(
+				Box::new(val.to_mutable_nbt_value()?),
+				idx,
+			)),
 			Self::Arg(arg) => Ok(MutableNBTValue::Arg(arg)),
 			Self::CallArg(arg, func, ty @ DataType::NBT(..)) => {
 				Ok(MutableNBTValue::CallArg(arg, func, ty))
@@ -192,6 +211,8 @@ impl Debug for MutableValue {
 			Self::Register(reg) => format!("%{reg}"),
 			Self::Score(score) => format!("sco {score:?}"),
 			Self::Data(data) => format!("{data:?}"),
+			Self::Property(val, prop) => format!("{val:?}.{prop}"),
+			Self::Index(val, idx) => format!("{val:?}[{idx}]"),
 			Self::Arg(num) => format!("&{num}"),
 			Self::CallArg(idx, ..) => format!("&&{idx}"),
 			Self::ReturnValue(idx) => format!("*{idx}"),
@@ -242,6 +263,7 @@ impl Debug for ScoreValue {
 pub enum MutableScoreValue {
 	Score(Score),
 	Reg(Identifier),
+
 	Arg(u16),
 	CallArg(u16, ResourceLocation, DataType),
 	ReturnValue(u16),
@@ -325,6 +347,8 @@ impl Debug for NBTValue {
 pub enum MutableNBTValue {
 	Data(FullDataLocation),
 	Reg(Identifier),
+	Property(Box<MutableNBTValue>, String),
+	Index(Box<MutableNBTValue>, ArraySize),
 	Arg(u16),
 	CallArg(u16, ResourceLocation, DataType),
 	ReturnValue(u16),
@@ -335,6 +359,7 @@ impl MutableNBTValue {
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
 			Self::Data(..) => Vec::new(),
+			Self::Property(val, ..) | Self::Index(val, ..) => val.get_used_regs(),
 			Self::Reg(reg) => vec![reg],
 			Self::Arg(..)
 			| Self::CallArg(..)
@@ -354,6 +379,8 @@ impl Debug for MutableNBTValue {
 		let text = match self {
 			Self::Data(data) => format!("{data:?}"),
 			Self::Reg(reg) => format!("${reg}"),
+			Self::Property(val, prop) => format!("{val:?}.{prop}"),
+			Self::Index(val, idx) => format!("{val:?}[{idx}]"),
 			Self::Arg(idx) => format!("&{idx}"),
 			Self::CallArg(idx, ..) => format!("&&{idx}"),
 			Self::ReturnValue(idx) => format!("*{idx}"),

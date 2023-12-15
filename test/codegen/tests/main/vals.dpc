@@ -6,8 +6,10 @@
 	set %x, ent @s "foo";
 	set %y, sco @s "bar";
 	set %x, stg "foo:bar" "bar";
-	set %x, stg "foo:bar" idx 6 "bar";
-	set %x, stg "foo:bar" acc idx 5 "foo" "name";
+	set %x, idx 6 stg "foo:bar" "bar";
+	set %x, prop "name" idx 5 stg "foo:bar" "foo";
+	let z: nint = val idx 7 %x;
+	let z1: {} = val stg "foo:bar" this;
 
 	# Casts
 	let g: score = cast score stg "foo:bar" "baz";

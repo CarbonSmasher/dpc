@@ -64,8 +64,10 @@ impl Debug for Score {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default)]
 pub enum DataPath {
+	#[default]
+	This,
 	String(String),
 	Access(Box<DataPath>, String),
 	Index(Box<DataPath>, ArraySize),
@@ -74,6 +76,7 @@ pub enum DataPath {
 impl Debug for DataPath {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
+			Self::This => write!(f, "this"),
 			Self::String(string) => write!(f, "{string}"),
 			Self::Access(path, prop) => write!(f, "{path:?}.{prop}"),
 			Self::Index(path, idx) => write!(f, "{path:?}[{idx}]"),

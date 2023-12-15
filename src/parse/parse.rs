@@ -853,6 +853,19 @@ fn parse_mut_val_impl<'t>(
 				let score = parse_score(toks).context("Failed to parse score")?;
 				MutableValue::Score(score)
 			}
+			"prop" => {
+				let prop = consume_extract!(toks, Str, { bail!("Missing access property") });
+				let val = parse_mut_val(toks).context("Failed to parse mutable value to access")?;
+				MutableValue::Property(Box::new(val), prop.clone())
+			}
+			"idx" => {
+				let index = consume_extract!(toks, Num, { bail!("Missing index") });
+				let index = (*index)
+					.try_into()
+					.context("Argument index is not a usize")?;
+				let val = parse_mut_val(toks).context("Failed to parse mutable value to index")?;
+				MutableValue::Index(Box::new(val), index)
+			}
 			other => {
 				let location = impl_parse_full_data_location(other, toks)
 					.context("Failed to parse data location")?;
@@ -901,19 +914,7 @@ fn parse_data_path<'t>(
 	match tok {
 		Token::Str(path) => Ok(DataPath::String(path.clone())),
 		Token::Ident(ident) => match ident.as_str() {
-			"acc" => {
-				let path = parse_data_path(toks).context("Failed to parse data path to access")?;
-				let prop = consume_extract!(toks, Str, { bail!("Missing data path property") });
-				Ok(DataPath::Access(Box::new(path), prop.clone()))
-			}
-			"idx" => {
-				let index = consume_extract!(toks, Num, { bail!("Missing data path index") });
-				let index = (*index)
-					.try_into()
-					.context("Argument index is not a usize")?;
-				let path = parse_data_path(toks).context("Failed to parse data path to index")?;
-				Ok(DataPath::Index(Box::new(path), index))
-			}
+			"this" => Ok(DataPath::This),
 			other => bail!("Unexpected identifier {other:?} {pos}"),
 		},
 		other => bail!("Unexpected token {other:?} {pos}"),

@@ -104,6 +104,16 @@ pub fn get_mut_nbt_val_loc(
 				path: DataPath::String(reg.clone()),
 			}
 		}
+		MutableNBTValue::Property(val, prop) => {
+			let mut loc = get_mut_nbt_val_loc(val, ra, func_id)?;
+			loc.path = DataPath::Access(Box::new(std::mem::take(&mut loc.path)), prop.clone());
+			loc
+		}
+		MutableNBTValue::Index(val, idx) => {
+			let mut loc = get_mut_nbt_val_loc(val, ra, func_id)?;
+			loc.path = DataPath::Index(Box::new(std::mem::take(&mut loc.path)), *idx);
+			loc
+		}
 		MutableNBTValue::Arg(arg) => {
 			let arg = format_arg_local_storage_entry(*arg, func_id);
 			FullDataLocation {
