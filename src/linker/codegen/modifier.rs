@@ -131,6 +131,14 @@ pub fn codegen_modifier(
 				}
 				IfModCondition::Loaded(pos) => Some(cgformat!(cbcx, keyword, " loaded ", pos)?),
 				IfModCondition::DataExists(loc) => Some(cgformat!(cbcx, keyword, " data ", loc)?),
+				IfModCondition::DataEquals(l, r) => Some(cgformat!(
+					cbcx,
+					keyword,
+					" data ",
+					l,
+					" ",
+					r.get_literal_str()
+				)?),
 				IfModCondition::Block(loc, block) => {
 					Some(cgformat!(cbcx, keyword, " block ", loc, " ", block)?)
 				}

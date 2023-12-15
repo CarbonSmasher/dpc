@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use anyhow::bail;
 
+use crate::common::ty::NBTTypeContents;
 use crate::common::val::{MutableNBTValue, MutableScoreValue, ScoreValue};
 use crate::common::ResourceLocationTag;
 
@@ -205,6 +206,7 @@ pub enum IfModCondition {
 	Dimension(ResourceLocation),
 	Loaded(IntCoordinates),
 	DataExists(MutableNBTValue),
+	DataEquals(MutableNBTValue, NBTTypeContents),
 	Block(IntCoordinates, BlockFilter),
 	Const(bool),
 }
@@ -223,7 +225,7 @@ impl IfModCondition {
 				]
 				.concat(),
 			},
-			Self::DataExists(val) => val.get_used_regs(),
+			Self::DataExists(val) | Self::DataEquals(val, ..) => val.get_used_regs(),
 			Self::Entity(..)
 			| Self::Predicate(..)
 			| Self::Function(..)
@@ -247,6 +249,7 @@ impl Debug for IfModCondition {
 			Self::Dimension(dim) => write!(f, "dim {dim}"),
 			Self::Loaded(pos) => write!(f, "load {pos:?}"),
 			Self::DataExists(loc) => write!(f, "data {loc:?}"),
+			Self::DataEquals(l, r) => write!(f, "deq {l:?} {r:?}"),
 			Self::Block(loc, block) => write!(f, "blo {loc:?} {block:?}"),
 			Self::Const(val) => write!(f, "const {val}"),
 		}

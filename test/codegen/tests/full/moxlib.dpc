@@ -1,0 +1,40 @@
+# mir_passes lir_passes
+
+# Adapted from https://github.com/moxvallix/moxlib
+
+@preserve
+"test:main" {
+	call run "moxlib:player/scroll";
+	call run "moxlib:player/scroll/direction";
+}
+
+"moxlib:player/scroll" {
+	let slot: score = cast score ent @s "SelectedItemSlot";
+	set sco @s "moxlib.api.player.hotbar", %slot;
+
+	if not pred "moxlib:api/player/has_scrolled":
+		set sco @s "moxlib.api.player.scroll", 0s;
+	if pred "moxlib:api/player/has_scrolled":
+		call run "moxlib:player/scroll/scrolled";
+}
+
+"moxlib:player/scroll/scrolled" {
+	callx "moxlib:player/scroll/direction";
+	callx "#moxlib:api/player/on_scroll";
+}
+
+"moxlib:player/scroll/direction" {
+	if gt sco @s "moxlib.api.player.hotbar", sco @s "moxlib.player.hotbar.last":
+		set sco @s "moxlib.api.player.scroll", 1s;
+	if lt sco @s "moxlib.api.player.hotbar", sco @s "moxlib.player.hotbar.last":
+		set sco @s "moxlib.api.player.scroll", -1s;
+	if lte sco @s "moxlib.api.player.hotbar", 2s:
+		set sco @s "moxlib.api.player.scroll", 1s;
+	if gte sco @s "moxlib.api.player.hotbar", 6s:
+		set sco @s "moxlib.api.player.scroll", -1s;
+
+	if eq sco @s "moxlib.api.player.hotbar", sco @s "moxlib.player.hotbar.last":
+		set sco @s "moxlib.api.player.scroll", 0s;
+
+	set sco @s "moxlib.player.hotbar.last", sco @s "moxlib.api.player.hotbar";
+}
