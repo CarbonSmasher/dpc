@@ -12,7 +12,7 @@ pub fn gen_fns(ccx: &CodegenCx) -> anyhow::Result<HashMap<ResourceLocation, Func
 	let mut out = HashMap::new();
 
 	let init_fn = gen_init(ccx);
-	out.insert(ResourceLocation::from("dpc::init"), init_fn);
+	out.insert(ResourceLocation::from("dpc:init"), init_fn);
 
 	Ok(out)
 }

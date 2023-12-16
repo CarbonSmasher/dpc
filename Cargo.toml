@@ -2,15 +2,20 @@
 name = "dpc"
 version = "0.1.0"
 edition = "2021"
+default-run = "dpc"
+
+[[bin]]
+name = "cg_gen"
+path = "test/codegen/gen_test.rs"
+
+[[bin]]
+name = "playground"
+path = "test/playground.rs"
 
 [[test]]
 name = "codegen"
 path = "test/codegen/mod.rs"
 harness = false
-
-[[bin]]
-name = "cg_gen"
-path = "test/codegen/gen_test.rs"
 
 [[test]]
 name = "parse"
@@ -19,6 +24,7 @@ harness = false
 
 [dependencies]
 anyhow = "1.0.75"
+clap = { version = "4.4.11", features = ["derive"] }
 dashmap = "5.5.3"
 include_dir = "0.7.3"
 itertools = "0.11.0"

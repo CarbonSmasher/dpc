@@ -1,6 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use crate::common::ResourceLocation;
+
+use self::files::output_pack;
+
+mod files;
 
 #[derive(Debug, Clone)]
 pub struct Datapack {
@@ -12,6 +16,10 @@ impl Datapack {
 		Self {
 			functions: HashMap::new(),
 		}
+	}
+
+	pub fn output(self, path: &Path) -> anyhow::Result<()> {
+		output_pack(self, path)
 	}
 }
 
