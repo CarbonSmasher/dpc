@@ -4,7 +4,7 @@ use anyhow::{bail, Context};
 use dpc::{codegen_ir, common::function::FunctionInterface, parse::Parser};
 use include_dir::{include_dir, Dir, DirEntry, File};
 
-use crate::common::{get_control_comment, TEST_ENTRYPOINT};
+use crate::common::{create_output, get_control_comment, TEST_ENTRYPOINT};
 
 static TESTS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/test/codegen/tests");
 
@@ -81,16 +81,17 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 	let datapack = codegen_ir(ir, settings).context("Failed to codegen input")?;
 
 	// Check the test function
-	let Some(actual) = datapack.functions.get(TEST_ENTRYPOINT.into()) else {
+	let Some(..) = datapack.functions.get(TEST_ENTRYPOINT.into()) else {
 		bail!("Test function does not exist")
 	};
+	let actual = create_output(datapack).expect("Failed to create actual test output");
 	assert_eq!(
-		actual.contents.len(),
+		actual.lines().count(),
 		output_contents.lines().count(),
 		"Functions are of different lengths"
 	);
 	let expected = output_contents.lines();
-	for (i, (l, r)) in expected.zip(actual.contents.iter()).enumerate() {
+	for (i, (l, r)) in expected.zip(actual.lines()).enumerate() {
 		assert_eq!(l, r, "Command mismatch at {i}");
 	}
 

@@ -1,3 +1,11 @@
+# === dpc:init ===
+scoreboard objectives add _r dummy
+
+# === moxlib:player/scroll/scrolled ===
+function moxlib:player/scroll/direction
+function #moxlib:api/player/on_scroll
+
+# === test:main ===
 execute store result score %rtest_main0 _r run data get entity @s SelectedItemSlot
 scoreboard players operation @s moxlib.api.player.hotbar = %rtest_main0 _r
 execute unless predicate moxlib:api/player/has_scrolled run scoreboard players set @s moxlib.api.player.scroll 0

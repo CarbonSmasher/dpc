@@ -1,3 +1,9 @@
+# === dpc:init ===
+scoreboard objectives add _r dummy
+scoreboard objectives add _l dummy
+scoreboard players set %l2 _l 2
+
+# === test:main ===
 scoreboard players set %rtest_main0 _r 4
 scoreboard players set %rtest_main1 _r 4
 scoreboard players set %rtest_main2 _r 1

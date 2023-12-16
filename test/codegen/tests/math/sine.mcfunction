@@ -1,3 +1,10 @@
+# === dpc:init ===
+scoreboard objectives add _r dummy
+scoreboard objectives add _l dummy
+scoreboard players set %l1800 _l 1800
+scoreboard players set %l3600 _l 3600
+
+# === test:main ===
 scoreboard players set %rtest_main0 _r 18
 scoreboard players set %rtest_main0 _r 104
 scoreboard players set %rtest_main1 _r -400

@@ -2,7 +2,7 @@ mod common;
 
 use std::{fs::File, io::Write, path::PathBuf};
 
-use common::{get_control_comment, TEST_ENTRYPOINT};
+use common::{create_output, get_control_comment, TEST_ENTRYPOINT};
 use dpc::{codegen_ir, parse::Parser};
 
 fn main() {
@@ -21,14 +21,13 @@ fn main() {
 	let datapack = codegen_ir(ir, settings).expect("Failed to codegen input");
 
 	// Check the test function
-	let actual = datapack
+	datapack
 		.functions
 		.get(TEST_ENTRYPOINT.into())
 		.expect("Test function does not exist");
 
 	let mut out_file = File::create(test_dir.join(format!("{test_name}.mcfunction")))
 		.expect("Failed to create output file");
-	for cmd in &actual.contents {
-		writeln!(&mut out_file, "{cmd}").expect("Failed to write command to output");
-	}
+	let output = create_output(datapack).expect("Failed to output generated test");
+	write!(&mut out_file, "{output}").expect("Failed to write");
 }

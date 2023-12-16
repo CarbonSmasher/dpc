@@ -1,6 +1,10 @@
+use std::fmt::Write;
+
 use anyhow::Context;
+use dpc::output::datapack::Datapack;
 use dpc::parse::lex::{lex, Token};
 use dpc::CodegenIRSettings;
+use itertools::Itertools;
 
 pub static TEST_ENTRYPOINT: &str = "test:main";
 
@@ -28,4 +32,20 @@ pub fn get_control_comment(contents: &str) -> anyhow::Result<CodegenIRSettings> 
 	};
 
 	Ok(settings)
+}
+
+pub fn create_output(pack: Datapack) -> anyhow::Result<String> {
+	let mut out = String::new();
+	for (id, func) in pack.functions.iter().sorted_by_key(|x| x.0) {
+		writeln!(&mut out, "# === {id} ===")?;
+		for cmd in &func.contents {
+			writeln!(&mut out, "{cmd}")?;
+		}
+		out.push('\n');
+	}
+
+	// Remove the final newline
+	out.pop();
+
+	Ok(out)
 }
