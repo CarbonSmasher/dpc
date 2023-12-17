@@ -341,12 +341,10 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 			{
 				true
 			}
-			// Adds and subtracts by 0 or the integer limit don't do anything
+			// Adds and subtracts by 0 don't do anything
 			LIRInstrKind::AddScore(_, ScoreValue::Constant(score))
 			| LIRInstrKind::SubScore(_, ScoreValue::Constant(score))
-				if score.get_i32() == 0
-					|| score.get_i32() == i32::MAX
-					|| score.get_i32() == -i32::MAX =>
+				if score.get_i32() == 0 =>
 			{
 				true
 			}
