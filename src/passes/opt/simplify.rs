@@ -1,6 +1,7 @@
 use crate::common::condition::Condition;
 use crate::common::mc::modifier::Modifier;
-use crate::common::ty::{DataTypeContents, ScoreTypeContents};
+use crate::common::ty::{DataTypeContents, NBTTypeContents, ScoreTypeContents};
+use crate::common::val::MutableValue;
 use crate::common::{val::ScoreValue, val::Value, DeclareBinding};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::mir::{MIRBlock, MIRInstrKind};
@@ -88,7 +89,11 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 			{
 				true
 			}
-
+			// Merge with empty compound doesn't do anything
+			MIRInstrKind::Merge {
+				right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Compound(_, comp))),
+				..
+			} if comp.is_empty() => true,
 			_ => false,
 		};
 
@@ -118,18 +123,6 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 					ScoreTypeContents::Score(1),
 				))),
 			}),
-			// A couple of canonicalizations that just help out const prop and const fold
-			// x / x = 1 ONLY if x != 0
-			// MIRInstrKind::Div {
-			// 	left,
-			// 	right: Value::Mutable(right),
-			// } if left.is_same_val(right) => Some(MIRInstrKind::Assign {
-			// 	left: left.clone(),
-			// 	right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
-			// 		ScoreTypeContents::Score(1),
-			// 	))),
-			// }),
-			// x - x = 0
 			MIRInstrKind::Sub {
 				left,
 				right: Value::Mutable(right),
@@ -155,16 +148,19 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				base: left.clone(),
 				exp: 2,
 			}),
-			// x % x = 0 ONLY if x != 0
-			// MIRInstrKind::Mod {
-			// 	left,
-			// 	right: Value::Mutable(right),
-			// } if left.is_same_val(right) => Some(MIRInstrKind::Assign {
-			// 	left: left.clone(),
-			// 	right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
-			// 		ScoreTypeContents::Score(0),
-			// 	))),
-			// }),
+			// Merge with compound with single item = set that item
+			MIRInstrKind::Merge {
+				left,
+				right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Compound(_, right))),
+			} if right.0.len() == 1 => {
+				let right = right.0.iter().nth(0).expect("Len should be 1");
+				Some(MIRInstrKind::Assign {
+					left: MutableValue::Property(Box::new(left.clone()), right.0.clone()),
+					right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
+						right.1.clone(),
+					))),
+				})
+			}
 			MIRInstrKind::If {
 				condition: Condition::Equal(Value::Mutable(left1), right1),
 				body,
@@ -397,13 +393,6 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 					ScoreValue::Constant(ScoreTypeContents::Score(-1)),
 				))
 			}
-			// x / x == 1 ONLY if x != 0
-			// LIRInstrKind::DivScore(left, ScoreValue::Mutable(right)) if left.is_value_eq(right) => {
-			// 	Some(LIRInstrKind::SetScore(
-			// 		left.clone(),
-			// 		ScoreValue::Constant(ScoreTypeContents::Score(1)),
-			// 	))
-			// }
 			// x * 0 == 0
 			LIRInstrKind::MulScore(left, ScoreValue::Constant(score)) if score.get_i32() == 0 => {
 				Some(LIRInstrKind::SetScore(

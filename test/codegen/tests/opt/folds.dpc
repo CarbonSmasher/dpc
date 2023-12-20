@@ -21,5 +21,9 @@
 	div %x, 1s;
 	mod %x, 1s;
 
+	# NBT folds
+	mrg ent @s "name", {};
+	mrg ent @s "name", {"bar": 7nb};
+
 	use %x;
 }
