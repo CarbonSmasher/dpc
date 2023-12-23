@@ -19,7 +19,7 @@ use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
 
 use self::modifier::codegen_modifier;
 use self::t::macros::cgwrite;
-use self::util::{get_mut_score_val_score, SpaceSepListCG};
+use self::util::{get_mut_score_val_score, SpaceSepListCG, FloatCG};
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 
@@ -535,7 +535,7 @@ pub fn codegen_instr(
 					" get ",
 					attr,
 					" ",
-					scale
+					FloatCG(*scale, false, true, true)
 				)?)
 			}
 		}
@@ -550,7 +550,7 @@ pub fn codegen_instr(
 					" base get ",
 					attr,
 					" ",
-					scale
+					FloatCG(*scale, false, true, true)
 				)?)
 			}
 		}
@@ -561,7 +561,7 @@ pub fn codegen_instr(
 			" ",
 			attr,
 			" base set ",
-			value
+			FloatCG(*value, false, true, true)
 		)?),
 		LIRInstrKind::AddAttributeModifier(tgt, attr, uuid, name, value, ty) => Some(cgformat!(
 			cbcx,
@@ -574,7 +574,7 @@ pub fn codegen_instr(
 			" ",
 			name,
 			" ",
-			value,
+			FloatCG(*value, false, true, true),
 			" ",
 			ty
 		)?),
@@ -600,7 +600,7 @@ pub fn codegen_instr(
 				uuid
 			)?;
 			if *scale != 1.0 {
-				cgwrite!(&mut out, cbcx, " ", scale)?;
+				cgwrite!(&mut out, cbcx, " ", FloatCG(*scale, false, true, true))?;
 			}
 
 			Some(out)
@@ -698,13 +698,13 @@ pub fn codegen_instr(
 				"spreadplayers ",
 				center,
 				" ",
-				spread_distance,
+				FloatCG((*spread_distance).into(), false, true, true),
 				" ",
-				max_range,
+				FloatCG((*max_range).into(), false, true, true),
 				" "
 			)?;
 			if let Some(max_height) = max_height {
-				cgwrite!(&mut out, cbcx, "under ", max_height, " ")?;
+				cgwrite!(&mut out, cbcx, "under ", FloatCG((*max_height).into(), false, true, true), " ")?;
 			}
 			cgwrite!(&mut out, cbcx, respect_teams, " ", target)?;
 			Some(out)

@@ -21,6 +21,6 @@ data modify storage dpc:r stest_main0 set value [B;0b,0b,0b,0b,0b,0b,0b,0b,0b,0b
 data modify storage dpc:r stest_main0 prepend value 0b
 data modify storage dpc:r stest_main0 set value [B;7b,3b,-4b,8b,3b,1b,0b,7b,-12b,0b]
 data modify storage dpc:r stest_main0 set value 5f
-data modify storage dpc:r stest_main0 set value -0.20045
+data modify storage dpc:r stest_main0 set value -.20045
 data modify storage dpc:r stest_main0 set value [I;7,8,3]
 data modify storage dpc:r stest_main0 set value {bar:[4,6],baz:{foo:0b},foo:"bar"}

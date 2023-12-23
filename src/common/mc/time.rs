@@ -32,7 +32,7 @@ impl Time {
 
 	fn codegen_str(self) -> anyhow::Result<String> {
 		let mut amount = String::new();
-		cg_float(&mut amount, self.amount.into(), false, true, true)?;
+		cg_float(&mut amount, self.amount.into(), false, true, true);
 
 		let suffix = match self.unit {
 			TimeUnit::Days => "d",

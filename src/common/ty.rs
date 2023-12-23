@@ -3,6 +3,8 @@ use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use itertools::Itertools;
 
+use crate::output::codegen::util::cg_float;
+
 use super::function::FunctionSignature;
 use super::{MutableValue, RegisterList, Value};
 
@@ -324,8 +326,16 @@ impl NBTTypeContents {
 			Self::Short(val) => format!("{val}s"),
 			Self::Int(val) => format!("{val}"),
 			Self::Long(val) => format!("{val}l"),
-			Self::Float(val) => format!("{val}f"),
-			Self::Double(val) => format!("{val}"),
+			Self::Float(val) => {
+				let mut out = String::new();
+				cg_float(&mut out, (*val).into(), false, true, true);
+				out + "f"
+			}
+			Self::Double(val) => {
+				let mut out = String::new();
+				cg_float(&mut out, *val, false, true, true);
+				out
+			}
 			Self::String(string) => write_string(string.to_string()),
 			Self::Arr(arr) => arr.get_literal_str(),
 			Self::List(_, list) => {

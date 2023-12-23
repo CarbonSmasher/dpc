@@ -301,11 +301,11 @@ cg_impl!(
 	(|| {
 		match self {
 			Self::Abs(val) => {
-				cg_float(f, *val, false, true, true)?;
+				cg_float(f, *val, false, true, true);
 			}
 			Self::Rel(val) => {
 				write!(f, "~")?;
-				cg_float(f, *val, true, true, true)?;
+				cg_float(f, *val, true, true, true);
 			}
 		}
 
@@ -331,11 +331,11 @@ cg_impl!(
 			}
 			Self::Local(a, b, c) => {
 				write!(f, "^")?;
-				cg_float(f, *a, true, true, true)?;
+				cg_float(f, *a, true, true, true);
 				write!(f, " ^")?;
-				cg_float(f, *b, true, true, true)?;
+				cg_float(f, *b, true, true, true);
 				write!(f, " ^")?;
-				cg_float(f, *c, true, true, true)?;
+				cg_float(f, *c, true, true, true);
 			}
 		}
 		Ok(())

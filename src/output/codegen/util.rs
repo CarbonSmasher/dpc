@@ -196,6 +196,19 @@ impl<'v, CG: Codegen> Codegen for SpaceSepListCG<'v, CG> {
 	}
 }
 
+pub struct FloatCG(pub f64, pub bool, pub bool, pub bool);
+
+impl Codegen for FloatCG {
+	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
+	where
+		F: std::fmt::Write,
+	{
+		let _ = cbcx;
+		cg_float(f, self.0, self.1, self.2, self.3);
+		Ok(())
+	}
+}
+
 /// Utility function to format floating-point numbers as small as possible
 /// with different formatting options
 pub fn cg_float<F: std::fmt::Write>(
@@ -204,9 +217,9 @@ pub fn cg_float<F: std::fmt::Write>(
 	omit_zero: bool,
 	trim_trailing_zero: bool,
 	trim_leading_zero: bool,
-) -> anyhow::Result<()> {
+) {
 	if omit_zero && num == 0.0 {
-		return Ok(());
+		return;
 	}
 
 	let mut out = format!("{}", num);
@@ -214,14 +227,12 @@ pub fn cg_float<F: std::fmt::Write>(
 		if out.starts_with("0.") {
 			out = out[1..].into();
 		} else if out.starts_with("-0.") {
-			out = "-".to_string() + out[2..].into(); 
+			out = "-".to_string() + out[2..].into();
 		}
 	}
 	if trim_trailing_zero && out.ends_with(".0") {
 		out = out[..out.len() - 2].into();
 	}
 
-	write!(f, "{out}")?;
-
-	Ok(())
+	let _ = write!(f, "{out}");
 }
