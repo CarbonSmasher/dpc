@@ -173,6 +173,10 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 					ScoreValue::Constant(ScoreTypeContents::Score(0)),
 				))
 			}
+			// Teleport with rotation and a zero rotation can be simplified to just a teleport
+			LIRInstrKind::TeleportWithRotation(src, pos, rot) if rot.are_zero() => {
+				Some(LIRInstrKind::TeleportToLocation(src.clone(), pos.clone()))
+			}
 			_ => None,
 		};
 

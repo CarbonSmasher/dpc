@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::output::codegen::Codegen;
+use crate::output::codegen::{util::cg_float, Codegen};
 
 #[derive(Clone, PartialEq)]
 pub struct Time {
@@ -30,19 +30,17 @@ impl Time {
 		self
 	}
 
-	fn codegen_str(self) -> String {
-		let mut amount = format!("{}", self.amount);
-		// Trim leading zero
-		if amount.starts_with("0.") {
-			amount = amount[1..].into();
-		}
+	fn codegen_str(self) -> anyhow::Result<String> {
+		let mut amount = String::new();
+		cg_float(&mut amount, self.amount.into(), false, true, true)?;
+
 		let suffix = match self.unit {
 			TimeUnit::Days => "d",
 			TimeUnit::Seconds => "s",
 			// Ticks are always default and can be omitted
 			TimeUnit::Ticks => "",
 		};
-		format!("{}{suffix}", amount)
+		Ok(format!("{}{suffix}", amount))
 	}
 }
 
@@ -64,9 +62,9 @@ impl Codegen for Time {
 	{
 		let _ = cbcx;
 		// Try different formats and pick the shortest one
-		let ticks = self.clone().convert(TimeUnit::Ticks).codegen_str();
-		let seconds = self.clone().convert(TimeUnit::Seconds).codegen_str();
-		let days = self.clone().convert(TimeUnit::Days).codegen_str();
+		let ticks = self.clone().convert(TimeUnit::Ticks).codegen_str()?;
+		let seconds = self.clone().convert(TimeUnit::Seconds).codegen_str()?;
+		let days = self.clone().convert(TimeUnit::Days).codegen_str()?;
 
 		let shortest = [ticks, seconds, days]
 			.iter()

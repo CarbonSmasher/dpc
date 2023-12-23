@@ -1,7 +1,7 @@
 mod imp;
 mod modifier;
 pub mod t;
-mod util;
+pub mod util;
 
 use std::collections::HashSet;
 

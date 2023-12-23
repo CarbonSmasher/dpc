@@ -2,13 +2,13 @@ use anyhow::anyhow;
 
 use crate::common::mc::{DataLocation, DataPath, EntityTarget, FullDataLocation, Score};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
+use crate::lower::cleanup_fn_id;
 use crate::output::ra::RegAllocResult;
 use crate::output::text::{
 	format_arg_fake_player, format_arg_local_storage_entry, format_lit_fake_player,
 	format_ret_fake_player, format_ret_local_storage_entry, LIT_OBJECTIVE, REG_OBJECTIVE,
 	REG_STORAGE_LOCATION,
 };
-use crate::lower::cleanup_fn_id;
 
 use super::t::macros::cgformat;
 use super::{Codegen, CodegenBlockCx};
@@ -194,4 +194,34 @@ impl<'v, CG: Codegen> Codegen for SpaceSepListCG<'v, CG> {
 		}
 		Ok(())
 	}
+}
+
+/// Utility function to format floating-point numbers as small as possible
+/// with different formatting options
+pub fn cg_float<F: std::fmt::Write>(
+	f: &mut F,
+	num: f64,
+	omit_zero: bool,
+	trim_trailing_zero: bool,
+	trim_leading_zero: bool,
+) -> anyhow::Result<()> {
+	if omit_zero && num == 0.0 {
+		return Ok(());
+	}
+
+	let mut out = format!("{}", num);
+	if trim_leading_zero {
+		if out.starts_with("0.") {
+			out = out[1..].into();
+		} else if out.starts_with("-0.") {
+			out = "-".to_string() + out[2..].into(); 
+		}
+	}
+	if trim_trailing_zero && out.ends_with(".0") {
+		out = out[..out.len() - 2].into();
+	}
+
+	write!(f, "{out}")?;
+
+	Ok(())
 }

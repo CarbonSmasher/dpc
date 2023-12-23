@@ -9,6 +9,7 @@ use crate::common::mc::block::{
 use crate::common::mc::entity::{AttributeType, EffectDuration, SelectorSort, SelectorType, UUID};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::{AlignAxes, AnchorLocation};
+use crate::common::mc::pos::{AbsOrRelCoord, IntCoordinates, IntCoordinates2D, DoubleCoordinates, DoubleCoordinates2D};
 use crate::common::mc::scoreboard_and_teams::SingleCriterion;
 use crate::common::mc::{
 	DataLocation, DataPath, DatapackListMode, DatapackOrder, DatapackPriority, Difficulty,
@@ -16,7 +17,7 @@ use crate::common::mc::{
 };
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 
-use super::util::{get_mut_nbt_val_loc, get_mut_score_val_score, get_score_val_score};
+use super::util::{get_mut_nbt_val_loc, get_mut_score_val_score, get_score_val_score, cg_float};
 use super::{t::macros::cgwrite, Codegen, CodegenBlockCx};
 
 macro_rules! cg_impl {
@@ -293,5 +294,70 @@ cg_impl!(
 );
 
 // Positions
+cg_impl!(
+	AbsOrRelCoord<f64>,
+	self,
+	f,
+	(|| {
+		match self {
+			Self::Abs(val) => {
+				cg_float(f, *val, false, true, true)?;
+			}
+			Self::Rel(val) => {
+				write!(f, "~")?;
+				cg_float(f, *val, true, true, true)?;
+			}
+		}
+
+		Ok(())
+	})
+);
+
+impl_dbg!(AbsOrRelCoord<i32>);
+
+cg_impl!(
+	DoubleCoordinates,
+	self,
+	f,
+	cbcx,
+	(|| {
+		match self {
+			Self::XYZ(x, y, z) => {
+				x.gen_writer(f, cbcx)?;
+				write!(f, " ")?;
+				y.gen_writer(f, cbcx)?;
+				write!(f, " ")?;
+				z.gen_writer(f, cbcx)?;
+			}
+			Self::Local(a, b, c) => {
+				write!(f, "^")?;
+				cg_float(f, *a, true, true, true)?;
+				write!(f, " ^")?;
+				cg_float(f, *b, true, true, true)?;
+				write!(f, " ^")?;
+				cg_float(f, *c, true, true, true)?;
+			}
+		}
+		Ok(())
+	})
+);
+
+impl_dbg!(IntCoordinates);
+impl_dbg!(IntCoordinates2D);
+
+cg_impl!(
+	DoubleCoordinates2D,
+	self,
+	f,
+	cbcx,
+	(|| {
+		self.0.gen_writer(f, cbcx)?;
+		write!(f, " ")?;
+		self.1.gen_writer(f, cbcx)?;
+		write!(f, " ")?;
+		Ok(())
+	})
+);
+
 impl_dbg!(AnchorLocation);
 impl_dbg!(AlignAxes);

@@ -1,0 +1,14 @@
+# lir_passes
+
+"test:main" {
+	# Should generate with no trailing numbers, just the tildes
+	tpl @s, ~0.0 ~0.0 ~0.0;
+	# Should be converted to a simple teleport
+	tpr @s, ~0.0 ~0.0 ~0.0, ~0.0 ~0.0;
+	# The angle should be omitted
+	tpr @e, ~0.0 ~0.0 ~0.0, ~0.0 ~0.0;
+	# The angle should have whole number offsets
+	tpr @s, ~0.0 ~0.0 ~0.0, 7.0 ~2.0;
+	# The negative numbers should have the zero removed properly
+	tpl @s, ~-0.4 0.8 ~-3.0;
+}

@@ -79,22 +79,11 @@ impl<T: Debug + Num> Debug for Coordinates<T> {
 	}
 }
 
-impl<T: Debug + Num> Codegen for Coordinates<T> {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self:?}")?;
-		Ok(())
-	}
-}
-
 pub type DoubleCoordinates = Coordinates<f64>;
 pub type IntCoordinates = Coordinates<i64>;
 
 #[derive(Clone, PartialEq)]
-pub struct Coordinates2D<T>(AbsOrRelCoord<T>, AbsOrRelCoord<T>);
+pub struct Coordinates2D<T>(pub AbsOrRelCoord<T>, pub AbsOrRelCoord<T>);
 
 impl<T> Coordinates2D<T> {
 	pub fn new(x: AbsOrRelCoord<T>, y: AbsOrRelCoord<T>) -> Self {
@@ -117,17 +106,6 @@ impl<T: Num + PartialEq + Eq> Coordinates2D<T> {
 impl<T: Debug + Num> Debug for Coordinates2D<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{:?} {:?}", self.0, self.1)
-	}
-}
-
-impl<T: Debug + Num> Codegen for Coordinates2D<T> {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self:?}")?;
-		Ok(())
 	}
 }
 
@@ -165,18 +143,6 @@ impl<T: Debug + Num> Debug for AbsOrRelCoord<T> {
 				}
 			}
 		}
-
-		Ok(())
-	}
-}
-
-impl<T: Debug + Num> Codegen for AbsOrRelCoord<T> {
-	fn gen_writer<F>(&self, f: &mut F, cbcx: &mut CodegenBlockCx) -> anyhow::Result<()>
-	where
-		F: std::fmt::Write,
-	{
-		let _ = cbcx;
-		write!(f, "{self:?}")?;
 
 		Ok(())
 	}
