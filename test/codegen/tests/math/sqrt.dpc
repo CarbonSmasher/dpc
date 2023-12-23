@@ -5,6 +5,8 @@
 	let x: score = null;
 	call %x run "test:sqrt", 4s;
 	use %x;
+	call %x run "test:sqrt", 25s;
+	use %x;
 }
 
 "test:sqrt" score : score {

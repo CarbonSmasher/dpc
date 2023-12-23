@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use anyhow::{anyhow, Context};
 use dashmap::DashMap;
 
@@ -175,15 +177,21 @@ impl<'cont> ConstAnalyzer<'cont> {
 				}
 				ConstAnalyzerResult::Add(reg.clone(), val)
 			}
-			MIRInstrKind::Assign { right, .. } => {
+			MIRInstrKind::Assign { left, right, .. } => {
+				let mut out = Vec::new();
+				if let MutableValue::Register(reg) = left {
+					out.push(reg.clone());
+				}
 				if let DeclareBinding::Value(Value::Mutable(MutableValue::Register(reg))) = &right {
 					if self.store_self {
 						self.vals.remove(reg);
+						out.push(reg.clone());
 					}
-					ConstAnalyzerResult::Remove(vec![reg.clone()])
 				} else {
-					ConstAnalyzerResult::Other
+					let used = right.get_used_regs();
+					out.extend(used.into_iter().cloned())
 				}
+				ConstAnalyzerResult::Remove(out)
 			}
 			MIRInstrKind::Add { left, .. }
 			| MIRInstrKind::Sub { left, .. }
@@ -220,6 +228,9 @@ impl<'cont> ConstAnalyzer<'cont> {
 				val: MutableValue::Register(reg),
 			}
 			| MIRInstrKind::Use {
+				val: MutableValue::Register(reg),
+			}
+			| MIRInstrKind::Remove {
 				val: MutableValue::Register(reg),
 			} => {
 				if self.store_self {
@@ -287,7 +298,7 @@ impl MIRPass for ConstFoldPass {
 			}
 			remove_indices(&mut block.contents, &instrs_to_remove);
 		}
-		
+
 		Ok(())
 	}
 }
@@ -310,6 +321,19 @@ fn run_const_fold_iter(
 			}
 
 			match &instr.kind {
+				MIRInstrKind::Assign {
+					left: MutableValue::Register(left),
+					right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(right))),
+				} => {
+					if let Some(mut left) = fold_points.get_mut(left) {
+						if !left.finished {
+							left.value = right.get_i32();
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
+					}
+				}
 				MIRInstrKind::Add {
 					left: MutableValue::Register(left),
 					right: Value::Constant(DataTypeContents::Score(right)),
@@ -360,6 +384,8 @@ fn run_const_fold_iter(
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
 								run_again = true;
+							} else {
+								left.finished = true;
 							}
 						}
 					}
@@ -375,6 +401,8 @@ fn run_const_fold_iter(
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
 								run_again = true;
+							} else {
+								left.finished = true;
 							}
 						}
 					}
@@ -437,8 +465,6 @@ fn run_const_fold_iter(
 				ConstAnalyzerResult::Add(reg, val) => {
 					if let DataTypeContents::Score(val) = val {
 						if let Some(mut existing) = fold_points.get_mut(&reg) {
-							// We have to finish an existing fold point if it has already folded
-							// instructions into itself.
 							existing.finished = true;
 						} else {
 							fold_points.insert(
@@ -456,8 +482,9 @@ fn run_const_fold_iter(
 				ConstAnalyzerResult::Remove(regs) => {
 					for reg in regs {
 						if let Some(mut point) = fold_points.get_mut(&reg) {
+							// We only have to finish points if they have folded already
 							point.finished = true;
-							point.has_folded = true;
+							if point.has_folded {}
 						}
 					}
 				}
@@ -482,12 +509,21 @@ fn run_const_fold_iter(
 	run_again
 }
 
-#[derive(Debug)]
 struct FoldPoint {
 	pos: usize,
 	value: i32,
 	finished: bool,
 	has_folded: bool,
+}
+
+impl Debug for FoldPoint {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{} = {}, Finished: {}, Folded: {}",
+			self.pos, self.value, self.finished, self.has_folded
+		)
+	}
 }
 
 pub struct ConstConditionPass {

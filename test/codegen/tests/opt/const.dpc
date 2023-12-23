@@ -1,0 +1,48 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	# Check for proper reuse of a register with the same name
+	# let a: score = val 4s;
+	# mul %a, 3s;
+	# use %a;
+	# set %a, 10s;
+	# mul %a, 6s;
+	# use %a;
+
+	# Adapted from sine. Inlined out and simplified.
+	# Since this is starting with the same inputs, it should have the
+	# same output for both.
+	let in: score = null;
+	let sign: score = null;
+	let temp: score = null;
+	let out: score = null;
+
+	let x: score = null;
+	set %in, 104s;
+	set %sign, -400s;
+	set %temp, %in;
+	sub %temp, 1800s;
+	mul %temp, %in;
+	set %out, %temp;
+	mul %out, %sign;
+	add %temp, 4050000s;
+	div %out, %temp;
+
+	set %x, %out;
+	use %x;
+
+	let y: score = null;
+	set %in, 104s;
+	set %sign, -400s;
+	set %temp, %in;
+	sub %temp, 1800s;
+	mul %temp, %in;
+	set %out, %temp;
+	mul %out, %sign;
+	add %temp, 4050000s;
+	div %out, %temp;
+
+	set %y, %out;
+	use %y;
+}
