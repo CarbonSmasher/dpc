@@ -7,15 +7,14 @@ use crate::{
 	mir::MIRInstrKind,
 };
 
-pub mod const_passes;
+pub mod constant;
 pub mod dce;
 pub mod dse;
 pub mod inline;
 pub mod inst_combine;
-pub mod merge_modifiers;
+pub mod modifiers;
 pub mod scoreboard_dataflow;
 pub mod simplify;
-pub mod simplify_modifiers;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum OptimizableValue {
