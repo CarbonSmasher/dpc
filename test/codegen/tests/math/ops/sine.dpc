@@ -8,6 +8,8 @@
 	let y: score = null;
 	call %y run "test:sine", 104s;
 	use %y;
+	call %y run "test:sine", 1660s;
+	use %y;
 }
 
 "test:sine" score : score {
