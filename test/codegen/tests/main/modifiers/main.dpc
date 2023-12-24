@@ -1,0 +1,6 @@
+"test:main" {
+	as @s[]:
+		say "hello";
+	at @s[]:
+		say "hello";
+}

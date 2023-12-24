@@ -329,6 +329,22 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 				body: Box::new(instr),
 			}
 		}
+		InstrKind::As { target, body } => {
+			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower as body")?;
+			prelude.extend(new_prelude);
+			MIRInstrKind::As {
+				target,
+				body: Box::new(instr),
+			}
+		}
+		InstrKind::At { target, body } => {
+			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower at body")?;
+			prelude.extend(new_prelude);
+			MIRInstrKind::At {
+				target,
+				body: Box::new(instr),
+			}
+		}
 		InstrKind::ClearEffect { target, effect } => lower!(ClearEffect, target, effect),
 		InstrKind::GiveEffect {
 			target,

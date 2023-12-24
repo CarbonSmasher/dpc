@@ -462,6 +462,14 @@ pub enum InstrKind {
 		location_type: Location,
 		location: ResourceLocation,
 	},
+	As {
+		target: EntityTarget,
+		body: Box<InstrKind>,
+	},
+	At {
+		target: EntityTarget,
+		body: Box<InstrKind>,
+	},
 }
 
 impl Debug for InstrKind {
@@ -684,6 +692,8 @@ impl Debug for InstrKind {
 				rule,
 			} => format!("grg {rule}"),
 			Self::Locate { location_type, location } => format!("loc {location_type:?} {location}"),
+			Self::As { target, body } => format!("as {target:?}: {body:?}"),
+			Self::At { target, body } => format!("at {target:?}: {body:?}"),
 		};
 		write!(f, "{text}")
 	}

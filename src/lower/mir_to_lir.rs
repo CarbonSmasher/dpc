@@ -306,24 +306,8 @@ fn lower_kind(
 				lower_condition(condition, lbcx).context("Failed to lower condition")?;
 			lir_instrs.extend(prepend);
 
-			// Create the body
-			let mut new_lir_instrs = Vec::new();
-			lower_kind(*body, &mut new_lir_instrs, lbcx).context("Failed to lower if body")?;
+			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower if body")?;
 
-			// Create a new function or just inline it
-			let mut instr = if new_lir_instrs.len() == 1 {
-				new_lir_instrs
-					.first()
-					.expect("If len is 1, instr should exist")
-					.clone()
-			} else {
-				let mut lir_block = LIRBlock::new(lbcx.registers.clone());
-				lir_block.contents = new_lir_instrs;
-				let block = lbcx.lir.blocks.add(lir_block);
-				let interface = lbcx.new_if_body_fn();
-				lbcx.lir.functions.insert(interface.clone(), block);
-				LIRInstruction::new(LIRInstrKind::Call(interface.id))
-			};
 			instr.modifiers.insert(
 				0,
 				Modifier::If {
@@ -331,6 +315,18 @@ fn lower_kind(
 					negate,
 				},
 			);
+			lir_instrs.push(instr);
+		}
+		MIRInstrKind::As { target, body } => {
+			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower as body")?;
+
+			instr.modifiers.insert(0, Modifier::As(target));
+			lir_instrs.push(instr);
+		}
+		MIRInstrKind::At { target, body } => {
+			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower at body")?;
+
+			instr.modifiers.insert(0, Modifier::At(target));
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::TeleportToEntity { source, dest } => {
@@ -1036,4 +1032,26 @@ fn lower_condition(
 	};
 
 	Ok((out.0, out.1, negate))
+}
+
+fn lower_subinstr(instr: MIRInstrKind, lbcx: &mut LowerBlockCx) -> anyhow::Result<LIRInstruction> {
+	let mut new_lir_instrs = Vec::new();
+	lower_kind(instr, &mut new_lir_instrs, lbcx).context("Failed to lower if body")?;
+
+	// Create a new function or just inline it
+	let out = if new_lir_instrs.len() == 1 {
+		new_lir_instrs
+			.first()
+			.expect("If len is 1, instr should exist")
+			.clone()
+	} else {
+		let mut lir_block = LIRBlock::new(lbcx.registers.clone());
+		lir_block.contents = new_lir_instrs;
+		let block = lbcx.lir.blocks.add(lir_block);
+		let interface = lbcx.new_if_body_fn();
+		lbcx.lir.functions.insert(interface.clone(), block);
+		LIRInstruction::new(LIRInstrKind::Call(interface.id))
+	};
+
+	Ok(out)
 }

@@ -488,6 +488,14 @@ pub enum MIRInstrKind {
 		location_type: Location,
 		location: ResourceLocation,
 	},
+	As {
+		target: EntityTarget,
+		body: Box<MIRInstrKind>,
+	},
+	At {
+		target: EntityTarget,
+		body: Box<MIRInstrKind>,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -709,6 +717,8 @@ impl Debug for MIRInstrKind {
 			} => format!("grsi {rule} {value}"),
 			Self::GetGamerule { rule } => format!("grg {rule}"),
 			Self::Locate { location_type, location } => format!("loc {location_type:?} {location}"),
+			Self::As { target, body } => format!("as {target:?}: {body:?}"),
+			Self::At { target, body } => format!("at {target:?}: {body:?}"),
 		};
 		write!(f, "{text}")
 	}
@@ -740,6 +750,7 @@ impl MIRInstrKind {
 			Self::If { condition, body } => {
 				[condition.get_used_regs(), body.get_used_regs()].concat()
 			}
+			Self::As { body, .. } | Self::At { body, .. } => body.get_used_regs(),
 			_ => Vec::new(),
 		}
 	}

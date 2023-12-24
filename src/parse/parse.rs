@@ -715,6 +715,26 @@ fn parse_instr<'t>(
 				location: location.clone().into(),
 			})
 		}
+		"as" => {
+			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
+			consume_expect!(toks, Colon, { bail!("Missing colon") });
+			let instr = parse_instr(toks).context("Failed to parse as body instruction")?;
+			let Some(instr) = instr else { bail!("As instruction missing") };
+			Ok(InstrKind::As {
+				target,
+				body: Box::new(instr),
+			})
+		}
+		"at" => {
+			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
+			consume_expect!(toks, Colon, { bail!("Missing colon") });
+			let instr = parse_instr(toks).context("Failed to parse at body instruction")?;
+			let Some(instr) = instr else { bail!("As instruction missing") };
+			Ok(InstrKind::At {
+				target,
+				body: Box::new(instr),
+			})
+		}
 		other => bail!("Unknown instruction {other}"),
 	}
 	.context("Failed to parse instruction")?;
@@ -1400,9 +1420,7 @@ fn parse_selector_parameters<'t>(
 				}
 				"limit" => {
 					let limit = consume_extract!(toks, Num, { bail!("Missing limit token") });
-					let limit = (*limit)
-						.try_into()
-						.context("Limit is not a u32")?;
+					let limit = (*limit).try_into().context("Limit is not a u32")?;
 					SelectorParameter::Limit(limit)
 				}
 				other => bail!("Unknown selector parameter {other}"),
