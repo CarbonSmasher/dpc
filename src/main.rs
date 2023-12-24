@@ -1,11 +1,12 @@
 use std::{
 	io::{stdin, Read},
-	path::PathBuf, process::ExitCode,
+	path::PathBuf,
+	process::ExitCode,
 };
 
 use anyhow::Context;
 use clap::Parser;
-use dpc::{codegen_ir, CodegenIRSettings};
+use dpc::{codegen_ir, project::ProjectSettings, CodegenIRSettings};
 
 fn main() -> ExitCode {
 	let cli = Cli::parse();
@@ -44,9 +45,15 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 		mir_passes: false,
 		lir_passes: false,
 	};
+	let name = if let Some(name) = cli.name {
+		name.clone()
+	} else {
+		"dpc".into()
+	};
 
 	// Run the codegen
-	let datapack = codegen_ir(ir, settings).expect("Failed to codegen input");
+	let datapack =
+		codegen_ir(ir, &ProjectSettings::new(name), settings).expect("Failed to codegen input");
 	datapack
 		.output(&PathBuf::from(cli.out))
 		.context("Failed to output datapack")?;
@@ -62,6 +69,10 @@ pub struct Cli {
 	/// The output directory
 	#[arg(short, long)]
 	out: String,
+	/// The project name, which is used for namespacing things.
+	/// Defaults to 'dpc'
+	#[arg(short, long)]
+	name: Option<String>,
 	/// The file to read from
 	file: Option<String>,
 }

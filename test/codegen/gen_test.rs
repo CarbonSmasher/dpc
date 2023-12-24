@@ -3,7 +3,7 @@ mod common;
 use std::{fs::File, io::Write, path::PathBuf};
 
 use common::{create_output, get_control_comment, TEST_ENTRYPOINT};
-use dpc::{codegen_ir, parse::Parser};
+use dpc::{codegen_ir, parse::Parser, project::ProjectSettings};
 
 fn main() {
 	let test_dir = PathBuf::from("./test/codegen/tests");
@@ -18,7 +18,8 @@ fn main() {
 
 	// Run the codegen
 	let settings = get_control_comment(&input).expect("Failed to get control comment");
-	let datapack = codegen_ir(ir, settings).expect("Failed to codegen input");
+	let datapack = codegen_ir(ir, &ProjectSettings::new("dpc".into()), settings)
+		.expect("Failed to codegen input");
 
 	// Check the test function
 	datapack

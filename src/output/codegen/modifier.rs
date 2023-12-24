@@ -298,10 +298,12 @@ mod tests {
 	use crate::common::RegisterList;
 	use crate::common::{ty::ScoreTypeContents, val::MutableScoreValue};
 	use crate::output::{codegen::CodegenCx, ra::RegAllocResult};
+	use crate::project::ProjectSettings;
 
 	#[test]
 	fn test_if_score_codegen() {
-		let mut ccx = CodegenCx::new();
+		let proj = ProjectSettings::new("dpc".into());
+		let mut ccx = CodegenCx::new(&proj);
 		let mut cbcx = CodegenBlockCx {
 			ccx: &mut ccx,
 			ra: RegAllocResult::new(),

@@ -1,7 +1,9 @@
 mod common;
 
 use anyhow::{bail, Context};
-use dpc::{codegen_ir, common::function::FunctionInterface, parse::Parser};
+use dpc::{
+	codegen_ir, common::function::FunctionInterface, parse::Parser, project::ProjectSettings,
+};
 use include_dir::{include_dir, Dir, DirEntry, File};
 
 use crate::common::{create_output, get_control_comment, TEST_ENTRYPOINT};
@@ -78,7 +80,8 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 
 	// Run the codegen
 	let settings = get_control_comment(input_contents).expect("Failed to get control comment");
-	let datapack = codegen_ir(ir, settings).context("Failed to codegen input")?;
+	let datapack = codegen_ir(ir, &ProjectSettings::new("dpc".into()), settings)
+		.context("Failed to codegen input")?;
 
 	// Check the test function
 	let Some(..) = datapack.functions.get(TEST_ENTRYPOINT.into()) else {

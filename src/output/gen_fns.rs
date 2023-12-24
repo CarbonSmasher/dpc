@@ -12,7 +12,12 @@ pub fn gen_fns(ccx: &CodegenCx) -> anyhow::Result<HashMap<ResourceLocation, Func
 	let mut out = HashMap::new();
 
 	let init_fn = gen_init(ccx);
-	out.insert(ResourceLocation::from("dpc:init"), init_fn);
+	let loc = if ccx.project.name == "dpc" {
+		"dpc:init".to_string()
+	} else {
+		ccx.project.name.clone() + ":dpc_init"
+	};
+	out.insert(ResourceLocation::from(loc), init_fn);
 
 	Ok(out)
 }

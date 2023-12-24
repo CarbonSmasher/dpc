@@ -11,9 +11,10 @@ use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::val::{MutableValue, Value};
 use dpc::common::{DeclareBinding, Identifier};
 use dpc::ir::{Block, InstrKind, Instruction, IR};
-use dpc::output::link;
 use dpc::lower::ir_to_mir::lower_ir;
 use dpc::lower::mir_to_lir::lower_mir;
+use dpc::output::link;
+use dpc::project::ProjectSettings;
 use dpc::{def_compound, push_instrs};
 
 use dpc::common::ty::{
@@ -440,7 +441,8 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 	println!("Removed percent: {pct}%");
 
 	println!("Doing codegen...");
-	let datapack = link(lir).context("Failed to link datapack")?;
+	let datapack =
+		link(lir, &ProjectSettings::new("dpc".into())).context("Failed to link datapack")?;
 	if debug {
 		dbg!(datapack);
 	}

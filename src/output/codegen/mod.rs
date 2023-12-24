@@ -14,27 +14,30 @@ use crate::common::mc::{DatapackListMode, Score};
 use crate::common::ty::NBTTypeContents;
 use crate::common::val::MutableScoreValue;
 use crate::common::{val::NBTValue, val::ScoreValue, RegisterList};
-use crate::output::codegen::util::cg_data_modify_rhs;
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
+use crate::output::codegen::util::cg_data_modify_rhs;
+use crate::project::ProjectSettings;
 
 use self::modifier::codegen_modifier;
 use self::t::macros::cgwrite;
-use self::util::{get_mut_score_val_score, SpaceSepListCG, FloatCG};
+use self::util::{get_mut_score_val_score, FloatCG, SpaceSepListCG};
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 
 use t::macros::cgformat;
 pub use t::Codegen;
 
-pub struct CodegenCx {
+pub struct CodegenCx<'proj> {
+	pub project: &'proj ProjectSettings,
 	pub racx: RegAllocCx,
 	pub score_literals: HashSet<i32>,
 	pub requirements: HashSet<CodegenRequirement>,
 }
 
-impl CodegenCx {
-	pub fn new() -> Self {
+impl<'proj> CodegenCx<'proj> {
+	pub fn new(project: &'proj ProjectSettings) -> Self {
 		Self {
+			project,
 			racx: RegAllocCx::new(),
 			score_literals: HashSet::new(),
 			requirements: HashSet::new(),
@@ -51,8 +54,8 @@ impl CodegenCx {
 #[derive(Hash, PartialEq, Eq, Clone, Copy)]
 pub enum CodegenRequirement {}
 
-pub struct CodegenBlockCx<'ccx> {
-	pub ccx: &'ccx mut CodegenCx,
+pub struct CodegenBlockCx<'ccx, 'proj> {
+	pub ccx: &'ccx mut CodegenCx<'proj>,
 	pub ra: RegAllocResult,
 	pub regs: RegisterList,
 	pub func_id: String,
@@ -704,7 +707,13 @@ pub fn codegen_instr(
 				" "
 			)?;
 			if let Some(max_height) = max_height {
-				cgwrite!(&mut out, cbcx, "under ", FloatCG((*max_height).into(), false, true, true), " ")?;
+				cgwrite!(
+					&mut out,
+					cbcx,
+					"under ",
+					FloatCG((*max_height).into(), false, true, true),
+					" "
+				)?;
 			}
 			cgwrite!(&mut out, cbcx, respect_teams, " ", target)?;
 			Some(out)

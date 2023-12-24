@@ -1,6 +1,7 @@
 use anyhow::Context;
 use ir::IR;
 use output::datapack::Datapack;
+use project::ProjectSettings;
 
 use crate::lower::{ir_to_mir::lower_ir, mir_to_lir::lower_mir};
 use crate::output::link;
@@ -15,10 +16,15 @@ pub mod mir;
 pub mod output;
 pub mod parse;
 pub mod passes;
+pub mod project;
 mod util;
 
 /// Runs the full routine for lowering IR and producing a datapack
-pub fn codegen_ir(mut ir: IR, settings: CodegenIRSettings) -> anyhow::Result<Datapack> {
+pub fn codegen_ir(
+	mut ir: IR,
+	project: &ProjectSettings,
+	settings: CodegenIRSettings,
+) -> anyhow::Result<Datapack> {
 	if settings.debug {
 		println!("Functions:");
 		dbg!(&ir.functions);
@@ -79,7 +85,7 @@ pub fn codegen_ir(mut ir: IR, settings: CodegenIRSettings) -> anyhow::Result<Dat
 	if settings.debug {
 		println!("Doing codegen...");
 	}
-	let datapack = link(lir).context("Failed to link datapack")?;
+	let datapack = link(lir, project).context("Failed to link datapack")?;
 	if settings.debug {
 		dbg!(&datapack);
 	}
