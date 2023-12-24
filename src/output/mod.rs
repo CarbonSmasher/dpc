@@ -7,6 +7,7 @@ pub mod text;
 use crate::common::block::BlockAllocator;
 use crate::common::function::FunctionInterface;
 use crate::lir::{LIRBlock, LIR};
+use crate::lower::cleanup_fn_id;
 use crate::project::ProjectSettings;
 
 use anyhow::{anyhow, Context};
@@ -40,7 +41,8 @@ fn codegen_fn(
 ) -> anyhow::Result<Function> {
 	let block = blocks.get(&block).ok_or(anyhow!("Block does not exist"))?;
 	let mut fun = Function::new();
-	let code = codegen_block(&interface.id, &block, ccx)?;
+	let cleaned_id = cleanup_fn_id(&interface.id);
+	let code = codegen_block(&cleaned_id, &block, ccx)?;
 	fun.contents = code;
 	Ok(fun)
 }

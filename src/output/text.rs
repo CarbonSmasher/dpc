@@ -18,7 +18,7 @@ pub fn format_arg_fake_player(num: u16, func_id: &str) -> String {
 }
 
 pub fn format_ret_fake_player(num: u16, func_id: &str) -> String {
-	format!("%r{func_id}{num}")
+	format!("%R{func_id}{num}")
 }
 
 pub fn format_local_storage_entry(num: u32, func_id: &str) -> String {

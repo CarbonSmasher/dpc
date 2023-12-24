@@ -26,6 +26,7 @@ impl Pass for ConstComboPass {
 
 impl MIRPass for ConstComboPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		// dbg!(&data.mir);
 		loop {
 			let mut prop = ConstPropPass::new();
 			prop.run_pass(data).context("Const Prop pass failed")?;
@@ -79,13 +80,15 @@ impl<'cont> ConstAnalyzer<'cont> {
 					out.push(reg.clone());
 				}
 				if let DeclareBinding::Value(Value::Mutable(MutableValue::Register(reg))) = &right {
-					if self.store_self {
-						self.vals.remove(reg);
-						out.push(reg.clone());
-					}
+					out.push(reg.clone());
 				} else {
 					let used = right.get_used_regs();
 					out.extend(used.into_iter().cloned())
+				}
+				if self.store_self {
+					for reg in &out {
+						self.vals.remove(reg);
+					}
 				}
 				ConstAnalyzerResult::Remove(out)
 			}

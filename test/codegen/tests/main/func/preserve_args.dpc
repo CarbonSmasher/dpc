@@ -1,0 +1,20 @@
+# mir_passes debug
+
+@preserve
+"test:main" {
+	# The raw score argument should not be consted out
+	let out: score = null;
+	call %out run "test:func", 8s;
+	use %out;
+	call %out run "test:func", 10s;
+	use %out;
+	call %out run "test:func", sco @s "foo";
+	use %out;
+}
+
+"test:func" score : score {
+	let in: score = val &0;
+	mul %in, 7s;
+
+	retv 0, %in;
+}
