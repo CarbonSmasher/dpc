@@ -10,5 +10,5 @@
 "test:fn" score score nstr : bool {
 	let x: score = val &0;
 	mul %x, &1;
-	set ent @s "DisplayName", &2;
+	set ent @s[] "DisplayName", &2;
 }

@@ -5,7 +5,7 @@ use anyhow::{bail, Context};
 
 use crate::common::condition::Condition;
 use crate::common::function::CallInterface;
-use crate::common::mc::entity::{EffectDuration, SelectorType, TargetSelector};
+use crate::common::mc::entity::{EffectDuration, SelectorParameter, SelectorType, TargetSelector};
 use crate::common::mc::item::ItemData;
 use crate::common::mc::pos::{
 	AbsOrRelCoord, Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates,
@@ -1328,11 +1328,103 @@ fn parse_entity_target<'t>(
 				"e" => SelectorType::AllEntities,
 				other => bail!("Unknown selector type {other}"),
 			};
-			Ok(EntityTarget::Selector(TargetSelector::new(sel)))
+			// Parameters
+			consume_expect!(toks, Token::Square(Side::Left), {
+				bail!("Missing selector parameters opening bracket token");
+			});
+			let params =
+				parse_selector_parameters(toks).context("Failed to parse selector parameters")?;
+			Ok(EntityTarget::Selector(TargetSelector::with_params(
+				sel, params,
+			)))
 		}
 		Token::Str(player) => Ok(EntityTarget::Player(player.clone())),
 		other => bail!("Unexpected token {other:?} {pos}"),
 	}
+}
+
+fn parse_selector_parameters<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<Vec<SelectorParameter>> {
+	let mut out = Vec::new();
+	loop {
+		let first_tok = consume_optional!(toks);
+		if let Some(first_tok) = first_tok {
+			if let Token::Square(Side::Right) = first_tok.0 {
+				break;
+			}
+
+			let Token::Ident(key) = &first_tok.0 else {
+				bail!("Unexpected token {:?} {}", first_tok.0, first_tok.1);
+			};
+			consume_expect!(toks, Token::Equal, {
+				bail!("Missing selector parameter equal");
+			});
+			let param = match key.as_str() {
+				// TODO: Inversion
+				"type" => {
+					let ty = consume_extract!(toks, Str, { bail!("Missing type token") });
+					SelectorParameter::Type {
+						ty: ty.clone(),
+						invert: false,
+					}
+				}
+				"tag" => {
+					let tag = consume_extract!(toks, Str, { bail!("Missing tag token") });
+					SelectorParameter::Tag {
+						tag: tag.clone(),
+						invert: false,
+					}
+				}
+				"no_tags" => SelectorParameter::NoTags,
+				"pred" => {
+					let pred = consume_extract!(toks, Str, { bail!("Missing predicate token") });
+					SelectorParameter::Predicate {
+						predicate: pred.clone(),
+						invert: false,
+					}
+				}
+				"name" => {
+					let name = consume_extract!(toks, Str, { bail!("Missing name token") });
+					SelectorParameter::Name {
+						name: name.clone(),
+						invert: false,
+					}
+				}
+				"nbt" => {
+					consume_expect!(toks, Token::Curly(Side::Left), {
+						bail!("Missing opening bracket")
+					});
+					let (_, nbt) = parse_compound_lit(toks).context("Failed to parse item data")?;
+					SelectorParameter::NBT { nbt, invert: false }
+				}
+				"limit" => {
+					let limit = consume_extract!(toks, Num, { bail!("Missing limit token") });
+					let limit = (*limit)
+						.try_into()
+						.context("Limit is not a u32")?;
+					SelectorParameter::Limit(limit)
+				}
+				other => bail!("Unknown selector parameter {other}"),
+			};
+			out.push(param);
+
+			let next = consume_optional!(toks);
+			if let Some(next) = next {
+				match &next.0 {
+					Token::Comma => {}
+					Token::Square(Side::Right) => {
+						break;
+					}
+					other => bail!("Unexpected token {other:?} {}", next.1),
+				}
+			}
+		} else {
+			break;
+		}
+	}
+
+	Ok(out)
 }
 
 fn parse_if<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<InstrKind> {

@@ -1,6 +1,6 @@
 "test:main" {
 	let x: nint = val 7ni;
 	let x: nint = val stg "test:test" "foo";
-	let x: nint = val ent @s "foo";
+	let x: nint = val ent @s[] "foo";
 	let x: nint = val blk ~0 ~0 ~0 "foo";
 }

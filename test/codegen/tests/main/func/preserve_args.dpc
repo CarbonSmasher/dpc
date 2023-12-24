@@ -8,7 +8,7 @@
 	use %out;
 	call %out run "test:func", 10s;
 	use %out;
-	call %out run "test:func", sco @s "foo";
+	call %out run "test:func", sco @s[] "foo";
 	use %out;
 }
 

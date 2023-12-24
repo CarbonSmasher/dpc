@@ -24,11 +24,11 @@
 		say "hi";
 
 	# Game-related conditions
-	if ent @s:
+	if ent @s[]:
 		say "hi";
 	if pred "foo:bar":
 		say "hi";
-	if ent @s:
+	if ent @s[]:
 		say "hi";
 	if dim "minecraft:the_end":
 		say "hi";

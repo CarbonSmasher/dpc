@@ -1,0 +1,5 @@
+"test:main" {
+	set ent "foo" "name", 7.0nf;
+	mul sco @s[type="wolf",tag="bar",pred="foo:bar"] "foo", 8s; 
+	set idx 7 ent @r[nbt={"foo":7nb},limit=1] "name", "bar";
+}
