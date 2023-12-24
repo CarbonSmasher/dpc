@@ -23,8 +23,6 @@ execute if score %rtest_main0 _r matches ..-1 run scoreboard players operation %
 scoreboard players operation %rtest_main1 _r = %rtest_main0 _r
 scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
 scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
-scoreboard players operation %rtest_main0 _r *= %rtest_main0 _r
-scoreboard players operation %rtest_main0 _r *= %rtest_main0 _r
 scoreboard players get %rtest_main0 _r
 say foo
 me foo

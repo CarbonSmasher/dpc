@@ -32,7 +32,7 @@ pub fn codegen_ir(
 		dbg!(&ir.blocks);
 	}
 	if settings.ir_passes {
-		run_ir_passes(&mut ir).context("IR passes failed")?;
+		run_ir_passes(&mut ir, settings.debug).context("IR passes failed")?;
 	}
 
 	let mut mir = lower_ir(ir).context("Failed to lower IR")?;
@@ -43,7 +43,7 @@ pub fn codegen_ir(
 	}
 
 	if settings.mir_passes {
-		run_mir_passes(&mut mir).context("MIR passes failed")?;
+		run_mir_passes(&mut mir, settings.debug).context("MIR passes failed")?;
 		if settings.debug {
 			println!("Optimized MIR:");
 			dbg!(&mir.blocks);
@@ -66,7 +66,7 @@ pub fn codegen_ir(
 		dbg!(&lir.blocks);
 	}
 	if settings.lir_passes {
-		run_lir_passes(&mut lir).context("LIR passes failed")?;
+		run_lir_passes(&mut lir, settings.debug).context("LIR passes failed")?;
 		if settings.debug {
 			println!("Optimized LIR:");
 			dbg!(&lir.blocks);

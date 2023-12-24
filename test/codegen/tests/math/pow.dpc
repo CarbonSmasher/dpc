@@ -1,0 +1,13 @@
+"test:main" {
+	let x: score = val 8s;
+	cmt " Should set to one";
+	pow %x, 0;
+	cmt " Should generate nothing";
+	pow %x, 1;
+	cmt " Should multiply by self";
+	pow %x, 2;
+	cmt " Should generate 3 instructions";
+	pow %x, 3;
+	cmt " Should generate many multiplications";
+	pow %x, 10;
+}

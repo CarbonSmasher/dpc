@@ -399,7 +399,7 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 		println!("IR:");
 		dbg!(&ir.blocks);
 	}
-	run_ir_passes(&mut ir).context("IR passes failed")?;
+	run_ir_passes(&mut ir, debug).context("IR passes failed")?;
 
 	let mut mir = lower_ir(ir).context("Failed to lower IR")?;
 	let init_count = mir.blocks.instr_count();
@@ -408,7 +408,7 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 		dbg!(&mir.blocks);
 	}
 
-	run_mir_passes(&mut mir).context("MIR passes failed")?;
+	run_mir_passes(&mut mir, debug).context("MIR passes failed")?;
 	if debug {
 		println!("Optimized MIR:");
 		dbg!(&mir.blocks);
@@ -427,7 +427,7 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 		println!("LIR:");
 		dbg!(&lir.blocks);
 	}
-	run_lir_passes(&mut lir).context("LIR passes failed")?;
+	run_lir_passes(&mut lir, debug).context("LIR passes failed")?;
 	if debug {
 		println!("Optimized LIR:");
 		dbg!(&lir.blocks);

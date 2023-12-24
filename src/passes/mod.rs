@@ -27,14 +27,16 @@ pub trait IRPass: Pass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()>;
 }
 
-pub fn run_ir_passes(ir: &mut IR) -> anyhow::Result<()> {
+pub fn run_ir_passes(ir: &mut IR, debug: bool) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn IRPass>,
 		Box::new(ValidatePass),
 	];
 
 	for mut pass in passes {
-		println!("Running pass {}", pass.get_name());
+		if debug {
+			println!("Running pass {}", pass.get_name());
+		}
 		pass.run_pass(ir)?;
 	}
 
@@ -50,7 +52,7 @@ pub struct MIRPassData<'mir> {
 	pub inline_candidates: HashSet<ResourceLocation>,
 }
 
-pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
+pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn MIRPass>,
 		Box::new(DCEPass),
@@ -80,7 +82,9 @@ pub fn run_mir_passes(mir: &mut MIR) -> anyhow::Result<()> {
 	};
 
 	for mut pass in passes {
-		println!("Running pass {}", pass.get_name());
+		if debug {
+			println!("Running pass {}", pass.get_name());
+		}
 		pass.run_pass(&mut data)?;
 	}
 
@@ -91,7 +95,7 @@ pub trait LIRPass: Pass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()>;
 }
 
-pub fn run_lir_passes(lir: &mut LIR) -> anyhow::Result<()> {
+pub fn run_lir_passes(lir: &mut LIR, debug: bool) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn LIRPass>,
 		Box::new(LIRSimplifyPass),
@@ -103,7 +107,9 @@ pub fn run_lir_passes(lir: &mut LIR) -> anyhow::Result<()> {
 	];
 
 	for mut pass in passes {
-		println!("Running pass {}", pass.get_name());
+		if debug {
+			println!("Running pass {}", pass.get_name());
+		}
 		pass.run_pass(lir)?;
 	}
 

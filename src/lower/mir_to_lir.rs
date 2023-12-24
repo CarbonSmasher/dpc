@@ -220,17 +220,6 @@ fn lower_kind(
 					}
 				}
 			}
-			if exp == 0 {
-			} else {
-				for _ in 0..(exp - 1) {
-					lower!(
-						lir_instrs,
-						MulScore,
-						base.clone().to_mutable_score_value()?,
-						ScoreValue::Mutable(base.clone().to_mutable_score_value()?)
-					);
-				}
-			}
 		}
 		MIRInstrKind::Publish => lower!(lir_instrs, Publish),
 		MIRInstrKind::Seed => lower!(lir_instrs, Seed),

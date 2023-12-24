@@ -1,6 +1,9 @@
 mod common;
 
+use std::{fmt::Debug, panic::catch_unwind};
+
 use anyhow::{bail, Context};
+use color_print::cprintln;
 use dpc::{
 	codegen_ir, common::function::FunctionInterface, parse::Parser, project::ProjectSettings,
 };
@@ -48,7 +51,18 @@ fn main() {
 	println!("Running {} tests", test_names.len());
 	for test in test_names {
 		println!("     - Running codegen test '{test}'");
-		run_test(&test).expect(&format!("Test {test} failed"))
+		let result = catch_unwind(|| run_test(&test).expect(&format!("Test {test} failed")));
+		match result {
+			Ok(..) => cprintln!("     - <g>Test {test} successful"),
+			Err(e) => {
+				if let Some(e) = e.downcast_ref::<Box<dyn Debug>>() {
+					cprintln!("     - <r>Test {test} failed with error:\n{e:#?}");
+				} else {
+					cprintln!("     - <r>Test {test} failed");
+				}
+				panic!("Test failed");
+			}
+		}
 	}
 }
 

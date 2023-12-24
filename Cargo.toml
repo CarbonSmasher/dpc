@@ -28,6 +28,7 @@ strip = true
 [dependencies]
 anyhow = "1.0.75"
 clap = { version = "4.4.11", features = ["derive"] }
+color-print = "0.3.5"
 dashmap = "5.5.3"
 include_dir = "0.7.3"
 itertools = "0.11.0"
