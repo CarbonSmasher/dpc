@@ -1,3 +1,1 @@
-# === dpc:init ===
-
 # === test:main ===

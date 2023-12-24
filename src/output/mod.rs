@@ -25,8 +25,9 @@ pub fn link(lir: LIR, project: &ProjectSettings) -> anyhow::Result<Datapack> {
 		out.functions.insert(interface.id.clone(), fun);
 	}
 
-	let extra_fns = gen_fns::gen_fns(&ccx)?;
+	let (extra_fns, extra_tags) = gen_fns::gen_fns(&ccx)?;
 	out.functions.extend(extra_fns);
+	out.function_tags.extend(extra_tags);
 
 	Ok(out)
 }

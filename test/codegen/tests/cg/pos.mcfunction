@@ -1,5 +1,3 @@
-# === dpc:init ===
-
 # === test:main ===
 tp ~ ~ ~
 tp ~ ~ ~

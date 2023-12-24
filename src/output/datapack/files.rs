@@ -21,15 +21,36 @@ pub fn output_pack(pack: Datapack, path: &Path) -> anyhow::Result<()> {
 		std::fs::write(path, function.contents.join("\n"))
 			.context(format!("Failed to write function file {id}"))?;
 	}
+	for (id, tag) in pack.function_tags {
+		let path = data_path
+			.join(get_func_tag_path(&id).context(format!("Failed to get function tag path {id}"))?);
+		if let Some(parent) = path.parent() {
+			let _ = std::fs::create_dir_all(parent);
+		}
+		let contents = serde_json::to_string(&tag.inner)
+			.context("Failed to serialize function tag contents")?;
+		std::fs::write(path, contents)
+			.context(format!("Failed to write function tag file {id}"))?;
+	}
 
 	Ok(())
 }
 
 /// Gets the relative path of a function
 pub fn get_func_path(loc: &str) -> anyhow::Result<String> {
+	get_resource_path(loc, "functions", "mcfunction")
+}
+
+/// Gets the relative path of a function tag
+pub fn get_func_tag_path(loc: &str) -> anyhow::Result<String> {
+	get_resource_path(loc, "tags/functions", "json")
+}
+
+/// Gets the relative path of a file from a resource
+pub fn get_resource_path(loc: &str, ty: &str, extension: &str) -> anyhow::Result<String> {
 	let (l, r) = loc.split_at(loc.find(':').context("No colon in resource location")?);
 	let r = &r[1..];
-	Ok(format!("{l}/functions/{r}.mcfunction"))
+	Ok(format!("{l}/{ty}/{r}.{extension}"))
 }
 
 #[cfg(test)]
