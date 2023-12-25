@@ -209,7 +209,14 @@ pub fn codegen_instr(
 			}
 		}
 		LIRInstrKind::GetScore(val) => Some(cgformat!(cbcx, "scoreboard players get ", val)?),
-		LIRInstrKind::GetData(val) => Some(cgformat!(cbcx, "data get ", val)?),
+		LIRInstrKind::GetData(val, scale) => {
+			let mut out = String::new();
+			cgwrite!(&mut out, cbcx, "data get ", val)?;
+			if *scale != 1.0 {
+				cgwrite!(&mut out, cbcx, " ", scale)?;
+			}
+			Some(out)
+		}
 		LIRInstrKind::PushData(left, right) => {
 			let rhs = cg_data_modify_rhs(cbcx, right)?;
 			Some(cgformat!(cbcx, "data modify ", left, " append ", rhs)?)

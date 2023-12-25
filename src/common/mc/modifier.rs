@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use anyhow::bail;
 
-use crate::common::ty::NBTTypeContents;
+use crate::common::ty::{Double, NBTType, NBTTypeContents};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, ScoreValue};
 use crate::common::ResourceLocationTag;
 
@@ -87,12 +87,12 @@ impl Debug for Modifier {
 }
 
 // TODO: Type and scale
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum StoreModLocation {
-	Reg(Identifier),
-	LocalReg(Identifier),
+	Reg(Identifier, Double),
+	// LocalReg(Identifier, Double),
 	Score(Score),
-	Data(FullDataLocation),
+	Data(FullDataLocation, StoreDataType, Double),
 	Bossbar(ResourceLocation, StoreBossbarMode),
 }
 
@@ -100,23 +100,27 @@ impl StoreModLocation {
 	// TODO: Support storing in args
 	pub fn from_mut_score_val(val: &MutableScoreValue) -> anyhow::Result<Self> {
 		match val {
-			MutableScoreValue::Reg(reg) => Ok(Self::Reg(reg.clone())),
+			MutableScoreValue::Reg(reg) => Ok(Self::Reg(reg.clone(), 1.0)),
 			MutableScoreValue::Score(score) => Ok(Self::Score(score.clone())),
 			_ => bail!("Unsupported storage location"),
 		}
 	}
 
-	pub fn from_mut_nbt_val(val: &MutableNBTValue) -> anyhow::Result<Self> {
+	pub fn from_mut_nbt_val(
+		val: &MutableNBTValue,
+		ty: StoreDataType,
+		scale: Double,
+	) -> anyhow::Result<Self> {
 		match val {
-			MutableNBTValue::Reg(reg) => Ok(Self::LocalReg(reg.clone())),
-			MutableNBTValue::Data(data) => Ok(Self::Data(data.clone())),
+			MutableNBTValue::Reg(reg) => Ok(Self::Reg(reg.clone(), scale)),
+			MutableNBTValue::Data(data) => Ok(Self::Data(data.clone(), ty, scale)),
 			_ => bail!("Unsupported storage location"),
 		}
 	}
 
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
-			Self::Reg(reg) | Self::LocalReg(reg) => vec![reg],
+			Self::Reg(reg, ..) => vec![reg],
 			Self::Score(..) | Self::Data(..) | Self::Bossbar(..) => Vec::new(),
 		}
 	}
@@ -125,15 +129,53 @@ impl StoreModLocation {
 impl Debug for StoreModLocation {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Reg(reg) | Self::LocalReg(reg) => write!(f, "{reg}"),
+			Self::Reg(reg, scale) => write!(f, "{reg} {scale}"),
+			// Self::LocalReg(reg, scale) => write!(f, "{reg} {scale}"),
 			Self::Score(score) => write!(f, "{score:?}"),
-			Self::Data(data) => write!(f, "{data:?}"),
+			Self::Data(data, ty, scale) => write!(f, "{data:?} {ty:?} {scale}"),
 			Self::Bossbar(bar, mode) => write!(f, "bb {bar} {mode:?}"),
 		}
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
+pub enum StoreDataType {
+	Byte,
+	Short,
+	Int,
+	Long,
+	Float,
+	Double,
+}
+
+impl Debug for StoreDataType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte => write!(f, "byte"),
+			Self::Short => write!(f, "short"),
+			Self::Int => write!(f, "int"),
+			Self::Long => write!(f, "long"),
+			Self::Float => write!(f, "float"),
+			Self::Double => write!(f, "double"),
+		}
+	}
+}
+
+impl StoreDataType {
+	pub fn from_nbt_ty(ty: &NBTType) -> Option<Self> {
+		match ty {
+			NBTType::Byte => Some(Self::Byte),
+			NBTType::Short => Some(Self::Short),
+			NBTType::Int => Some(Self::Int),
+			NBTType::Long => Some(Self::Long),
+			NBTType::Float => Some(Self::Float),
+			NBTType::Double => Some(Self::Double),
+			_ => None,
+		}
+	}
+}
+
+#[derive(Clone, PartialEq)]
 pub enum StoreBossbarMode {
 	Value,
 	Max,

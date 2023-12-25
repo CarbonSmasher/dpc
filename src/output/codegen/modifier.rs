@@ -1,10 +1,12 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 
 use crate::common::mc::modifier::{
-	EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
+	EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreDataType,
+	StoreModLocation,
 };
-use crate::common::ty::ScoreTypeContents;
+use crate::common::ty::{DataType, ScoreTypeContents};
 use crate::common::val::{MutableNBTValue, ScoreValue};
+use crate::output::codegen::util::FloatCG;
 use crate::output::text::REG_OBJECTIVE;
 
 use super::t::macros::cgformat;
@@ -274,17 +276,34 @@ fn codegen_score_lt(inclusive: bool) -> &'static str {
 impl StoreModLocation {
 	fn codegen(self, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
 		match self {
-			Self::Reg(reg) => {
-				let reg = cbcx
-					.ra
+			Self::Reg(reg, scale) => {
+				let ty = cbcx
 					.regs
 					.get(&reg)
-					.ok_or(anyhow!("Register {reg} not allocated"))?;
-				Ok(format!("score {reg} {REG_OBJECTIVE}"))
+					.context("Register does not exist")?
+					.ty
+					.clone();
+				match ty {
+					DataType::Score(..) => {
+						let reg = cbcx
+							.ra
+							.regs
+							.get(&reg)
+							.ok_or(anyhow!("Register {reg} not allocated"))?;
+						Ok(format!("score {reg} {REG_OBJECTIVE}"))
+					}
+					DataType::NBT(ty) => {
+						let loc = MutableNBTValue::Reg(reg.clone()).gen_str(cbcx)?;
+						let ty = StoreDataType::from_nbt_ty(&ty)
+							.context("Type is not a valid storage type")?;
+						cgformat!(cbcx, loc, " ", ty, " ", FloatCG(scale, false, true, true))
+					}
+				}
 			}
-			Self::LocalReg(reg) => MutableNBTValue::Reg(reg).gen_str(cbcx),
 			Self::Score(score) => Ok(cgformat!(cbcx, "score {}", score)?),
-			Self::Data(data) => data.gen_str(cbcx),
+			Self::Data(data, ty, scale) => {
+				cgformat!(cbcx, data, " ", ty, " ", FloatCG(scale, false, true, true))
+			}
 			Self::Bossbar(bar, mode) => Ok(format!("bossbar {bar} {mode:?}")),
 		}
 	}

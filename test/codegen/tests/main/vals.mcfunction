@@ -15,4 +15,4 @@ data modify storage dpc:r stest_main0 set from storage foo:bar foo[5].name
 data modify storage dpc:r stest_main1 set from storage dpc:r stest_main0[7]
 data modify storage dpc:r stest_main0 set from storage foo:bar
 execute store result score %rtest_main0 _r run data get storage foo:bar baz
-execute store result storage dpc:r stest_main0 run scoreboard players get @r name
+execute store result storage dpc:r stest_main0 int 1 run scoreboard players get @r name

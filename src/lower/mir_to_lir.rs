@@ -3,10 +3,10 @@ use anyhow::{anyhow, bail, Context};
 use crate::common::condition::Condition;
 use crate::common::function::{FunctionInterface, FunctionSignature};
 use crate::common::mc::modifier::{
-	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
+	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreDataType, StoreModLocation,
 };
 use crate::common::ty::{
-	get_op_tys, ArraySize, DataType, DataTypeContents, ScoreType, ScoreTypeContents,
+	get_op_tys, ArraySize, DataType, DataTypeContents, Double, ScoreType, ScoreTypeContents,
 };
 use crate::common::{
 	val::MutableNBTValue, val::MutableScoreValue, val::MutableValue, val::NBTValue,
@@ -100,8 +100,8 @@ fn lower_kind(
 		MIRInstrKind::Abs { val } => {
 			lir_instrs.push(lower_abs(val, lbcx)?);
 		}
-		MIRInstrKind::Get { value } => {
-			lir_instrs.push(LIRInstruction::new(lower_get(value, lbcx)?));
+		MIRInstrKind::Get { value, scale } => {
+			lir_instrs.push(LIRInstruction::new(lower_get(value, scale, lbcx)?));
 		}
 		MIRInstrKind::Merge { left, right } => {
 			lir_instrs.push(LIRInstruction::new(lower_merge(left, right, lbcx)?));
@@ -327,6 +327,18 @@ fn lower_kind(
 			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower at body")?;
 
 			instr.modifiers.insert(0, Modifier::At(target));
+			lir_instrs.push(instr);
+		}
+		MIRInstrKind::StoreResult { location, body } => {
+			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower str body")?;
+
+			instr.modifiers.insert(0, Modifier::StoreResult(location));
+			lir_instrs.push(instr);
+		}
+		MIRInstrKind::StoreSuccess { location, body } => {
+			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower sts body")?;
+
+			instr.modifiers.insert(0, Modifier::StoreSuccess(location));
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::TeleportToEntity { source, dest } => {
@@ -587,7 +599,16 @@ fn lower_assign(
 						&left.clone().to_mutable_score_value()?,
 					)?,
 					DataType::NBT(..) => {
-						StoreModLocation::from_mut_nbt_val(&left.clone().to_mutable_nbt_value()?)?
+						let DataType::NBT(ty) = ty else {
+							bail!("Type is not a valid storage type");
+						};
+						let ty = StoreDataType::from_nbt_ty(&ty)
+							.context("Type is not a valid storage type")?;
+						StoreModLocation::from_mut_nbt_val(
+							&left.clone().to_mutable_nbt_value()?,
+							ty,
+							1.0,
+						)?
 					}
 				};
 
@@ -595,7 +616,9 @@ fn lower_assign(
 					DataType::Score(..) => {
 						LIRInstrKind::GetScore(val.clone().to_mutable_score_value()?)
 					}
-					DataType::NBT(..) => LIRInstrKind::GetData(val.clone().to_mutable_nbt_value()?),
+					DataType::NBT(..) => {
+						LIRInstrKind::GetData(val.clone().to_mutable_nbt_value()?, 1.0)
+					}
 				};
 				out.push(LIRInstruction::with_modifiers(
 					get_instr,
@@ -836,10 +859,14 @@ fn lower_abs(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstru
 	Ok(instr)
 }
 
-fn lower_get(value: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKind> {
+fn lower_get(
+	value: MutableValue,
+	scale: Double,
+	lbcx: &LowerBlockCx,
+) -> anyhow::Result<LIRInstrKind> {
 	let kind = match value.get_ty(&lbcx.registers, &lbcx.sig)? {
 		DataType::Score(..) => LIRInstrKind::GetScore(value.to_mutable_score_value()?),
-		DataType::NBT(..) => LIRInstrKind::GetData(value.to_mutable_nbt_value()?),
+		DataType::NBT(..) => LIRInstrKind::GetData(value.to_mutable_nbt_value()?, scale),
 	};
 
 	Ok(kind)

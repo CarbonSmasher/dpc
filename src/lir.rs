@@ -10,10 +10,10 @@ use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntC
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
 use crate::common::mc::{
-	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode, Weather,
-	XPValue, Location,
+	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode,
+	Location, Weather, XPValue,
 };
-use crate::common::ty::{ArraySize, NBTCompoundTypeContents};
+use crate::common::ty::{ArraySize, Double, NBTCompoundTypeContents};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
 use crate::common::{Identifier, RegisterList, ResourceLocation};
 
@@ -130,7 +130,7 @@ pub enum LIRInstrKind {
 	SetData(MutableNBTValue, NBTValue),
 	MergeData(MutableNBTValue, NBTValue),
 	GetScore(MutableScoreValue),
-	GetData(MutableNBTValue),
+	GetData(MutableNBTValue, Double),
 	PushData(MutableNBTValue, NBTValue),
 	PushFrontData(MutableNBTValue, NBTValue),
 	InsertData(MutableNBTValue, NBTValue, i32),
@@ -278,7 +278,7 @@ impl LIRInstrKind {
 				[left.get_used_regs(), right.get_used_regs()].concat()
 			}
 			LIRInstrKind::GetScore(score) => score.get_used_regs(),
-			LIRInstrKind::GetData(data) => data.get_used_regs(),
+			LIRInstrKind::GetData(data, ..) => data.get_used_regs(),
 			LIRInstrKind::ConstIndexToScore { score, value, .. } => {
 				[score.get_used_regs(), value.get_used_regs()].concat()
 			}
@@ -304,7 +304,7 @@ impl Debug for LIRInstrKind {
 			Self::SetData(left, right) => format!("setd {left:?} {right:?}"),
 			Self::MergeData(left, right) => format!("mrgd {left:?} {right:?}"),
 			Self::GetScore(val) => format!("gets {val:?}"),
-			Self::GetData(val) => format!("getd {val:?}"),
+			Self::GetData(val, scale) => format!("getd {val:?} {scale}"),
 			Self::PushData(left, right) => format!("pushd {left:?} {right:?}"),
 			Self::PushFrontData(left, right) => format!("pushfd {left:?} {right:?}"),
 			Self::InsertData(left, right, i) => format!("insd {left:?} {right:?} {i}"),

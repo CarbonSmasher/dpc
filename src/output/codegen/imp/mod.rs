@@ -8,8 +8,10 @@ use crate::common::mc::block::{
 };
 use crate::common::mc::entity::{AttributeType, EffectDuration, SelectorSort, SelectorType, UUID};
 use crate::common::mc::item::ItemData;
-use crate::common::mc::modifier::{AlignAxes, AnchorLocation};
-use crate::common::mc::pos::{AbsOrRelCoord, IntCoordinates, IntCoordinates2D, DoubleCoordinates, DoubleCoordinates2D};
+use crate::common::mc::modifier::{AlignAxes, AnchorLocation, StoreDataType};
+use crate::common::mc::pos::{
+	AbsOrRelCoord, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates, IntCoordinates2D,
+};
 use crate::common::mc::scoreboard_and_teams::SingleCriterion;
 use crate::common::mc::{
 	DataLocation, DataPath, DatapackListMode, DatapackOrder, DatapackPriority, Difficulty,
@@ -17,7 +19,7 @@ use crate::common::mc::{
 };
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 
-use super::util::{get_mut_nbt_val_loc, get_mut_score_val_score, get_score_val_score, cg_float};
+use super::util::{cg_float, get_mut_nbt_val_loc, get_mut_score_val_score, get_score_val_score};
 use super::{t::macros::cgwrite, Codegen, CodegenBlockCx};
 
 macro_rules! cg_impl {
@@ -192,6 +194,7 @@ impl_dbg!(DatapackPriority);
 impl_dbg!(DatapackOrder);
 impl_dbg!(DatapackListMode);
 impl_dbg!(EffectDuration);
+impl_dbg!(StoreDataType);
 
 // Selectors
 impl_disp!(SelectorSort);

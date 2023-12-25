@@ -14,7 +14,7 @@
 	abs %x;
 	use %x;
 	pow %x, 3s;
-	get %x;
+	get %x, 1.0;
 	say "foo";
 	me "foo";
 	tm "foo";

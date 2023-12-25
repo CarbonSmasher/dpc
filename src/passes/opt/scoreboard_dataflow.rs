@@ -180,7 +180,7 @@ fn run_scoreboard_dataflow_iter(
 				point
 					.store_regs
 					.into_iter()
-					.map(|x| Modifier::StoreResult(StoreModLocation::Reg(x))),
+					.map(|x| Modifier::StoreResult(StoreModLocation::Reg(x, 1.0))),
 			);
 		} else {
 			continue;

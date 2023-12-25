@@ -71,7 +71,7 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 		InstrKind::Remove { val } => lower!(Remove, val),
 		InstrKind::Abs { val } => lower!(Abs, val),
 		InstrKind::Pow { base, exp } => lower!(Pow, base, exp),
-		InstrKind::Get { value } => lower!(Get, value),
+		InstrKind::Get { value, scale } => lower!(Get, value, scale),
 		InstrKind::Merge { left, right } => lower!(Merge, left, right),
 		InstrKind::Push { left, right } => lower!(Push, left, right),
 		InstrKind::PushFront { left, right } => lower!(PushFront, left, right),
@@ -342,6 +342,22 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 			prelude.extend(new_prelude);
 			MIRInstrKind::At {
 				target,
+				body: Box::new(instr),
+			}
+		}
+		InstrKind::StoreResult { location, body } => {
+			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower at body")?;
+			prelude.extend(new_prelude);
+			MIRInstrKind::StoreResult {
+				location,
+				body: Box::new(instr),
+			}
+		}
+		InstrKind::StoreSuccess { location, body } => {
+			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower at body")?;
+			prelude.extend(new_prelude);
+			MIRInstrKind::StoreSuccess {
+				location,
 				body: Box::new(instr),
 			}
 		}

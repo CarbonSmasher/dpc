@@ -9,6 +9,7 @@ use crate::common::function::{
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::entity::{AttributeType, EffectDuration, UUID};
 use crate::common::mc::item::ItemData;
+use crate::common::mc::modifier::StoreModLocation;
 use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
@@ -16,7 +17,7 @@ use crate::common::mc::{
 	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode,
 	Location, Weather, XPValue,
 };
-use crate::common::ty::{DataType, NBTCompoundTypeContents};
+use crate::common::ty::{DataType, Double, NBTCompoundTypeContents};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 
 #[derive(Debug, Clone)]
@@ -156,6 +157,7 @@ pub enum MIRInstrKind {
 	},
 	Get {
 		value: MutableValue,
+		scale: Double,
 	},
 	Merge {
 		left: MutableValue,
@@ -496,6 +498,14 @@ pub enum MIRInstrKind {
 		target: EntityTarget,
 		body: Box<MIRInstrKind>,
 	},
+	StoreResult {
+		location: StoreModLocation,
+		body: Box<MIRInstrKind>,
+	},
+	StoreSuccess {
+		location: StoreModLocation,
+		body: Box<MIRInstrKind>,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -513,7 +523,7 @@ impl Debug for MIRInstrKind {
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
 			Self::Pow { base, exp } => format!("pow {base:?}, {exp}"),
-			Self::Get { value } => format!("get {value:?}"),
+			Self::Get { value, scale } => format!("get {value:?} {scale}"),
 			Self::Merge { left, right } => format!("merge {left:?}, {right:?}"),
 			Self::Push { left, right } => format!("push {left:?}, {right:?}"),
 			Self::PushFront { left, right } => format!("pushf {left:?}, {right:?}"),
@@ -719,6 +729,8 @@ impl Debug for MIRInstrKind {
 			Self::Locate { location_type, location } => format!("loc {location_type:?} {location}"),
 			Self::As { target, body } => format!("as {target:?}: {body:?}"),
 			Self::At { target, body } => format!("at {target:?}: {body:?}"),
+			Self::StoreResult { location, body } => format!("str {location:?}: {body:?}"),
+			Self::StoreSuccess { location, body } => format!("sts {location:?}: {body:?}"),
 		};
 		write!(f, "{text}")
 	}
@@ -742,7 +754,7 @@ impl MIRInstrKind {
 			Self::Swap { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Abs { val } => val.get_used_regs(),
 			Self::Pow { base, .. } => base.get_used_regs(),
-			Self::Get { value } => value.get_used_regs(),
+			Self::Get { value, .. } => value.get_used_regs(),
 			Self::Use { val } => val.get_used_regs(),
 			Self::Call { call } => call.get_used_regs(),
 			Self::Remove { val } => val.get_used_regs(),
@@ -805,7 +817,7 @@ impl MIRInstrKind {
 			}
 			Self::Abs { val }
 			| Self::Pow { base: val, .. }
-			| Self::Get { value: val }
+			| Self::Get { value: val, .. }
 			| Self::Use { val } => {
 				for reg in val.get_used_regs_mut() {
 					f(reg);
@@ -820,6 +832,9 @@ impl MIRInstrKind {
 				for reg in condition.iter_used_regs_mut() {
 					f(reg);
 				}
+				body.replace_regs(f);
+			}
+			Self::As { body, .. } | Self::At { body, .. } => {
 				body.replace_regs(f);
 			}
 			Self::ReturnValue { value, .. } => {
@@ -867,7 +882,7 @@ impl MIRInstrKind {
 			}
 			Self::Abs { val }
 			| Self::Pow { base: val, .. }
-			| Self::Get { value: val }
+			| Self::Get { value: val, .. }
 			| Self::Use { val }
 			| Self::ReturnValue {
 				value: Value::Mutable(val),

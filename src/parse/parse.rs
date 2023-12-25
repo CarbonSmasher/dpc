@@ -7,6 +7,7 @@ use crate::common::condition::Condition;
 use crate::common::function::CallInterface;
 use crate::common::mc::entity::{EffectDuration, SelectorParameter, SelectorType, TargetSelector};
 use crate::common::mc::item::ItemData;
+use crate::common::mc::modifier::{StoreDataType, StoreModLocation};
 use crate::common::mc::pos::{
 	AbsOrRelCoord, Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates,
 };
@@ -183,7 +184,12 @@ fn parse_instr<'t>(
 		}
 		"get" => {
 			let val = parse_mut_val(toks).context("Failed to parse value")?;
-			Ok(InstrKind::Get { value: val })
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let scale = consume_extract!(toks, Decimal, { bail!("Missing exponent") });
+			Ok(InstrKind::Get {
+				value: val,
+				scale: *scale,
+			})
 		}
 		"mrg" => {
 			let (l, r) = parse_simple_op(toks)?;
@@ -729,9 +735,29 @@ fn parse_instr<'t>(
 			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
 			consume_expect!(toks, Colon, { bail!("Missing colon") });
 			let instr = parse_instr(toks).context("Failed to parse at body instruction")?;
-			let Some(instr) = instr else { bail!("As instruction missing") };
+			let Some(instr) = instr else { bail!("At instruction missing") };
 			Ok(InstrKind::At {
 				target,
+				body: Box::new(instr),
+			})
+		}
+		"str" => {
+			let loc = parse_storage_location(toks).context("Failed to parse storage location")?;
+			consume_expect!(toks, Colon, { bail!("Missing colon") });
+			let instr = parse_instr(toks).context("Failed to parse str body instruction")?;
+			let Some(instr) = instr else { bail!("Str instruction missing") };
+			Ok(InstrKind::StoreResult {
+				location: loc,
+				body: Box::new(instr),
+			})
+		}
+		"sts" => {
+			let loc = parse_storage_location(toks).context("Failed to parse storage location")?;
+			consume_expect!(toks, Colon, { bail!("Missing colon") });
+			let instr = parse_instr(toks).context("Failed to parse sts body instruction")?;
+			let Some(instr) = instr else { bail!("Sts instruction missing") };
+			Ok(InstrKind::StoreSuccess {
+				location: loc,
 				body: Box::new(instr),
 			})
 		}
@@ -1651,4 +1677,49 @@ fn parse_time<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::R
 	};
 
 	Ok(Time::new(num, unit))
+}
+
+fn parse_storage_location<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<StoreModLocation> {
+	let ty = consume_extract!(toks, Ident, {
+		bail!("Missing storage location type token")
+	});
+	match ty.as_str() {
+		"reg" => {
+			let reg = consume_extract!(toks, Ident, { bail!("Missing storage register token") });
+			consume_expect!(toks, Token::Comma, { bail!("Missing comma") });
+			let scale = consume_extract!(toks, Decimal, { bail!("Missing scale token") });
+			Ok(StoreModLocation::Reg(reg.clone().into(), *scale))
+		}
+		"data" => {
+			let loc =
+				parse_full_data_location(toks).context("Failed to parse full data location")?;
+			consume_expect!(toks, Token::Comma, { bail!("Missing comma") });
+			let ty = parse_storage_ty(toks).context("Failed to parse storage type")?;
+			consume_expect!(toks, Token::Comma, { bail!("Missing comma") });
+			let scale = consume_extract!(toks, Decimal, { bail!("Missing scale token") });
+			Ok(StoreModLocation::Data(loc, ty, *scale))
+		}
+		"sco" => {
+			let score = parse_score(toks).context("Failed to parse score")?;
+			Ok(StoreModLocation::Score(score))
+		}
+		other => bail!("Unknown storage location type {other}"),
+	}
+}
+
+fn parse_storage_ty<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<StoreDataType> {
+	let ty = consume_extract!(toks, Ident, { bail!("Missing storage type token") });
+	match ty.as_str() {
+		"byte" => Ok(StoreDataType::Byte),
+		"short" => Ok(StoreDataType::Short),
+		"int" => Ok(StoreDataType::Int),
+		"long" => Ok(StoreDataType::Long),
+		"float" => Ok(StoreDataType::Float),
+		"double" => Ok(StoreDataType::Double),
+		other => bail!("Unknown storage type {other}"),
+	}
 }

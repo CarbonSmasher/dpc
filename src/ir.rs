@@ -6,6 +6,7 @@ use crate::common::function::{CallInterface, FunctionInterface};
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::entity::{AttributeType, EffectDuration, UUID};
 use crate::common::mc::item::ItemData;
+use crate::common::mc::modifier::StoreModLocation;
 use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates};
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::time::{Time, TimePreset, TimeQuery};
@@ -13,7 +14,7 @@ use crate::common::mc::{
 	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode,
 	Location, Weather, XPValue,
 };
-use crate::common::ty::{DataType, NBTCompoundTypeContents};
+use crate::common::ty::{DataType, Double, NBTCompoundTypeContents};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 
 #[derive(Debug, Clone)]
@@ -132,6 +133,7 @@ pub enum InstrKind {
 	},
 	Get {
 		value: MutableValue,
+		scale: Double,
 	},
 	Merge {
 		left: MutableValue,
@@ -470,6 +472,14 @@ pub enum InstrKind {
 		target: EntityTarget,
 		body: Box<InstrKind>,
 	},
+	StoreResult {
+		location: StoreModLocation,
+		body: Box<InstrKind>,
+	},
+	StoreSuccess {
+		location: StoreModLocation,
+		body: Box<InstrKind>,
+	},
 }
 
 impl Debug for InstrKind {
@@ -487,7 +497,7 @@ impl Debug for InstrKind {
 			Self::Swap { left, right } => format!("swp {left:?}, {right:?}"),
 			Self::Abs { val } => format!("abs {val:?}"),
 			Self::Pow { base, exp } => format!("pow {base:?}, {exp}"),
-			Self::Get { value } => format!("get {value:?}"),
+			Self::Get { value, scale } => format!("get {value:?} {scale}"),
 			Self::Merge { left, right } => format!("merge {left:?}, {right:?}"),
 			Self::Push { left, right } => format!("push {left:?}, {right:?}"),
 			Self::PushFront { left, right } => format!("pushf {left:?}, {right:?}"),
@@ -694,6 +704,8 @@ impl Debug for InstrKind {
 			Self::Locate { location_type, location } => format!("loc {location_type:?} {location}"),
 			Self::As { target, body } => format!("as {target:?}: {body:?}"),
 			Self::At { target, body } => format!("at {target:?}: {body:?}"),
+			Self::StoreResult { location, body } => format!("str {location:?}: {body:?}"),
+			Self::StoreSuccess { location, body } => format!("sts {location:?}: {body:?}"),
 		};
 		write!(f, "{text}")
 	}
