@@ -1,0 +1,14 @@
+# mir_passes
+
+@preserve
+"test:main" {}
+
+@preserve
+"test:keep" {
+	call run "test:keep2";
+}
+
+@no_inline
+"test:keep2" {}
+
+"test:discard" {}

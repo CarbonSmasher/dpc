@@ -1,0 +1,8 @@
+# lir_passes
+
+"test:main" {
+	let x: score = val 7s;
+	mul %x, 8s;
+	let y: score = val %x;
+	use %y;
+}
