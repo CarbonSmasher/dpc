@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 
 use crate::common::condition::Condition;
+use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::val::{MutableValue, Value};
 use crate::common::DeclareBinding;
 use crate::mir::{MIRBlock, MIRInstrKind};
@@ -90,28 +91,58 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 				}
 			}
 		}
-		MIRInstrKind::If { condition, body } => match condition {
-			Condition::Equal(l, r)
-			| Condition::GreaterThan(l, r)
-			| Condition::GreaterThanOrEqual(l, r)
-			| Condition::LessThan(l, r)
-			| Condition::LessThanOrEqual(l, r) => {
-				if let Value::Mutable(MutableValue::Register(reg)) = l.clone() {
-					if let Some(val) = an.vals.get(&reg) {
-						*l = Value::Constant(val.clone());
-						*run_again = true;
+		MIRInstrKind::If { condition, body } => {
+			match condition {
+				Condition::Equal(l, r)
+				| Condition::GreaterThan(l, r)
+				| Condition::GreaterThanOrEqual(l, r)
+				| Condition::LessThan(l, r)
+				| Condition::LessThanOrEqual(l, r) => {
+					if let Value::Mutable(MutableValue::Register(reg)) = l.clone() {
+						if let Some(val) = an.vals.get(&reg) {
+							*l = Value::Constant(val.clone());
+							*run_again = true;
+						}
+					}
+					if let Value::Mutable(MutableValue::Register(reg)) = r.clone() {
+						if let Some(val) = an.vals.get(&reg) {
+							*r = Value::Constant(val.clone());
+							*run_again = true;
+						}
 					}
 				}
-				if let Value::Mutable(MutableValue::Register(reg)) = r.clone() {
-					if let Some(val) = an.vals.get(&reg) {
-						*r = Value::Constant(val.clone());
-						*run_again = true;
-					}
-				}
-				const_prop_instr(body, an, run_again);
+				_ => {}
 			}
-			_ => {}
-		},
+			// Since eq and bool both check if a value is equal to something,
+			// that value is then guaranteed to be the value it is equal to
+			// in the body of the if
+			let previous = match condition {
+				Condition::Bool(Value::Mutable(MutableValue::Register(reg))) => (
+					Some(reg.clone()),
+					an.vals.insert(
+						reg.clone(),
+						DataTypeContents::Score(ScoreTypeContents::Bool(true)),
+					),
+				),
+				Condition::Equal(
+					Value::Mutable(MutableValue::Register(reg)),
+					Value::Constant(right),
+				) => (
+					Some(reg.clone()),
+					an.vals.insert(reg.clone(), right.clone()),
+				),
+				_ => (None, None),
+			};
+			const_prop_instr(body, an, run_again);
+			// Now we have to restore the previous value
+			if let Some(previous_reg) = previous.0 {
+				if let Some(previous_val) = previous.1 {
+					an.vals.insert(previous_reg, previous_val);
+				} else {
+					an.vals.remove(&previous_reg);
+				}
+			}
+		}
 		_ => {}
 	};
 }

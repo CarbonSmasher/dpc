@@ -1,0 +1,22 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	# Test propagation of register values to conditions
+	let a: score = val 4s;
+	if gt sco "foo" "bar", %a:
+		say "hello";
+
+	# Test for propagating the value of a register
+	# that is checked for eq or bool in the if
+	let add: score = val 10s;
+	let x: score = val sco @s[] "foo";
+	if eq %x, 15s:
+		add %add, %x;
+	let y: bool = cast bool sco @s[] "bar";
+	if bool %y:
+		mul %add, %y;
+	# Make sure that the value propagated inside the if doesn't
+	# leak out afterwards
+	add %add, %y;
+}

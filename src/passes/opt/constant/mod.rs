@@ -43,12 +43,12 @@ impl MIRPass for ConstComboPass {
 	}
 }
 
-struct ConstAnalyzer<'cont> {
-	vals: DashMap<Identifier, &'cont DataTypeContents>,
+struct ConstAnalyzer {
+	vals: DashMap<Identifier, DataTypeContents>,
 	store_self: bool,
 }
 
-impl<'cont> ConstAnalyzer<'cont> {
+impl ConstAnalyzer {
 	fn new() -> Self {
 		Self {
 			vals: DashMap::new(),
@@ -63,16 +63,16 @@ impl<'cont> ConstAnalyzer<'cont> {
 		}
 	}
 
-	fn feed(&mut self, kind: &'cont MIRInstrKind) -> ConstAnalyzerResult {
+	fn feed(&mut self, kind: &MIRInstrKind) -> ConstAnalyzerResult {
 		match kind {
 			MIRInstrKind::Assign {
 				left: MutableValue::Register(reg),
 				right: DeclareBinding::Value(Value::Constant(val)),
 			} => {
 				if self.store_self {
-					self.vals.insert(reg.clone(), val);
+					self.vals.insert(reg.clone(), val.clone());
 				}
-				ConstAnalyzerResult::Add(reg.clone(), val)
+				ConstAnalyzerResult::Add(reg.clone(), val.clone())
 			}
 			MIRInstrKind::Assign { left, right, .. } => {
 				let mut out = Vec::new();
@@ -150,8 +150,8 @@ impl<'cont> ConstAnalyzer<'cont> {
 	}
 }
 
-enum ConstAnalyzerResult<'cont> {
+enum ConstAnalyzerResult {
 	Other,
-	Add(Identifier, &'cont DataTypeContents),
+	Add(Identifier, DataTypeContents),
 	Remove(Vec<Identifier>),
 }
