@@ -1,8 +1,8 @@
-use num_traits::{Num, Zero};
+use num_traits::Num;
 
 use std::fmt::Debug;
 
-use crate::output::codegen::{Codegen, CodegenBlockCx};
+use crate::output::codegen::{util::cg_float, Codegen, CodegenBlockCx};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Coordinates<T> {
@@ -202,12 +202,9 @@ impl Codegen for Angle {
 
 		if self.relative {
 			write!(f, "~")?;
-
-			if !self.value.is_zero() {
-				write!(f, "{}", self.value)?;
-			}
+			cg_float(f, self.value as f64, true, true, true);
 		} else {
-			write!(f, "{}", self.value)?;
+			cg_float(f, self.value as f64, false, true, true);
 		}
 
 		Ok(())
