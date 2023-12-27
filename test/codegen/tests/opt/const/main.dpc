@@ -3,12 +3,12 @@
 @preserve
 "test:main" {
 	# Check for proper reuse of a register with the same name
-	# let a: score = val 4s;
-	# mul %a, 3s;
-	# use %a;
-	# set %a, 10s;
-	# mul %a, 6s;
-	# use %a;
+	let a: score = val 4s;
+	mul %a, 3s;
+	use %a;
+	set %a, 10s;
+	mul %a, 6s;
+	use %a;
 
 	# Adapted from sine. Inlined out and simplified.
 	# Since this is starting with the same inputs, it should have the

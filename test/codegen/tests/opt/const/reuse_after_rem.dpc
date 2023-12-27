@@ -1,0 +1,27 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	let x: score = val 10s;
+	let add1: score = val 20s;
+	add %add1, %x;
+	let add2: score = val 30s;
+	add %add2, %x;
+	use %add1;
+	use %add2;
+
+	let a: score = val 121s;
+  let b: score = val 130s;
+  let c: score = val 100s;
+  let avg: score = null;
+  let in_arg_test_average_0: score = val 1210s;
+  let in_arg_test_average_1: score = val 1300s;
+  let in_arg_test_average_2: score = val 1000s;
+  let in_test_average_sum: score = val %in_arg_test_average_0;
+  add %in_test_average_sum, %in_arg_test_average_1;
+  add %in_test_average_sum, %in_arg_test_average_2;
+  div %in_test_average_sum, 3s;
+  div %in_test_average_sum, 10s;
+  set %avg, %in_test_average_sum;
+  use %avg;
+}

@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use dashmap::DashMap;
 use std::fmt::Debug;
 
@@ -49,7 +49,8 @@ impl MIRPass for ConstFoldPass {
 
 			let mut instrs_to_remove = DashSetEmptyTracker::new();
 			loop {
-				let run_again = run_const_fold_iter(block, &mut instrs_to_remove, &mut fold_points);
+				let run_again =
+					run_const_fold_iter(block, &mut instrs_to_remove, &mut fold_points)?;
 				if run_again {
 					self.made_changes = true;
 				} else {
@@ -69,8 +70,11 @@ fn run_const_fold_iter(
 	block: &mut MIRBlock,
 	instrs_to_remove: &mut DashSetEmptyTracker<usize>,
 	fold_points: &mut DashMap<Identifier, FoldPoint>,
-) -> bool {
+) -> anyhow::Result<bool> {
 	let mut run_again = false;
+	// We have to store this array of instructions to replace and do it at the end
+	// since we can't modify instructions in the block while we are iterating over it
+	let mut instrs_to_replace = Vec::new();
 
 	// Scope here because the analyzer holds references to the data type contents
 	{
@@ -224,6 +228,19 @@ fn run_const_fold_iter(
 			match an_result {
 				ConstAnalyzerResult::Add(reg, DataTypeContents::Score(val)) => {
 					if let Some(mut existing) = fold_points.get_mut(&reg) {
+						instrs_to_replace.push((
+							existing.pos,
+							MIRInstrKind::Assign {
+								left: MutableValue::Register(reg.clone()),
+								right: DeclareBinding::Value(Value::Constant(
+									DataTypeContents::Score(ScoreTypeContents::Score(
+										existing.value,
+									)),
+								)),
+							},
+						));
+						existing.pos = i;
+						existing.value = val.get_i32();
 						existing.finished = true;
 					} else {
 						fold_points.insert(
@@ -239,11 +256,27 @@ fn run_const_fold_iter(
 				}
 				ConstAnalyzerResult::Remove(regs) => {
 					for reg in regs {
+						// let mut should_remove = false;
 						if let Some(mut point) = fold_points.get_mut(&reg) {
-							// We only have to finish points if they have folded already
 							point.finished = true;
-							if point.has_folded {}
+							// if !point.finished {
+							// 	instrs_to_replace.push((
+							// 		point.pos,
+							// 		MIRInstrKind::Assign {
+							// 			left: MutableValue::Register(reg.clone()),
+							// 			right: DeclareBinding::Value(Value::Constant(
+							// 				DataTypeContents::Score(ScoreTypeContents::Score(
+							// 					point.value,
+							// 				)),
+							// 			)),
+							// 		},
+							// 	));
+							// 	should_remove = true;
+							// }
 						}
+						// if should_remove {
+						// 	fold_points.remove(&reg);
+						// }
 					}
 				}
 				_ => (),
@@ -261,10 +294,20 @@ fn run_const_fold_iter(
 					ScoreTypeContents::Score(point.value),
 				))),
 			}
+		} else {
+			bail!("Fold position out of range");
+		}
+	}
+	// Replace instructions
+	for (pos, instr) in instrs_to_replace {
+		if let Some(existing) = block.contents.get_mut(pos) {
+			existing.kind = instr;
+		} else {
+			bail!("Fold position out of range");
 		}
 	}
 
-	run_again
+	Ok(run_again)
 }
 
 struct FoldPoint {
