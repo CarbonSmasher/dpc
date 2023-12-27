@@ -1,0 +1,9 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	let x: nint = val 10ni;
+	let list: [nint] = val [nint][7ni, 3ni];
+	psh %list, %x;
+	use %list;
+}
