@@ -112,3 +112,9 @@ impl CodegenIRSettings {
 		}
 	}
 }
+
+impl Default for CodegenIRSettings {
+	fn default() -> Self {
+		Self::new()
+	}
+}

@@ -33,6 +33,12 @@ impl Parser {
 	}
 }
 
+impl Default for Parser {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 	enum State {
 		Root,
@@ -152,7 +158,7 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 				}
 				Token::Curly(Side::Right) => {
 					*curly_count -= 1;
-					if *curly_count <= 0 {
+					if *curly_count == 0 {
 						unparsed_defs.insert(std::mem::take(func), std::mem::take(body));
 						state = State::Root;
 					} else {

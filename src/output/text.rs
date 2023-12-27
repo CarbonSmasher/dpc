@@ -34,5 +34,5 @@ pub fn format_ret_local_storage_entry(num: u16, func_id: &str) -> String {
 }
 
 pub fn format_local_storage_path(entry: &str) -> String {
-	format!("{entry}")
+	entry.to_string()
 }

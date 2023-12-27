@@ -23,7 +23,7 @@ pub fn codegen_modifier(
 		Modifier::If { condition, negate } => {
 			let keyword = if negate { "unless" } else { "if" };
 
-			let out = match *condition {
+			match *condition {
 				IfModCondition::Score(condition) => match condition {
 					IfScoreCondition::Single { left, right } => match right {
 						ScoreValue::Constant(val) => {
@@ -156,9 +156,7 @@ pub fn codegen_modifier(
 						right_num
 					)?)
 				}
-			};
-
-			out
+			}
 		}
 		Modifier::Anchored(location) => Some(cgformat!(cbcx, "anchored ", location)?),
 		Modifier::Align(axes) => Some(cgformat!(cbcx, "align ", axes)?),
@@ -217,12 +215,10 @@ fn codegen_if_score_range_side(
 					} else {
 						Some(num - 1)
 					}
+				} else if num == i32::MAX {
+					None
 				} else {
-					if num == i32::MAX {
-						None
-					} else {
-						Some(num + 1)
-					}
+					Some(num + 1)
 				};
 				if let Some(constricted) = constricted {
 					let check = codegen_match(&constricted.to_string(), lt);

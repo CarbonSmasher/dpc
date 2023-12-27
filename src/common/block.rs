@@ -43,7 +43,7 @@ impl<Block> BlockAllocator<Block> {
 
 	/// Removes a block with an ID
 	pub fn remove(&mut self, id: &BlockID) -> Option<Block> {
-		self.blocks.remove(&id).map(|x| {
+		self.blocks.remove(id).map(|x| {
 			self.block_count -= 1;
 			x
 		})
@@ -52,6 +52,12 @@ impl<Block> BlockAllocator<Block> {
 	/// Counts the number of blocks
 	pub fn count(&self) -> BlockID {
 		self.block_count
+	}
+}
+
+impl<Block> Default for BlockAllocator<Block> {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 

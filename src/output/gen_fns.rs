@@ -49,7 +49,7 @@ fn gen_init(ccx: &CodegenCx) -> Option<Function> {
 		out.contents.push(cmd);
 		function_needed = true;
 	}
-	if ccx.score_literals.len() > 0 {
+	if !ccx.score_literals.is_empty() {
 		let cmd = format!("scoreboard objectives add {LIT_OBJECTIVE} dummy");
 		out.contents.push(cmd);
 		function_needed = true;

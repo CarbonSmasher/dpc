@@ -37,7 +37,7 @@ impl MIRPass for SimpleInlinePass {
 			loop {
 				instrs_to_remove.clear();
 				let run_again = run_simple_inline_iter(
-					&func,
+					func,
 					block,
 					&mut instrs_to_remove,
 					&mut instrs_to_remove_set,
@@ -83,7 +83,7 @@ fn run_simple_inline_iter(
 		}
 		if let MIRInstrKind::Call { call } = &instr.kind {
 			// Don't inline this function call if it is recursive
-			if &call.function == &interface.id {
+			if call.function == interface.id {
 				continue;
 			}
 			if !inline_candidates.contains(&call.function) {

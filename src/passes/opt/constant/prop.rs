@@ -21,6 +21,12 @@ impl ConstPropPass {
 	}
 }
 
+impl Default for ConstPropPass {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl Pass for ConstPropPass {
 	fn get_name(&self) -> &'static str {
 		"const_prop"
@@ -33,7 +39,7 @@ impl Pass for ConstPropPass {
 
 impl MIRPass for ConstPropPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		for (_, block) in &mut data.mir.functions {
+		for block in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks

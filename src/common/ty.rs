@@ -449,6 +449,12 @@ impl NBTCompoundTypeContents {
 	}
 }
 
+impl Default for NBTCompoundTypeContents {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl PartialEq for NBTCompoundTypeContents {
 	fn eq(&self, other: &Self) -> bool {
 		self.0.iter().all(|(k, v)| {
@@ -548,7 +554,7 @@ fn fmt_compound<W: std::fmt::Write, I, F: Fn(&mut W, &I) -> std::fmt::Result>(
 }
 
 fn write_string(string: String) -> String {
-	let escaped = string.replace("\"", "\\\"");
+	let escaped = string.replace('\"', "\\\"");
 	format!("\"{escaped}\"")
 }
 

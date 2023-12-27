@@ -30,8 +30,8 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 	} else {
 		let file = cli.file.context("No file specified")?;
 		let path = PathBuf::from(file);
-		let text = std::fs::read_to_string(path).context("Failed to read input file")?;
-		text
+
+		std::fs::read_to_string(path).context("Failed to read input file")?
 	};
 
 	// Parse the input

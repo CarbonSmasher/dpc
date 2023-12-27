@@ -1,11 +1,9 @@
 use anyhow::anyhow;
 
-use crate::{
-	common::{condition::Condition, ty::DataTypeContents, val::Value},
-	mir::{MIRBlock, MIRInstrKind},
-	passes::{MIRPass, MIRPassData, Pass},
-	util::{remove_indices, DashSetEmptyTracker},
-};
+use crate::common::{condition::Condition, ty::DataTypeContents, val::Value};
+use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::util::{remove_indices, DashSetEmptyTracker};
 
 pub struct ConstConditionPass {
 	pub(super) made_changes: bool,
@@ -19,6 +17,12 @@ impl ConstConditionPass {
 	}
 }
 
+impl Default for ConstConditionPass {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl Pass for ConstConditionPass {
 	fn get_name(&self) -> &'static str {
 		"const_condition"
@@ -27,7 +31,7 @@ impl Pass for ConstConditionPass {
 
 impl MIRPass for ConstConditionPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		for (_, block) in &mut data.mir.functions {
+		for block in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
@@ -63,20 +67,17 @@ fn run_const_condition_iter(
 			continue;
 		}
 
-		match &mut instr.kind {
-			MIRInstrKind::If { condition, body } => {
-				let result = const_eval_condition(condition);
-				if let Some(result) = result {
-					if result {
-						instr.kind = *body.clone();
-					} else {
-						instrs_to_remove.insert(i);
-					}
-					run_again = true;
+		if let MIRInstrKind::If { condition, body } = &mut instr.kind {
+			let result = const_eval_condition(condition);
+			if let Some(result) = result {
+				if result {
+					instr.kind = *body.clone();
+				} else {
+					instrs_to_remove.insert(i);
 				}
+				run_again = true;
 			}
-			_ => {}
-		};
+		}
 	}
 
 	run_again

@@ -23,7 +23,7 @@ impl LIRPass for ScoreboardDataflowPass {
 		let mut finished_flow_points = Vec::new();
 		let mut instrs_to_remove = DashSetEmptyTracker::new();
 
-		for (_, block) in &mut lir.functions {
+		for block in lir.functions.values_mut() {
 			instrs_to_remove.clear();
 
 			let block = lir

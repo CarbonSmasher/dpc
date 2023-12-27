@@ -51,6 +51,12 @@ impl MIR {
 	}
 }
 
+impl Default for MIR {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 #[derive(Clone)]
 pub struct MIRBlock {
 	pub contents: Vec<MIRInstruction>,
@@ -67,6 +73,12 @@ impl MIRBlock {
 		Self {
 			contents: Vec::with_capacity(capacity),
 		}
+	}
+}
+
+impl Default for MIRBlock {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 
@@ -767,7 +779,7 @@ impl MIRInstrKind {
 		}
 	}
 
-	pub fn replace_regs<F: Fn(&mut Identifier) -> ()>(&mut self, f: F) {
+	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: F) {
 		match self {
 			Self::Declare { left, .. } => {
 				f(left);
@@ -846,7 +858,7 @@ impl MIRInstrKind {
 		}
 	}
 
-	pub fn replace_mut_vals<F: Fn(&mut MutableValue) -> ()>(&mut self, f: F) {
+	pub fn replace_mut_vals<F: Fn(&mut MutableValue)>(&mut self, f: F) {
 		match self {
 			Self::Assign { left, right } => {
 				let right_regs: Box<dyn Iterator<Item = _>> = match right {

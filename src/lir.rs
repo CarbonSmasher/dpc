@@ -39,6 +39,12 @@ impl LIR {
 	}
 }
 
+impl Default for LIR {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 #[derive(Clone)]
 pub struct LIRBlock {
 	pub contents: Vec<LIRInstruction>,
@@ -90,8 +96,7 @@ impl LIRInstruction {
 			self.kind.get_used_regs(),
 			self.modifiers
 				.iter()
-				.map(|x| x.get_used_regs().into_iter())
-				.flatten()
+				.flat_map(|x| x.get_used_regs().into_iter())
 				.collect(),
 		]
 		.concat()

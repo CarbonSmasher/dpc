@@ -20,7 +20,7 @@ impl Pass for MIRSimplifyPass {
 
 impl MIRPass for MIRSimplifyPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		for (_, block) in &mut data.mir.functions {
+		for block in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
@@ -151,7 +151,7 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				left,
 				right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Compound(_, right))),
 			} if right.0.len() == 1 => {
-				let right = right.0.iter().nth(0).expect("Len should be 1");
+				let right = right.0.iter().next().expect("Len should be 1");
 				Some(MIRInstrKind::Assign {
 					left: MutableValue::Property(Box::new(left.clone()), right.0.clone()),
 					right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(

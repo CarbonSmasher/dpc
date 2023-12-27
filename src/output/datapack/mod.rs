@@ -27,6 +27,12 @@ impl Datapack {
 	}
 }
 
+impl Default for Datapack {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 #[derive(Debug, Clone)]
 pub struct Function {
 	pub contents: Vec<String>,
@@ -40,6 +46,12 @@ impl Function {
 	}
 }
 
+impl Default for Function {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 #[derive(Debug, Clone)]
 pub struct Tag {
 	pub inner: TagInner,
@@ -50,6 +62,12 @@ impl Tag {
 		Self {
 			inner: TagInner { values: Vec::new() },
 		}
+	}
+}
+
+impl Default for Tag {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 

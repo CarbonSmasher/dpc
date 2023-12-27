@@ -18,7 +18,7 @@ impl Pass for DSEPass {
 impl MIRPass for DSEPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut instrs_to_remove = DashSetEmptyTracker::new();
-		for (_, block) in &mut data.mir.functions {
+		for block in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks

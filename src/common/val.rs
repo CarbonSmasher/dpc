@@ -138,7 +138,7 @@ impl MutableValue {
 
 	pub fn get_used_regs(&self) -> Vec<&Identifier> {
 		match self {
-			Self::Register(reg) => vec![&reg],
+			Self::Register(reg) => vec![reg],
 			Self::Property(val, ..) | Self::Index(val, ..) => val.get_used_regs(),
 			_ => Vec::new(),
 		}

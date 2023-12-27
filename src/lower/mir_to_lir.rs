@@ -591,7 +591,8 @@ fn lower_assign(
 			// If the cast is not trivial, or they are not both
 			// score types, we have to declare a new register,
 			// initialize it with the cast, and then assign the result to our declaration
-			let assign_val = if val_ty.is_trivially_castable(&ty)
+
+			if val_ty.is_trivially_castable(ty)
 				|| matches!((&val_ty, &ty), (DataType::Score(..), DataType::Score(..)))
 			{
 				Some(Value::Mutable(val.clone()))
@@ -605,7 +606,7 @@ fn lower_assign(
 						let DataType::NBT(ty) = ty else {
 							bail!("Type is not a valid storage type");
 						};
-						let ty = StoreDataType::from_nbt_ty(&ty)
+						let ty = StoreDataType::from_nbt_ty(ty)
 							.context("Type is not a valid storage type")?;
 						StoreModLocation::from_mut_nbt_val(
 							&left.clone().to_mutable_nbt_value()?,
@@ -629,8 +630,7 @@ fn lower_assign(
 				));
 
 				None
-			};
-			assign_val
+			}
 		}
 		DeclareBinding::Index { ty, val, index } => {
 			let new_reg = lbcx.new_additional_reg();

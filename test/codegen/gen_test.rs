@@ -24,7 +24,7 @@ fn main() {
 	// Check the test function
 	datapack
 		.functions
-		.get(TEST_ENTRYPOINT.into())
+		.get(TEST_ENTRYPOINT)
 		.expect("Test function does not exist");
 
 	let mut out_file = File::create(test_dir.join(format!("{test_name}.mcfunction")))

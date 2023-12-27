@@ -59,6 +59,12 @@ impl RegAllocCx {
 	}
 }
 
+impl Default for RegAllocCx {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 /// An allocator for a single register type
 #[derive(Debug)]
 pub struct RegAllocator {
@@ -107,6 +113,12 @@ impl RegAllocator {
 	}
 }
 
+impl Default for RegAllocator {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 /// Result from allocating registers for a block
 #[derive(Debug)]
 pub struct RegAllocResult {
@@ -123,12 +135,18 @@ impl RegAllocResult {
 	}
 }
 
+impl Default for RegAllocResult {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 pub fn alloc_block_registers(
 	func_id: &str,
 	block: &LIRBlock,
 	racx: &mut RegAllocCx,
 ) -> anyhow::Result<RegAllocResult> {
-	let func_id = func_id.to_string().replace(":", "_").replace("/", "_");
+	let func_id = func_id.to_string().replace([':', '/'], "_");
 	let mut out_regs = HashMap::new();
 	let mut out_locals = HashMap::new();
 

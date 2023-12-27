@@ -18,7 +18,7 @@ impl Pass for LIRSimplifyPass {
 
 impl LIRPass for LIRSimplifyPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		for (_, block) in &mut lir.functions {
+		for block in lir.functions.values_mut() {
 			let block = lir
 				.blocks
 				.get_mut(block)

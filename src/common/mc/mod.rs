@@ -285,7 +285,6 @@ impl Debug for DatapackListMode {
 	}
 }
 
-
 #[derive(Clone, PartialEq, Eq)]
 pub enum Location {
 	Structure,

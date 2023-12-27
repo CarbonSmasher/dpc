@@ -17,7 +17,7 @@ impl MIRPass for DCEPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		// Find used functions
 		let used = DashSet::new();
-		for (_, block) in &data.mir.functions {
+		for block in data.mir.functions.values() {
 			let block = data
 				.mir
 				.blocks

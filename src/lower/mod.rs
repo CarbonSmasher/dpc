@@ -9,5 +9,5 @@ pub fn fmt_lowered_arg(func_id: &str, arg_num: u16) -> Identifier {
 }
 
 pub fn cleanup_fn_id(func_id: &str) -> String {
-	func_id.to_string().replace(":", "_").replace("/", "_")
+	func_id.to_string().replace([':', '/'], "_")
 }

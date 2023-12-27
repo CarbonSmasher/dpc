@@ -39,10 +39,10 @@ fn codegen_fn(
 	ccx: &mut CodegenCx,
 	block: &usize,
 ) -> anyhow::Result<Function> {
-	let block = blocks.get(&block).ok_or(anyhow!("Block does not exist"))?;
+	let block = blocks.get(block).ok_or(anyhow!("Block does not exist"))?;
 	let mut fun = Function::new();
 	let cleaned_id = cleanup_fn_id(&interface.id);
-	let code = codegen_block(&cleaned_id, &block, ccx)?;
+	let code = codegen_block(&cleaned_id, block, ccx)?;
 	fun.contents = code;
 	Ok(fun)
 }

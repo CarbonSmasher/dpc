@@ -59,7 +59,7 @@ fn main() {
 			println!("     - Running parse test '{name}'");
 			run_test(test).expect("Test failed");
 		})
-		.expect(&format!("Test {name} failed"));
+		.unwrap_or_else(|_| panic!("Test {name} failed"));
 	}
 }
 

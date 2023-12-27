@@ -32,6 +32,12 @@ impl IR {
 	}
 }
 
+impl Default for IR {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 #[derive(Clone)]
 pub struct Block {
 	pub contents: Vec<Instruction>,
@@ -42,6 +48,12 @@ impl Block {
 		Self {
 			contents: Vec::new(),
 		}
+	}
+}
+
+impl Default for Block {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 

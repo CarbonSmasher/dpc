@@ -51,7 +51,8 @@ fn main() {
 	println!("Running {} tests", test_names.len());
 	for test in test_names {
 		println!("     - Running codegen test '{test}'");
-		let result = catch_unwind(|| run_test(&test).expect(&format!("Test {test} failed")));
+		let result =
+			catch_unwind(|| run_test(&test).unwrap_or_else(|_| panic!("Test {test} failed")));
 		match result {
 			Ok(..) => cprintln!("     - <g>Test {test} successful"),
 			Err(e) => {
@@ -98,7 +99,7 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 		.context("Failed to codegen input")?;
 
 	// Check the test function
-	let Some(..) = datapack.functions.get(TEST_ENTRYPOINT.into()) else {
+	let Some(..) = datapack.functions.get(TEST_ENTRYPOINT) else {
 		bail!("Test function does not exist")
 	};
 	let actual = create_output(datapack).expect("Failed to create actual test output");

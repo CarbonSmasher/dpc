@@ -23,6 +23,12 @@ impl ConstFoldPass {
 	}
 }
 
+impl Default for ConstFoldPass {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl Pass for ConstFoldPass {
 	fn get_name(&self) -> &'static str {
 		"const_fold"
@@ -32,7 +38,7 @@ impl Pass for ConstFoldPass {
 impl MIRPass for ConstFoldPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut fold_points = DashMap::new();
-		for (_, block) in &mut data.mir.functions {
+		for block in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
@@ -134,7 +140,7 @@ fn run_const_fold_iter(
 					if let Some(mut left) = fold_points.get_mut(left) {
 						if !left.finished {
 							if right.get_i32() != 0 {
-								left.value = left.value / right.get_i32();
+								left.value /= right.get_i32();
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
 								run_again = true;
@@ -151,7 +157,7 @@ fn run_const_fold_iter(
 					if let Some(mut left) = fold_points.get_mut(left) {
 						if !left.finished {
 							if right.get_i32() != 0 {
-								left.value = left.value % right.get_i32();
+								left.value %= right.get_i32();
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
 								run_again = true;
@@ -216,21 +222,19 @@ fn run_const_fold_iter(
 			};
 			let an_result = an.feed(&instr.kind);
 			match an_result {
-				ConstAnalyzerResult::Add(reg, val) => {
-					if let DataTypeContents::Score(val) = val {
-						if let Some(mut existing) = fold_points.get_mut(&reg) {
-							existing.finished = true;
-						} else {
-							fold_points.insert(
-								reg,
-								FoldPoint {
-									pos: i,
-									value: val.get_i32(),
-									finished: false,
-									has_folded: false,
-								},
-							);
-						}
+				ConstAnalyzerResult::Add(reg, DataTypeContents::Score(val)) => {
+					if let Some(mut existing) = fold_points.get_mut(&reg) {
+						existing.finished = true;
+					} else {
+						fold_points.insert(
+							reg,
+							FoldPoint {
+								pos: i,
+								value: val.get_i32(),
+								finished: false,
+								has_folded: false,
+							},
+						);
 					}
 				}
 				ConstAnalyzerResult::Remove(regs) => {

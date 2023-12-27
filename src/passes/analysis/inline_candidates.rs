@@ -21,12 +21,12 @@ impl MIRPass for InlineCandidatesPass {
 			set: HashSet::new(),
 		};
 		let mut checked = HashSet::new();
-		for (fun, _) in &data.mir.functions {
+		for fun in data.mir.functions.keys() {
 			checked.clear();
 			data.inline_candidates.insert(fun.id.clone());
 			check_recursion(
 				&fun.id,
-				&data.mir,
+				data.mir,
 				&mut data.inline_candidates,
 				&mut call_stack,
 				&mut checked,

@@ -86,6 +86,12 @@ impl FunctionSignature {
 	}
 }
 
+impl Default for FunctionSignature {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl Debug for FunctionSignature {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "(")?;
@@ -136,14 +142,14 @@ impl CallInterface {
 	}
 
 	pub fn iter_used_regs_mut(&mut self) -> impl Iterator<Item = &mut Identifier> {
-		let args = self.args
+		let args = self
+			.args
 			.iter_mut()
-			.map(|x| x.get_used_regs_mut().into_iter())
-			.flatten();
-		let ret = self.ret
+			.flat_map(|x| x.get_used_regs_mut().into_iter());
+		let ret = self
+			.ret
 			.iter_mut()
-			.map(|x| x.get_used_regs_mut().into_iter())
-			.flatten();
+			.flat_map(|x| x.get_used_regs_mut().into_iter());
 		args.chain(ret)
 	}
 }
