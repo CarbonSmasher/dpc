@@ -862,7 +862,6 @@ fn parse_ty_impl<'t>(
 pub fn parse_simple_ty(ty: &str) -> anyhow::Result<DataType> {
 	match ty {
 		"score" => Ok(DataType::Score(ScoreType::Score)),
-		"uscore" => Ok(DataType::Score(ScoreType::UScore)),
 		"bool" => Ok(DataType::Score(ScoreType::Bool)),
 		"nany" => Ok(DataType::NBT(NBTType::Any)),
 		"nbyte" => Ok(DataType::NBT(NBTType::Byte)),
@@ -1135,7 +1134,6 @@ fn parse_lit_impl<'t>(
 
 			Ok(match suffix.as_str() {
 				"s" => score_lit!(num, Score, "score"),
-				"u" => score_lit!(num, UScore, "uscore"),
 				"nb" => nbt_lit!(num, Byte, "nbyte"),
 				"ns" => nbt_lit!(num, Short, "nshort"),
 				"ni" => nbt_lit!(num, Int, "nint"),

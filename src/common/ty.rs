@@ -41,7 +41,6 @@ impl Debug for DataType {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ScoreType {
 	Score,
-	UScore,
 	Bool,
 }
 
@@ -49,9 +48,8 @@ impl ScoreType {
 	pub fn is_trivially_castable(&self, other: &ScoreType) -> bool {
 		match other {
 			Self::Score => {
-				matches!(self, Self::Score | Self::UScore | Self::Bool)
+				matches!(self, Self::Score | Self::Bool)
 			}
-			Self::UScore => matches!(self, Self::Score | Self::UScore),
 			Self::Bool => matches!(self, Self::Bool),
 		}
 	}
@@ -61,7 +59,6 @@ impl Debug for ScoreType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
 			Self::Score => "score",
-			Self::UScore => "uscore",
 			Self::Bool => "bool",
 		};
 		write!(f, "{text}")
@@ -143,7 +140,6 @@ impl NBTType {
 		if self.is_int_type() {
 			match other {
 				ScoreType::Score => true,
-				ScoreType::UScore => true,
 				ScoreType::Bool => true,
 			}
 		} else {
@@ -246,7 +242,6 @@ impl Debug for DataTypeContents {
 #[derive(Clone, PartialEq, Eq)]
 pub enum ScoreTypeContents {
 	Score(i32),
-	UScore(u16),
 	Bool(bool),
 }
 
@@ -254,7 +249,6 @@ impl ScoreTypeContents {
 	pub fn get_ty(&self) -> DataType {
 		match self {
 			Self::Score(..) => DataType::Score(ScoreType::Score),
-			Self::UScore(..) => DataType::Score(ScoreType::UScore),
 			Self::Bool(..) => DataType::Score(ScoreType::Bool),
 		}
 	}
@@ -262,7 +256,6 @@ impl ScoreTypeContents {
 	pub fn get_i32(&self) -> i32 {
 		match self {
 			ScoreTypeContents::Score(score) => *score,
-			ScoreTypeContents::UScore(score) => *score as i32,
 			ScoreTypeContents::Bool(score) => *score as i32,
 		}
 	}
@@ -280,7 +273,6 @@ impl Debug for ScoreTypeContents {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
 			Self::Score(val) => format!("{val}.s"),
-			Self::UScore(val) => format!("{val}.u"),
 			Self::Bool(val) => format!("{val}"),
 		};
 		write!(f, "{text}")

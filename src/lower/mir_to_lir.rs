@@ -645,9 +645,8 @@ fn lower_assign(
 			match (val.get_ty(&lbcx.registers, &lbcx.sig)?, index) {
 				(DataType::NBT(..), Value::Constant(DataTypeContents::Score(score))) => {
 					let index = match score {
+						ScoreTypeContents::Score(val) => *val as ArraySize,
 						ScoreTypeContents::Bool(val) => *val as ArraySize,
-						ScoreTypeContents::UScore(val) => *val as ArraySize,
-						_ => bail!("Non-score type cannot be used as index"),
 					};
 					out.push(LIRInstruction::new(LIRInstrKind::ConstIndexToScore {
 						score: MutableScoreValue::Reg(new_reg.clone()),

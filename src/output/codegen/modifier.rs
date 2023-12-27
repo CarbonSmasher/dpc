@@ -341,7 +341,7 @@ mod tests {
 					inclusive: false,
 				},
 				right: IfScoreRangeEnd::Fixed {
-					value: ScoreValue::Constant(ScoreTypeContents::UScore(2980)),
+					value: ScoreValue::Constant(ScoreTypeContents::Score(2980)),
 					inclusive: true,
 				},
 			})),

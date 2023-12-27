@@ -4,7 +4,6 @@ data merge storage dpc:r {}
 
 # === test:main ===
 scoreboard players set %rtest_main0 _r -7
-scoreboard players set %rtest_main0 _r 6
 scoreboard players set %rtest_main0 _r 1
 scoreboard players set %rtest_main0 _r 0
 data modify storage dpc:r stest_main0 set value 20b

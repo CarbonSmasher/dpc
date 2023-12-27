@@ -121,7 +121,7 @@ fn known() {
 		};
 		InstrKind::Declare {
 			left: reg3_id.clone(),
-			ty: DataType::Score(ScoreType::UScore),
+			ty: DataType::Score(ScoreType::Score),
 			right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
 				ScoreTypeContents::Score(0),
 			))),
@@ -146,9 +146,9 @@ fn known() {
 		};
 		InstrKind::Declare {
 			left: reg5_id.clone(),
-			ty: DataType::Score(ScoreType::UScore),
+			ty: DataType::Score(ScoreType::Score),
 			right: DeclareBinding::Cast(
-				DataType::Score(ScoreType::UScore),
+				DataType::Score(ScoreType::Score),
 				MutableValue::Register(reg4_id.clone()),
 			),
 		};
@@ -191,7 +191,7 @@ fn known() {
 			right: DeclareBinding::Index {
 				ty: DataType::NBT(NBTType::Byte),
 				val: Value::Mutable(MutableValue::Register(reg8_id.clone())),
-				index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::UScore(3))),
+				index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(3))),
 			},
 		};
 		InstrKind::Call {

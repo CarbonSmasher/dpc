@@ -2,7 +2,6 @@
 
 "test:main" {
 	let a: score = val -7s;
-	let b: uscore = val 6u;
 	let c: bool = val true;
 	set %c, false;
 	let d: nbyte = val 20nb;
