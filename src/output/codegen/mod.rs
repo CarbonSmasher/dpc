@@ -23,21 +23,24 @@ use self::t::macros::cgwrite;
 use self::util::{get_mut_score_val_score, FloatCG, SpaceSepListCG};
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
+use super::strip::FunctionMapping;
 
 use t::macros::cgformat;
 pub use t::Codegen;
 
 pub struct CodegenCx<'proj> {
 	pub project: &'proj ProjectSettings,
+	pub func_mapping: Option<FunctionMapping>,
 	pub racx: RegAllocCx,
 	pub score_literals: HashSet<i32>,
 	pub requirements: HashSet<CodegenRequirement>,
 }
 
 impl<'proj> CodegenCx<'proj> {
-	pub fn new(project: &'proj ProjectSettings) -> Self {
+	pub fn new(project: &'proj ProjectSettings, func_mapping: Option<FunctionMapping>) -> Self {
 		Self {
 			project,
+			func_mapping,
 			racx: RegAllocCx::new(),
 			score_literals: HashSet::new(),
 			requirements: HashSet::new(),
@@ -281,7 +284,15 @@ pub fn codegen_instr(
 		LIRInstrKind::GetXP(target, value) => {
 			Some(cgformat!(cbcx, "xp query ", target, " ", value)?)
 		}
-		LIRInstrKind::Call(fun) => Some(format!("function {fun}")),
+		LIRInstrKind::Call(fun) => {
+			let mut func_id = fun;
+			if let Some(mapping) = &cbcx.ccx.func_mapping {
+				if let Some(new_id) = mapping.0.get(func_id) {
+					func_id = new_id;
+				}
+			}
+			Some(format!("function {func_id}"))
+		}
 		LIRInstrKind::BanPlayers(targets, reason) => {
 			let list = SpaceSepListCG(targets);
 			if let Some(reason) = reason {

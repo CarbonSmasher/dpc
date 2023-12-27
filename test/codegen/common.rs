@@ -2,27 +2,36 @@ use std::fmt::Write;
 
 use anyhow::Context;
 use dpc::output::datapack::Datapack;
+use dpc::output::strip::StripMode;
 use dpc::parse::lex::{lex, Token};
+use dpc::project::{ProjectSettings, ProjectSettingsBuilder};
 use dpc::CodegenIRSettings;
 use itertools::Itertools;
 
 pub static TEST_ENTRYPOINT: &str = "test:main";
 
-pub fn get_control_comment(contents: &str) -> anyhow::Result<CodegenIRSettings> {
+pub fn get_control_comment(contents: &str) -> anyhow::Result<(CodegenIRSettings, ProjectSettings)> {
 	let default = CodegenIRSettings {
 		debug: false,
 		ir_passes: false,
 		mir_passes: false,
 		lir_passes: false,
 	};
+	let project = ProjectSettingsBuilder::new("dpc");
+
 	let lexed = lex(contents).context("Failed to lex text")?;
-	let Some(first) = lexed.first() else { return Ok(default) };
-	let Token::Comment(comment) = &first.0 else { return Ok(default) };
+	let Some(first) = lexed.first() else { return Ok((default, project.build())) };
+	let Token::Comment(comment) = &first.0 else { return Ok((default, project.build())) };
 
 	let debug = comment.contains("debug");
 	let ir_passes = comment.contains("ir_passes");
 	let mir_passes = comment.contains("mir_passes");
 	let lir_passes = comment.contains("lir_passes");
+	let strip_mode = if comment.contains("strip_unstable") {
+		StripMode::Unstable
+	} else {
+		StripMode::None
+	};
 
 	let settings = CodegenIRSettings {
 		debug,
@@ -31,7 +40,9 @@ pub fn get_control_comment(contents: &str) -> anyhow::Result<CodegenIRSettings> 
 		lir_passes,
 	};
 
-	Ok(settings)
+	let project = project.strip_mode(strip_mode);
+
+	Ok((settings, project.build()))
 }
 
 pub fn create_output(pack: Datapack) -> anyhow::Result<String> {

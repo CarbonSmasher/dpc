@@ -4,9 +4,7 @@ use std::{fmt::Debug, panic::catch_unwind};
 
 use anyhow::{bail, Context};
 use color_print::cprintln;
-use dpc::{
-	codegen_ir, common::function::FunctionInterface, parse::Parser, project::ProjectSettings,
-};
+use dpc::{codegen_ir, common::function::FunctionInterface, parse::Parser};
 use include_dir::{include_dir, Dir, DirEntry, File};
 
 use crate::common::{create_output, get_control_comment, TEST_ENTRYPOINT};
@@ -94,9 +92,9 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 	ir.functions.insert(actual.0, actual.1);
 
 	// Run the codegen
-	let settings = get_control_comment(input_contents).expect("Failed to get control comment");
-	let datapack = codegen_ir(ir, &ProjectSettings::new("dpc".into()), settings)
-		.context("Failed to codegen input")?;
+	let (settings, project) =
+		get_control_comment(input_contents).expect("Failed to get control comment");
+	let datapack = codegen_ir(ir, &project, settings).context("Failed to codegen input")?;
 
 	// Check the test function
 	let Some(..) = datapack.functions.get(TEST_ENTRYPOINT) else {

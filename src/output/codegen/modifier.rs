@@ -318,7 +318,7 @@ mod tests {
 	#[test]
 	fn test_if_score_codegen() {
 		let proj = ProjectSettings::new("dpc".into());
-		let mut ccx = CodegenCx::new(&proj);
+		let mut ccx = CodegenCx::new(&proj, None);
 		let mut cbcx = CodegenBlockCx {
 			ccx: &mut ccx,
 			ra: RegAllocResult::new(),

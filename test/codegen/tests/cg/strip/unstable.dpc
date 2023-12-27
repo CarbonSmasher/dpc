@@ -1,0 +1,46 @@
+# strip_unstable
+
+@preserve
+"test:main" {
+	call run "sh:ort";
+	call run "test:dont_strip_me";
+	call run "test:should_be_shortest";
+	call run "test:should_be_shortest";
+	call run "test:should_be_shortest";
+	call run "test:func1";
+	call run "test:func2";
+	call run "test:func3";
+}
+
+"sh:ort" {
+	say "I should not be stripped because my ID is already shorter than the stripped version";
+	let x: score = val 7s;
+}
+
+@preserve
+"test:dont_strip_me" {
+	say "Don't strip me, I am marked with preserve";
+}
+
+"test:should_be_shortest" {
+	say "I should be the shortest ID since I am called the most";
+	let x: score = val 7s;
+}
+
+"test:func1" {
+	let x: score = val 10s;
+	let y: score = val 11s;
+	say "1";
+}
+
+"test:func2" {
+	let x: score = val 10s;
+	let y: score = val 11s;
+	say "2";
+}
+
+"test:func3" {
+	let x: score = val 10s;
+	let y: score = val 11s;
+	say "3";
+}
