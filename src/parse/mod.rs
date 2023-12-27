@@ -108,6 +108,7 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 						match name.as_str() {
 							"preserve" => annotations.preserve = true,
 							"no_inline" => annotations.no_inline = true,
+							"no_strip" => annotations.no_strip = true,
 							other => bail!("Unknown annotation {other}"),
 						};
 						*ann_state = AnnotationState::LookingForAt;

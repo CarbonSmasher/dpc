@@ -27,9 +27,13 @@ scoreboard players set %rsh_ort0 _r 7
 # === test:dont_strip_me ===
 say Don't strip me, I am marked with preserve
 
+# === test:dont_strip_me_either ===
+say Don't strip me, I am marked with no_strip
+
 # === test:main ===
 function sh:ort
 function test:dont_strip_me
+function test:dont_strip_me_either
 function dpc:s/
 function dpc:s/
 function dpc:s/

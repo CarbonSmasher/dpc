@@ -4,6 +4,7 @@
 "test:main" {
 	call run "sh:ort";
 	call run "test:dont_strip_me";
+	call run "test:dont_strip_me_either";
 	call run "test:should_be_shortest";
 	call run "test:should_be_shortest";
 	call run "test:should_be_shortest";
@@ -20,6 +21,11 @@
 @preserve
 "test:dont_strip_me" {
 	say "Don't strip me, I am marked with preserve";
+}
+
+@no_strip
+"test:dont_strip_me_either" {
+	say "Don't strip me, I am marked with no_strip";
 }
 
 "test:should_be_shortest" {

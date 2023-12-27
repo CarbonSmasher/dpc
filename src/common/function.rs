@@ -173,6 +173,7 @@ impl Debug for CallInterface {
 pub struct FunctionAnnotations {
 	pub preserve: bool,
 	pub no_inline: bool,
+	pub no_strip: bool,
 }
 
 impl FunctionAnnotations {
@@ -180,6 +181,7 @@ impl FunctionAnnotations {
 		Self {
 			preserve: false,
 			no_inline: false,
+			no_strip: false,
 		}
 	}
 }

@@ -55,7 +55,7 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 			.keys()
 			.find(|x| &x.id == func_id)
 			.expect("Function does not exist");
-		if func.annotations.preserve {
+		if func.annotations.preserve || func.annotations.no_strip {
 			out.0.insert(func_id.clone(), func_id.clone());
 		} else {
 			let mut name = get_stripped_name_unstable(idx);
@@ -68,7 +68,6 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 				idx += 1;
 			}
 			out.0.insert(func_id.clone(), name.into());
-
 		}
 	}
 
