@@ -588,9 +588,12 @@ fn lower_assign(
 		DeclareBinding::Value(val) => Some(val.clone()),
 		DeclareBinding::Cast(ty, val) => {
 			let val_ty = val.get_ty(&lbcx.registers, &lbcx.sig)?;
-			// If the cast is not trivial, we have to declare a new register,
+			// If the cast is not trivial, or they are not both
+			// score types, we have to declare a new register,
 			// initialize it with the cast, and then assign the result to our declaration
-			let assign_val = if val_ty.is_trivially_castable(&ty) {
+			let assign_val = if val_ty.is_trivially_castable(&ty)
+				|| matches!((&val_ty, &ty), (DataType::Score(..), DataType::Score(..)))
+			{
 				Some(Value::Mutable(val.clone()))
 			} else {
 				// Run the cast

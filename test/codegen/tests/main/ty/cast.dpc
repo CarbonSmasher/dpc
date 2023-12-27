@@ -2,4 +2,5 @@
 	let a: nint = cast nint sco @s[] "name";
 	let b: score = val 7s;
 	let c: score = cast score %b;
+	let y: bool = cast bool sco @s[] "bar";
 }
