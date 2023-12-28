@@ -6,6 +6,8 @@ use crate::common::ResourceLocation;
 use crate::lir::{LIRInstrKind, LIR};
 use crate::project::ProjectSettings;
 
+use super::text::{get_stripped_name_unstable, RESOURCE_LOCATION_CHARSET};
+
 /// Different modes for stripping symbols
 #[derive(Debug, Clone, Copy)]
 pub enum StripMode {
@@ -58,7 +60,7 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 		if func.annotations.preserve || func.annotations.no_strip {
 			out.0.insert(func_id.clone(), func_id.clone());
 		} else {
-			let mut name = get_stripped_name_unstable(idx);
+			let mut name = get_stripped_name_unstable(idx, &RESOURCE_LOCATION_CHARSET);
 			name = format!("{}:s/{name}", project.name);
 			// If there is no size reduction, don't strip
 			if name.len() >= func_id.len() {
@@ -72,46 +74,4 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 	}
 
 	out
-}
-
-fn get_stripped_name_unstable(idx: u32) -> String {
-	if idx == 0 {
-		return String::new();
-	}
-	let mut idx = idx as usize;
-	let alphabet = [
-		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
-		's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-		'_', '-', '.',
-	];
-	let mut out = String::new();
-	let mut is_first = true;
-	// Add one and then subtract it on the first iteration
-	// to bypass the while check
-	// TODO: Make this actually good
-	idx += 1;
-	while idx != 0 {
-		if is_first {
-			idx -= 1;
-		}
-		let digit = idx % alphabet.len();
-		out.push(alphabet[digit]);
-		idx /= alphabet.len();
-		is_first = false;
-	}
-
-	out
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_unstable_stripping() {
-		assert_eq!(get_stripped_name_unstable(0), String::from(""));
-		assert_eq!(get_stripped_name_unstable(1), String::from("b"));
-		assert_eq!(get_stripped_name_unstable(38), String::from("."));
-		assert_eq!(get_stripped_name_unstable(39), String::from("ab"));
-	}
 }
