@@ -62,6 +62,7 @@ pub struct CodegenBlockCx<'ccx, 'proj> {
 	pub ra: RegAllocResult,
 	pub regs: RegisterList,
 	pub func_id: String,
+	pub macro_line: bool,
 }
 
 pub fn codegen_block(
@@ -76,6 +77,7 @@ pub fn codegen_block(
 		ra,
 		regs: block.regs.clone(),
 		func_id: func_id.into(),
+		macro_line: false,
 	};
 
 	let mut out = Vec::new();
@@ -795,6 +797,9 @@ impl CommandBuilder {
 		cbcx: &mut CodegenBlockCx,
 	) -> anyhow::Result<Option<String>> {
 		let mut out = String::new();
+		if cbcx.macro_line {
+			out.push('$');
+		}
 
 		let command = if let Some(command) = command {
 			command
@@ -820,6 +825,7 @@ impl CommandBuilder {
 		}
 
 		out.push_str(&command);
+		cbcx.macro_line = false;
 
 		Ok(Some(out))
 	}

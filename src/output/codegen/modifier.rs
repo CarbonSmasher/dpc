@@ -324,6 +324,7 @@ mod tests {
 			ra: RegAllocResult::new(),
 			regs: RegisterList::new(),
 			func_id: "foo".into(),
+			macro_line: false,
 		};
 
 		let modifier = Modifier::If {
