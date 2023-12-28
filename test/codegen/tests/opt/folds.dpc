@@ -14,6 +14,16 @@
 		set %x, sco "foo" "bar";
 	if lt %x, sco "foo" "bar":
 		set %x, sco "foo" "bar";
+
+	# If-boolean folds
+	if bool sco "foo" "bar":
+		add %x, 1s;
+	if bool sco "foo" "bar":
+		sub %x, 1s;
+	if not bool sco "foo" "bar":
+		mul %x, 0s;
+	if not bool sco "foo" "bar":
+		set %x, 0s;
 	
 	# Math folds
 	add %x, %x;
@@ -24,6 +34,15 @@
 	# NBT folds
 	mrg ent @s[] "name", {};
 	mrg ent @s[] "name", {"bar": 7nb};
+
+	# Store & get
+	let store_get: score = null;
+	str reg store_get, 0.5:
+		get sco @s[] "foo", 2.0;
+	# Don't fold this
+	str data ent "foo" "bar", float, 0.7:
+		get ent @s[] "foo", 9.0;
+	use %store_get;
 
 	use %x;
 }

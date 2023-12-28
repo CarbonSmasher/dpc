@@ -49,8 +49,9 @@ fn main() {
 	println!("Running {} tests", test_names.len());
 	for test in test_names {
 		println!("     - Running codegen test '{test}'");
-		let result =
-			catch_unwind(|| run_test(&test).unwrap_or_else(|_| panic!("Test {test} failed")));
+		let result = catch_unwind(|| {
+			run_test(&test).unwrap_or_else(|e| panic!("Test {test} failed with error:\n{e:?}"))
+		});
 		match result {
 			Ok(..) => cprintln!("     - <g>Test {test} successful"),
 			Err(e) => {
