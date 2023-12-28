@@ -361,6 +361,13 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 				body: Box::new(instr),
 			}
 		}
+		InstrKind::ReturnRun { body } => {
+			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower retr body")?;
+			prelude.extend(new_prelude);
+			MIRInstrKind::ReturnRun {
+				body: Box::new(instr),
+			}
+		}
 		InstrKind::ClearEffect { target, effect } => lower!(ClearEffect, target, effect),
 		InstrKind::GiveEffect {
 			target,
@@ -377,6 +384,7 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 			hide_particles
 		),
 		InstrKind::ReturnValue { index, value } => lower!(ReturnValue, index, value),
+		InstrKind::Return { value } => lower!(Return, value),
 		InstrKind::Command { command } => lower!(Command, command),
 		InstrKind::Comment { comment } => lower!(Comment, comment),
 		InstrKind::SetGameruleBool { rule, value } => lower!(SetGameruleBool, rule, value),

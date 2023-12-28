@@ -5,6 +5,7 @@ scoreboard players set %l-1 _l -1
 scoreboard players set %l1 _l 1
 
 # === test:foo ===
+return 7
 
 # === test:main ===
 scoreboard players set %rtest_main0 _r 7
@@ -99,3 +100,4 @@ gamerule doFireTick true
 gamerule randomTickSpeed 2345
 gamerule doDaylightCycle
 locate biome minecraft:taiga
+return run say hello

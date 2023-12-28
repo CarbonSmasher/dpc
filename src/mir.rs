@@ -480,6 +480,12 @@ pub enum MIRInstrKind {
 		index: u16,
 		value: Value,
 	},
+	Return {
+		value: Value,
+	},
+	ReturnRun {
+		body: Box<MIRInstrKind>,
+	},
 	NoOp,
 	Command {
 		command: String,
@@ -726,6 +732,8 @@ impl Debug for MIRInstrKind {
 				format!("effg {target:?} {effect} {duration:?} {amplifier} {hide_particles}")
 			}
 			Self::ReturnValue { index, value } => format!("retv {index} {value:?}"),
+			Self::Return { value } => format!("ret {value:?}"),
+			Self::ReturnRun { body } => format!("retr {body:?}"),
 			Self::NoOp => "noop".into(),
 			Self::Command { command } => format!("cmd {command}"),
 			Self::Comment { comment } => format!("cmt {comment}"),

@@ -261,6 +261,14 @@ impl DataTypeContents {
 			|| matches!((self, other), (Self::NBT(l), Self::NBT(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::Macro(l), Self::Macro(r)) if l.is_value_eq(r))
 	}
+
+	pub fn try_get_i32(&self) -> Option<i32> {
+		match self {
+			Self::Score(sco) => Some(sco.get_i32()),
+			Self::NBT(nbt) => nbt.try_get_i32(),
+			_ => None,
+		}
+	}
 }
 
 impl Debug for DataTypeContents {
@@ -384,6 +392,17 @@ impl NBTTypeContents {
 			|| matches!((self, other), (Self::String(l), Self::String(r)) if l == r)
 			|| matches!((self, other), (Self::List(lt, l), Self::List(rt, r)) if lt == rt && l.iter().zip(r).all(|(l, r)| l.is_value_eq(r)))
 			|| matches!((self, other), (Self::Compound(lt, l), Self::Compound(rt, r)) if lt == rt && l == r)
+	}
+
+	pub fn try_get_i32(&self) -> Option<i32> {
+		match self {
+			Self::Byte(n) => Some(*n as i32),
+			Self::Bool(n) => Some(*n as i32),
+			Self::Short(n) => Some(*n as i32),
+			Self::Int(n) => Some(*n as i32),
+			Self::Long(n) => (*n).try_into().ok(),
+			_ => None,
+		}
 	}
 }
 

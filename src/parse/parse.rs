@@ -761,6 +761,18 @@ fn parse_instr<'t>(
 				body: Box::new(instr),
 			})
 		}
+		"retr" => {
+			consume_expect!(toks, Colon, { bail!("Missing colon") });
+			let instr = parse_instr(toks).context("Failed to parse retr body instruction")?;
+			let Some(instr) = instr else { bail!("Retr instruction missing") };
+			Ok(InstrKind::ReturnRun {
+				body: Box::new(instr),
+			})
+		}
+		"ret" => {
+			let value = parse_val(toks).context("Failed to parse value")?;
+			Ok(InstrKind::Return { value })
+		}
 		other => bail!("Unknown instruction {other}"),
 	}
 	.context("Failed to parse instruction")?;

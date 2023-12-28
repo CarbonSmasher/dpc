@@ -88,6 +88,11 @@
 	grsi "randomTickSpeed", 2345;
 	grg "doDaylightCycle";
 	loc bio "minecraft:taiga";
+
+	retr:
+		say "hello";
 }
 
-"test:foo" score nint {}
+"test:foo" score nint {
+	ret 7s;
+}

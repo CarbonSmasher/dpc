@@ -341,6 +341,13 @@ fn lower_kind(
 			instr.modifiers.insert(0, Modifier::StoreSuccess(location));
 			lir_instrs.push(instr);
 		}
+		MIRInstrKind::ReturnRun { body } => {
+			let instr = lower_subinstr(*body, lbcx).context("Failed to lower retr body")?;
+
+			lir_instrs.push(LIRInstruction::new(LIRInstrKind::ReturnRun(Box::new(
+				instr,
+			))));
+		}
 		MIRInstrKind::TeleportToEntity { source, dest } => {
 			lower!(lir_instrs, TeleportToEntity, source, dest)
 		}
@@ -524,6 +531,19 @@ fn lower_kind(
 			.context("Failed to lower return value assignment")?;
 			lir_instrs.extend(instrs);
 		}
+		MIRInstrKind::Return { value } => match value {
+			Value::Constant(val) => {
+				let Some(val) = val.try_get_i32() else {
+					bail!("Value is not castable to an i32");
+				};
+				lower!(lir_instrs, ReturnValue, val)
+			}
+			Value::Mutable(val) => {
+				let subinstr = lower_get(val, 1.0, lbcx).context("Failed to lower get")?;
+				let subinstr = LIRInstruction::new(subinstr);
+				lower!(lir_instrs, ReturnRun, Box::new(subinstr))
+			}
+		},
 		MIRInstrKind::NoOp => {}
 		MIRInstrKind::Command { command } => lower!(lir_instrs, Command, command),
 		MIRInstrKind::Comment { comment } => lower!(lir_instrs, Comment, comment),

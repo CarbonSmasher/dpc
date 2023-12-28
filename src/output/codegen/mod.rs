@@ -82,8 +82,10 @@ pub fn codegen_block(
 
 	let mut out = Vec::new();
 	for (i, instr) in block.contents.iter().enumerate() {
-		let command =
+		let mut command =
 			codegen_instr(instr, &mut cbcx).with_context(|| format!("At instruction {i}"))?;
+		command = command.map(|x| if cbcx.macro_line { format!("${x}") } else { x });
+		cbcx.macro_line = false;
 		out.extend(command);
 	}
 
@@ -472,7 +474,12 @@ pub fn codegen_instr(
 		LIRInstrKind::DefaultGamemode(gm) => Some(cgformat!(cbcx, "defaultgamemode ", gm)?),
 		LIRInstrKind::ReturnValue(val) => Some(cgformat!(cbcx, "return ", val)?),
 		LIRInstrKind::ReturnFail => Some("return fail".into()),
-		LIRInstrKind::ReturnRun(fun) => Some(cgformat!(cbcx, "return run ", fun)?),
+		LIRInstrKind::ReturnRun(instr) => {
+			let cmd = codegen_instr(instr, cbcx)
+				.context("Failed to codegen return run subinstruction")?
+				.context("Return run command is missing after codegen")?;
+			Some(cgformat!(cbcx, "return run ", cmd)?)
+		}
 		LIRInstrKind::TeleportToEntity(src, dest) => {
 			let mut out = String::new();
 			cgwrite!(&mut out, cbcx, "tp ")?;
@@ -797,9 +804,6 @@ impl CommandBuilder {
 		cbcx: &mut CodegenBlockCx,
 	) -> anyhow::Result<Option<String>> {
 		let mut out = String::new();
-		if cbcx.macro_line {
-			out.push('$');
-		}
 
 		let command = if let Some(command) = command {
 			command
@@ -825,7 +829,6 @@ impl CommandBuilder {
 		}
 
 		out.push_str(&command);
-		cbcx.macro_line = false;
 
 		Ok(Some(out))
 	}
