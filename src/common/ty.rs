@@ -12,6 +12,7 @@ use super::{MutableValue, RegisterList, Value};
 pub enum DataType {
 	Score(ScoreType),
 	NBT(NBTType),
+	Macro(MacroType),
 }
 
 impl DataType {
@@ -25,6 +26,10 @@ impl DataType {
 				Self::NBT(this_nbt) => this_nbt.is_trivially_castable(other_nbt),
 				_ => false,
 			},
+			DataType::Macro(other_mac) => match self {
+				Self::Macro(this_mac) => this_mac.is_trivially_castable(other_mac),
+				_ => false,
+			},
 		}
 	}
 }
@@ -34,6 +39,7 @@ impl Debug for DataType {
 		match self {
 			Self::Score(score) => score.fmt(f),
 			Self::NBT(nbt) => nbt.fmt(f),
+			Self::Macro(mac) => mac.fmt(f),
 		}
 	}
 }
@@ -210,10 +216,35 @@ impl Debug for NBTArrayType {
 	}
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum MacroType {
+	Raw,
+}
+
+impl MacroType {
+	pub fn is_trivially_castable(&self, other: &MacroType) -> bool {
+		match other {
+			Self::Raw => {
+				matches!(self, Self::Raw)
+			}
+		}
+	}
+}
+
+impl Debug for MacroType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Raw => "mraw",
+		};
+		write!(f, "{text}")
+	}
+}
+
 #[derive(Clone, PartialEq)]
 pub enum DataTypeContents {
 	Score(ScoreTypeContents),
 	NBT(NBTTypeContents),
+	Macro(MacroTypeContents),
 }
 
 impl DataTypeContents {
@@ -221,12 +252,14 @@ impl DataTypeContents {
 		match self {
 			Self::Score(score) => score.get_ty(),
 			Self::NBT(nbt) => nbt.get_ty(),
+			Self::Macro(mac) => mac.get_ty(),
 		}
 	}
 
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Score(l), Self::Score(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::NBT(l), Self::NBT(r)) if l.is_value_eq(r))
+			|| matches!((self, other), (Self::Macro(l), Self::Macro(r)) if l.is_value_eq(r))
 	}
 }
 
@@ -235,6 +268,7 @@ impl Debug for DataTypeContents {
 		match self {
 			Self::Score(score) => score.fmt(f),
 			Self::NBT(nbt) => nbt.fmt(f),
+			Self::Macro(mac) => mac.fmt(f),
 		}
 	}
 }
@@ -255,8 +289,8 @@ impl ScoreTypeContents {
 
 	pub fn get_i32(&self) -> i32 {
 		match self {
-			ScoreTypeContents::Score(score) => *score,
-			ScoreTypeContents::Bool(score) => *score as i32,
+			Self::Score(score) => *score,
+			Self::Bool(score) => *score as i32,
 		}
 	}
 
@@ -272,7 +306,7 @@ impl ScoreTypeContents {
 impl Debug for ScoreTypeContents {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
-			Self::Score(val) => format!("{val}.s"),
+			Self::Score(val) => format!("{val}s"),
 			Self::Bool(val) => format!("{val}"),
 		};
 		write!(f, "{text}")
@@ -551,6 +585,38 @@ fn fmt_compound<W: std::fmt::Write, I, F: Fn(&mut W, &I) -> std::fmt::Result>(
 	write!(f, "}}")?;
 
 	Ok(())
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum MacroTypeContents {
+	Raw(String),
+}
+
+impl MacroTypeContents {
+	pub fn get_ty(&self) -> DataType {
+		match self {
+			Self::Raw(..) => DataType::Macro(MacroType::Raw),
+		}
+	}
+
+	pub fn get_literal_str(&self) -> String {
+		match self {
+			Self::Raw(val) => val.clone(),
+		}
+	}
+
+	pub fn is_value_eq(&self, other: &Self) -> bool {
+		matches!((self, other), (Self::Raw(l), Self::Raw(r)) if l == r)
+	}
+}
+
+impl Debug for MacroTypeContents {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let text = match self {
+			Self::Raw(val) => format!("\"{val}\"mraw"),
+		};
+		write!(f, "{text}")
+	}
 }
 
 fn write_string(string: String) -> String {

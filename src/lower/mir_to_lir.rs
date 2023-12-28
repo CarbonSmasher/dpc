@@ -614,6 +614,7 @@ fn lower_assign(
 							1.0,
 						)?
 					}
+					_ => bail!("Type not supported"),
 				};
 
 				let get_instr = match val_ty {
@@ -623,6 +624,7 @@ fn lower_assign(
 					DataType::NBT(..) => {
 						LIRInstrKind::GetData(val.clone().to_mutable_nbt_value()?, 1.0)
 					}
+					_ => bail!("Type not supported"),
 				};
 				out.push(LIRInstruction::with_modifiers(
 					get_instr,
@@ -668,6 +670,7 @@ fn lower_assign(
 			DataType::NBT(..) => {
 				LIRInstrKind::SetData(left.to_mutable_nbt_value()?, right_val.to_nbt_value()?)
 			}
+			_ => bail!("Type not supported"),
 		};
 		out.push(LIRInstruction::new(kind));
 	}
@@ -869,6 +872,7 @@ fn lower_get(
 	let kind = match value.get_ty(&lbcx.registers, &lbcx.sig)? {
 		DataType::Score(..) => LIRInstrKind::GetScore(value.to_mutable_score_value()?),
 		DataType::NBT(..) => LIRInstrKind::GetData(value.to_mutable_nbt_value()?, scale),
+		_ => bail!("Type not supported"),
 	};
 
 	Ok(kind)
@@ -943,6 +947,7 @@ fn lower_rm(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKi
 	let kind = match val.get_ty(&lbcx.registers, &lbcx.sig)? {
 		DataType::Score(..) => LIRInstrKind::ResetScore(val.to_mutable_score_value()?),
 		DataType::NBT(..) => LIRInstrKind::RemoveData(val.to_mutable_nbt_value()?),
+		_ => bail!("Type not supported"),
 	};
 
 	Ok(kind)
@@ -986,6 +991,7 @@ fn lower_condition(
 					NBTValue::Constant(..) => IfModCondition::Const(true),
 					NBTValue::Mutable(val) => IfModCondition::DataExists(val),
 				},
+				_ => bail!("Type not supported"),
 			};
 
 			(Vec::new(), cond)

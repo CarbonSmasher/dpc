@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, bail, Context};
 
 use crate::common::mc::modifier::{
 	EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreDataType,
@@ -294,6 +294,7 @@ impl StoreModLocation {
 							.context("Type is not a valid storage type")?;
 						cgformat!(cbcx, loc, " ", ty, " ", FloatCG(scale, false, true, true))
 					}
+					_ => bail!("Type not supported"),
 				}
 			}
 			Self::Score(score) => Ok(cgformat!(cbcx, "score {}", score)?),

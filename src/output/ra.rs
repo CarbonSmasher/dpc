@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use dashmap::{DashMap, DashSet};
 
 use crate::common::ty::DataType;
@@ -170,6 +170,7 @@ pub fn alloc_block_registers(
 						out_locals.insert(reg_id.clone(), racx.new_local());
 					}
 				}
+				_ => bail!("Type not supported"),
 			}
 		}
 
@@ -190,6 +191,7 @@ pub fn alloc_block_registers(
 							.get(reg_id)
 							.ok_or(anyhow!("Used register {reg_id} does not exist"))?,
 					),
+					_ => bail!("Type not supported"),
 				}
 			}
 		}
