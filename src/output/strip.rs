@@ -55,8 +55,11 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 		let func = lir
 			.functions
 			.values()
-			.find(|x| &x.interface.id == func_id)
-			.expect("Function does not exist");
+			.find(|x| &x.interface.id == func_id);
+		// If it doesn't exist, then its probably a extern call that we can ignore
+		let Some(func) = func else {
+			continue;
+		};
 		if func.interface.annotations.preserve || func.interface.annotations.no_strip {
 			out.0.insert(func_id.clone(), func_id.clone());
 		} else {
