@@ -51,7 +51,7 @@ pub fn get_control_comment(contents: &str) -> anyhow::Result<(CodegenIRSettings,
 pub fn create_output(pack: Datapack) -> anyhow::Result<String> {
 	let mut out = String::new();
 	for (id, func) in pack.functions.iter().sorted_by_key(|x| x.0) {
-		writeln!(&mut out, "# === {id} ===")?;
+		writeln!(&mut out, "# === {id} === #")?;
 		for cmd in &func.contents {
 			writeln!(&mut out, "{cmd}")?;
 		}

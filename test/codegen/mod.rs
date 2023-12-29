@@ -1,6 +1,6 @@
 mod common;
 
-use std::{fmt::Debug, panic::catch_unwind};
+use std::{fmt::Debug, io::Write, panic::catch_unwind, path::PathBuf};
 
 use anyhow::{bail, Context};
 use color_print::cprintln;
@@ -23,6 +23,12 @@ fn collect_tests<'dir>(dir: &'dir Dir<'dir>, out: &mut Vec<&'dir File<'dir>>) {
 }
 
 fn main() {
+	let generate = if let Some(arg) = std::env::args().nth(1) {
+		arg == "generate"
+	} else {
+		false
+	};
+
 	let mut tests = Vec::new();
 	collect_tests(&TESTS, &mut tests);
 
@@ -50,7 +56,8 @@ fn main() {
 	for test in test_names {
 		println!("     - Running codegen test '{test}'");
 		let result = catch_unwind(|| {
-			run_test(&test).unwrap_or_else(|e| panic!("Test {test} failed with error:\n{e:?}"))
+			run_test(&test, generate)
+				.unwrap_or_else(|e| panic!("Test {test} failed with error:\n{e:?}"))
 		});
 		match result {
 			Ok(..) => cprintln!("     - <g>Test {test} successful"),
@@ -66,7 +73,7 @@ fn main() {
 	}
 }
 
-fn run_test(test_name: &str) -> anyhow::Result<()> {
+fn run_test(test_name: &str, generate: bool) -> anyhow::Result<()> {
 	let input_contents = TESTS
 		.get_file(format!("{test_name}.dpc"))
 		.expect("Input file does not exist")
@@ -97,19 +104,30 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 		get_control_comment(input_contents).expect("Failed to get control comment");
 	let datapack = codegen_ir(ir, &project, settings).context("Failed to codegen input")?;
 
-	// Check the test function
-	let Some(..) = datapack.functions.get(TEST_ENTRYPOINT) else {
-		bail!("Test function does not exist")
-	};
-	let actual = create_output(datapack).expect("Failed to create actual test output");
-	assert_eq!(
-		actual.lines().count(),
-		output_contents.lines().count(),
-		"Functions are of different lengths"
-	);
-	let expected = output_contents.lines();
-	for (i, (l, r)) in expected.zip(actual.lines()).enumerate() {
-		assert_eq!(l, r, "Command mismatch at {i}");
+	// Generate if we need to
+	if generate {
+		let test_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+			.join("test/codegen/tests")
+			.join(format!("{test_name}.mcfunction"));
+		println!("Regenerating...");
+		let mut out_file = std::fs::File::create(test_path).expect("Failed to create output file");
+		let output = create_output(datapack).expect("Failed to output generated test");
+		write!(&mut out_file, "{output}").expect("Failed to write");
+	} else {
+		// Check the test function
+		let Some(..) = datapack.functions.get(TEST_ENTRYPOINT) else {
+			bail!("Test function does not exist")
+		};
+		let actual = create_output(datapack).expect("Failed to create actual test output");
+		assert_eq!(
+			actual.lines().count(),
+			output_contents.lines().count(),
+			"Functions are of different lengths"
+		);
+		let expected = output_contents.lines();
+		for (i, (l, r)) in expected.zip(actual.lines()).enumerate() {
+			assert_eq!(l, r, "Command mismatch at {i}");
+		}
 	}
 
 	Ok(())

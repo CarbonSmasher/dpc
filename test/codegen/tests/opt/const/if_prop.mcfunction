@@ -1,9 +1,9 @@
-# === dpc:init ===
+# === dpc:init === #
 scoreboard objectives add _r dummy
 scoreboard objectives add _l dummy
 scoreboard players set %l1 _l 1
 
-# === test:main ===
+# === test:main === #
 execute if score foo bar matches 5.. run say hello
 scoreboard players set %rtest_main0 _r 10
 scoreboard players operation %rtest_main1 _r = @s foo

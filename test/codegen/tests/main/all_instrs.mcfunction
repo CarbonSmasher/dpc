@@ -1,13 +1,13 @@
-# === dpc:init ===
+# === dpc:init === #
 scoreboard objectives add _r dummy
 scoreboard objectives add _l dummy
 scoreboard players set %l-1 _l -1
 scoreboard players set %l1 _l 1
 
-# === test:foo ===
+# === test:foo === #
 return 7
 
-# === test:main ===
+# === test:main === #
 scoreboard players set %rtest_main0 _r 7
 scoreboard players operation %rtest_main0 _r = %rtest_main0 _r
 scoreboard players add %rtest_main0 _r 1
