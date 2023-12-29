@@ -38,11 +38,11 @@ impl Pass for ConstFoldPass {
 impl MIRPass for ConstFoldPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut fold_points = DashMap::new();
-		for block in data.mir.functions.values_mut() {
+		for func in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
-				.get_mut(block)
+				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			fold_points.clear();

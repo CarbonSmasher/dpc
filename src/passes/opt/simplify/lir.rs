@@ -18,10 +18,10 @@ impl Pass for LIRSimplifyPass {
 
 impl LIRPass for LIRSimplifyPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		for block in lir.functions.values_mut() {
+		for func in lir.functions.values_mut() {
 			let block = lir
 				.blocks
-				.get_mut(block)
+				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			// We persist the same set of removed instructions across all iterations

@@ -41,6 +41,9 @@ pub fn codegen_ir(
 		println!("MIR:");
 		dbg!(&mir.blocks);
 	}
+	if settings.debug_functions {
+		dbg!(&mir.functions);
+	}
 
 	if settings.mir_passes {
 		run_mir_passes(&mut mir, settings.debug).context("MIR passes failed")?;
@@ -48,6 +51,9 @@ pub fn codegen_ir(
 			println!("Optimized MIR:");
 			dbg!(&mir.blocks);
 		}
+	}
+	if settings.debug_functions {
+		dbg!(&mir.functions);
 	}
 	let final_count = mir.blocks.instr_count();
 	let pct = if init_count == 0 {
@@ -65,12 +71,18 @@ pub fn codegen_ir(
 		println!("LIR:");
 		dbg!(&lir.blocks);
 	}
+	if settings.debug_functions {
+		dbg!(&lir.functions);
+	}
 	if settings.lir_passes {
 		run_lir_passes(&mut lir, settings.debug).context("LIR passes failed")?;
 		if settings.debug {
 			println!("Optimized LIR:");
 			dbg!(&lir.blocks);
 		}
+	}
+	if settings.debug_functions {
+		dbg!(&lir.functions);
 	}
 	let final_count = lir.blocks.instr_count();
 	let pct = if init_count == 0 {
@@ -96,6 +108,7 @@ pub fn codegen_ir(
 /// Settings for the codegen_ir utility function
 pub struct CodegenIRSettings {
 	pub debug: bool,
+	pub debug_functions: bool,
 	pub ir_passes: bool,
 	pub mir_passes: bool,
 	pub lir_passes: bool,
@@ -106,6 +119,7 @@ impl CodegenIRSettings {
 	pub fn new() -> Self {
 		Self {
 			debug: false,
+			debug_functions: false,
 			ir_passes: true,
 			mir_passes: false,
 			lir_passes: false,

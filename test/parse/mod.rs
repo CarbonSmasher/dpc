@@ -1,7 +1,7 @@
 use std::panic::catch_unwind;
 
 use anyhow::{bail, Context};
-use dpc::common::function::FunctionInterface;
+use dpc::common::function::{Function, FunctionInterface};
 use dpc::common::ty::{DataType, DataTypeContents, ScoreType, ScoreTypeContents};
 use dpc::common::{val::Value, DeclareBinding};
 use dpc::ir::{Block, InstrKind, IR};
@@ -47,8 +47,13 @@ fn main() {
 		}
 
 		let block = ir.blocks.add(block);
-		ir.functions
-			.insert(FunctionInterface::new("test:main/main".into()), block);
+		ir.functions.insert(
+			"test:main/main".into(),
+			Function {
+				interface: FunctionInterface::new("test:main/main".into()),
+				block,
+			},
+		);
 
 		ir
 	})];
@@ -67,18 +72,18 @@ fn run_test(test: Test) -> anyhow::Result<()> {
 	let mut parse = Parser::new();
 	parse.parse(test.input).context("Failed to parse")?;
 	let actual = parse.finish();
-	for (func, block) in test.output.functions {
-		let Some(actual_block) = actual.functions.get(&func) else {
+	for (func_id, func) in test.output.functions {
+		let Some(actual_func) = actual.functions.get(&func_id) else {
 			bail!("Function in output does not exist in input")
 		};
 		let expected_block = test
 			.output
 			.blocks
-			.get(&block)
+			.get(&func.block)
 			.context("Expected block does not exist")?;
 		let actual_block = actual
 			.blocks
-			.get(actual_block)
+			.get(&actual_func.block)
 			.context("Actual block does not exist")?;
 
 		// Check the instructions

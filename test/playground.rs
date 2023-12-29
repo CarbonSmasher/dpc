@@ -2,7 +2,7 @@
 
 use anyhow::Context;
 use dpc::common::function::{
-	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
+	CallInterface, Function, FunctionAnnotations, FunctionInterface, FunctionSignature,
 };
 use dpc::common::mc::block::{BlockData, BlockProperties, SetBlockData, SetBlockMode};
 use dpc::common::mc::entity::{SelectorType, TargetSelector};
@@ -48,8 +48,15 @@ fn known() {
 	let mut annotations = FunctionAnnotations::new();
 	annotations.preserve = true;
 	ir.functions.insert(
-		FunctionInterface::with_all("foo:baz".into(), FunctionSignature::new(), annotations),
-		block,
+		"foo_baz".into(),
+		Function {
+			interface: FunctionInterface::with_all(
+				"foo:baz".into(),
+				FunctionSignature::new(),
+				annotations,
+			),
+			block,
+		},
 	);
 
 	let mut block = Block::new();
@@ -211,8 +218,13 @@ fn known() {
 	}
 
 	let block = ir.blocks.add(block);
-	ir.functions
-		.insert(FunctionInterface::new("foo:bar".into()), block);
+	ir.functions.insert(
+		"foo:bar".into(),
+		Function {
+			interface: FunctionInterface::new("foo:bar".into()),
+			block,
+		},
+	);
 
 	let mut block = Block::new();
 	push_instrs! {
@@ -239,12 +251,15 @@ fn known() {
 	let block = ir.blocks.add(block);
 
 	ir.functions.insert(
-		FunctionInterface::with_all(
-			"foo:main".into(),
-			FunctionSignature::new(),
-			FunctionAnnotations::new(),
-		),
-		block,
+		"foo:main".into(),
+		Function {
+			interface: FunctionInterface::with_all(
+				"foo:main".into(),
+				FunctionSignature::new(),
+				FunctionAnnotations::new(),
+			),
+			block,
+		},
 	);
 
 	let res = run(ir, true);
@@ -380,11 +395,21 @@ fn fuzz() {
 		let mut annotations = FunctionAnnotations::new();
 		annotations.preserve = true;
 		let func = if fn_i == 0 {
-			FunctionInterface::with_all(func_id.into(), FunctionSignature::new(), annotations)
+			FunctionInterface::with_all(
+				func_id.clone().into(),
+				FunctionSignature::new(),
+				annotations,
+			)
 		} else {
-			FunctionInterface::new(func_id.into())
+			FunctionInterface::new(func_id.clone().into())
 		};
-		ir.functions.insert(func, block);
+		ir.functions.insert(
+			func_id.into(),
+			Function {
+				interface: func,
+				block,
+			},
+		);
 	}
 	let res = run(ir, debug);
 	if let Err(e) = res {

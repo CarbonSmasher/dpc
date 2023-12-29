@@ -1,8 +1,15 @@
+use super::block::BlockID;
 use super::val::MutableValue;
 use super::{ty::DataType, ResourceLocation};
 use super::{Identifier, Value};
 use std::fmt::Debug;
 use std::hash::Hash;
+
+#[derive(Debug, Clone)]
+pub struct Function {
+	pub interface: FunctionInterface,
+	pub block: BlockID,
+}
 
 #[derive(Clone)]
 pub struct FunctionInterface {

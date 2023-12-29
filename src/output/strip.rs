@@ -32,8 +32,8 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 	// Sort functions by how many times they are called
 	let mut counts = HashMap::new();
 
-	for block in lir.functions.values() {
-		let block = lir.blocks.get(block).expect("Block does not exist");
+	for func in lir.functions.values() {
+		let block = lir.blocks.get(&func.block).expect("Block does not exist");
 		for instr in &block.contents {
 			if let LIRInstrKind::Call(func) = &instr.kind {
 				let entry = counts.entry(func);
@@ -54,10 +54,10 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 	{
 		let func = lir
 			.functions
-			.keys()
-			.find(|x| &x.id == func_id)
+			.values()
+			.find(|x| &x.interface.id == func_id)
 			.expect("Function does not exist");
-		if func.annotations.preserve || func.annotations.no_strip {
+		if func.interface.annotations.preserve || func.interface.annotations.no_strip {
 			out.0.insert(func_id.clone(), func_id.clone());
 		} else {
 			let mut name = get_stripped_name_unstable(idx, &RESOURCE_LOCATION_CHARSET);

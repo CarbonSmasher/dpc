@@ -1,8 +1,6 @@
-use std::{
-	io::{stdin, Read},
-	path::PathBuf,
-	process::ExitCode,
-};
+use std::io::{stdin, Read};
+use std::path::PathBuf;
+use std::process::ExitCode;
 
 use anyhow::Context;
 use clap::Parser;
@@ -41,6 +39,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 
 	let settings = CodegenIRSettings {
 		debug: false,
+		debug_functions: false,
 		ir_passes: false,
 		mir_passes: false,
 		lir_passes: false,

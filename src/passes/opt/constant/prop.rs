@@ -39,11 +39,11 @@ impl Pass for ConstPropPass {
 
 impl MIRPass for ConstPropPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		for block in data.mir.functions.values_mut() {
+		for func in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
-				.get_mut(block)
+				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 			loop {
 				let run_again = run_const_prop_iter(block);

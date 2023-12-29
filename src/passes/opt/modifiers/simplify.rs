@@ -18,10 +18,10 @@ impl LIRPass for SimplifyModifiersPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		let mut mods_to_remove = DashSetEmptyTracker::new();
 
-		for block in lir.functions.values_mut() {
+		for func in lir.functions.values_mut() {
 			let block = lir
 				.blocks
-				.get_mut(block)
+				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			for instr in &mut block.contents {

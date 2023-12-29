@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
-use crate::common::function::FunctionInterface;
+use crate::common::function::Function;
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::entity::{AttributeType, EffectDuration, UUID};
 use crate::common::mc::item::ItemData;
@@ -19,7 +19,7 @@ use crate::common::{Identifier, RegisterList, ResourceLocation};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
-	pub functions: HashMap<FunctionInterface, BlockID>,
+	pub functions: HashMap<ResourceLocation, Function>,
 	pub blocks: BlockAllocator<LIRBlock>,
 }
 

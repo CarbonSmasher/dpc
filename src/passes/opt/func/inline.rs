@@ -2,10 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, Context};
 
-use crate::common::block::{BlockAllocator, BlockID};
-use crate::common::function::{
-	FunctionAnnotations, FunctionArgs, FunctionInterface, FunctionSignature,
-};
+use crate::common::block::BlockAllocator;
+use crate::common::function::{Function, FunctionArgs, FunctionInterface, FunctionSignature};
 use crate::common::val::{MutableValue, Value};
 use crate::common::{DeclareBinding, Identifier, Register, RegisterList, ResourceLocation};
 use crate::lower::{cleanup_fn_id, fmt_lowered_arg};
@@ -27,17 +25,17 @@ impl MIRPass for SimpleInlinePass {
 		let mut instrs_to_remove_set = HashSet::new();
 		let cloned_funcs = data.mir.functions.clone();
 		let cloned_blocks = data.mir.blocks.clone();
-		for (func, block) in &mut data.mir.functions {
+		for func in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
-				.get_mut(block)
+				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			loop {
 				instrs_to_remove.clear();
 				let run_again = run_simple_inline_iter(
-					func,
+					&func.interface,
 					block,
 					&mut instrs_to_remove,
 					&mut instrs_to_remove_set,
@@ -64,7 +62,7 @@ fn run_simple_inline_iter(
 	instrs_to_remove: &mut Vec<(usize, Vec<MIRInstruction>)>,
 	instrs_to_remove_set: &mut HashSet<usize>,
 	inline_candidates: &HashSet<ResourceLocation>,
-	cloned_funcs: &HashMap<FunctionInterface, BlockID>,
+	cloned_funcs: &HashMap<ResourceLocation, Function>,
 	cloned_blocks: &BlockAllocator<MIRBlock>,
 ) -> anyhow::Result<bool> {
 	let mut run_again = false;
@@ -90,14 +88,10 @@ fn run_simple_inline_iter(
 				continue;
 			}
 			let func = cloned_funcs
-				.get(&FunctionInterface {
-					id: call.function.clone(),
-					sig: FunctionSignature::new(),
-					annotations: FunctionAnnotations::new(),
-				})
+				.get(&call.function)
 				.ok_or(anyhow!("Called function does not exist"))?;
 			let inlined_block = cloned_blocks
-				.get(func)
+				.get(&func.block)
 				.ok_or(anyhow!("Inlined block does not exist"))?;
 
 			// Inline the block

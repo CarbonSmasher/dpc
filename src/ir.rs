@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
 use crate::common::condition::Condition;
-use crate::common::function::{CallInterface, FunctionInterface};
+use crate::common::function::{CallInterface, Function};
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::entity::{AttributeType, EffectDuration, UUID};
 use crate::common::mc::item::ItemData;
@@ -19,7 +19,7 @@ use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, R
 
 #[derive(Debug, Clone)]
 pub struct IR {
-	pub functions: HashMap<FunctionInterface, BlockID>,
+	pub functions: HashMap<ResourceLocation, Function>,
 	pub blocks: BlockAllocator<Block>,
 }
 

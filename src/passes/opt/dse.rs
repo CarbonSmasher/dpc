@@ -18,11 +18,11 @@ impl Pass for DSEPass {
 impl MIRPass for DSEPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut instrs_to_remove = DashSetEmptyTracker::new();
-		for block in data.mir.functions.values_mut() {
+		for func in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
-				.get_mut(block)
+				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			instrs_to_remove.clear();

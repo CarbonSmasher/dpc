@@ -13,7 +13,8 @@ use self::analysis::ir::ValidatePass;
 use self::opt::constant::{fold::ConstFoldPass, prop::ConstPropPass, ConstComboPass};
 use self::opt::dce::DCEPass;
 use self::opt::dse::DSEPass;
-use self::opt::inline::SimpleInlinePass;
+use self::opt::func::inline::SimpleInlinePass;
+use self::opt::func::unused_args::UnusedArgsPass;
 use self::opt::inst_combine::InstCombinePass;
 use self::opt::modifiers::merge::MergeModifiersPass;
 use self::opt::modifiers::simplify::SimplifyModifiersPass;
@@ -59,6 +60,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(InlineCandidatesPass),
 		Box::new(SimpleInlinePass),
 		Box::new(DCEPass),
+		Box::new(UnusedArgsPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(ConstComboPass),
 		Box::new(MIRSimplifyPass),
@@ -74,6 +76,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(DSEPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(DCEPass),
+		Box::new(UnusedArgsPass),
 	];
 
 	let mut data = MIRPassData {

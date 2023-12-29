@@ -4,7 +4,7 @@ use std::{fmt::Debug, panic::catch_unwind};
 
 use anyhow::{bail, Context};
 use color_print::cprintln;
-use dpc::{codegen_ir, common::function::FunctionInterface, parse::Parser};
+use dpc::{codegen_ir, parse::Parser};
 use include_dir::{include_dir, Dir, DirEntry, File};
 
 use crate::common::{create_output, get_control_comment, TEST_ENTRYPOINT};
@@ -86,10 +86,10 @@ fn run_test(test_name: &str) -> anyhow::Result<()> {
 	let mut ir = parse.finish();
 
 	// Make sure the test function is marked as preserve
-	let Some(mut actual) = ir.functions.remove_entry(&FunctionInterface::new(TEST_ENTRYPOINT.into())) else {
+	let Some(mut actual) = ir.functions.remove_entry(TEST_ENTRYPOINT) else {
 		bail!("Test function does not exist")
 	};
-	actual.0.annotations.preserve = true;
+	actual.1.interface.annotations.preserve = true;
 	ir.functions.insert(actual.0, actual.1);
 
 	// Run the codegen

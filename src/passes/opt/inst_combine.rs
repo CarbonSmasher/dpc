@@ -18,11 +18,11 @@ impl Pass for InstCombinePass {
 
 impl MIRPass for InstCombinePass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		for block in data.mir.functions.values_mut() {
+		for func in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
-				.get_mut(block)
+				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 			let mut removed_indices = DashSetEmptyTracker::new();
 			loop {

@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Context};
 
 use crate::common::condition::Condition;
-use crate::common::function::{FunctionInterface, FunctionSignature};
+use crate::common::function::{Function, FunctionInterface, FunctionSignature};
 use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreDataType, StoreModLocation,
 };
@@ -33,14 +33,14 @@ macro_rules! lower {
 /// Lower MIR to LIR
 pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 	let mut lir = LIR::with_capacity(mir.functions.len(), mir.blocks.count());
-	for (interface, block) in mir.functions {
+	for (func_id, func) in mir.functions {
 		let block = mir
 			.blocks
-			.remove(&block)
+			.remove(&func.block)
 			.ok_or(anyhow!("Block does not exist"))?;
 		let mut lir_instrs = Vec::with_capacity(block.contents.len());
 
-		let mut lbcx = LowerBlockCx::new(&mut lir, interface.sig.clone());
+		let mut lbcx = LowerBlockCx::new(&mut lir, func.interface.sig.clone());
 
 		for mir_instr in block.contents {
 			lower_kind(mir_instr.kind, &mut lir_instrs, &mut lbcx)?;
@@ -49,8 +49,14 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 		let mut lir_block = LIRBlock::new(lbcx.registers);
 		lir_block.contents = lir_instrs;
 
-		let id = lir.blocks.add(lir_block);
-		lir.functions.insert(interface, id);
+		let block = lir.blocks.add(lir_block);
+		lir.functions.insert(
+			func_id,
+			Function {
+				interface: func.interface,
+				block,
+			},
+		);
 	}
 
 	Ok(lir)
@@ -1104,7 +1110,13 @@ fn lower_subinstr(instr: MIRInstrKind, lbcx: &mut LowerBlockCx) -> anyhow::Resul
 		lir_block.contents = new_lir_instrs;
 		let block = lbcx.lir.blocks.add(lir_block);
 		let interface = lbcx.new_if_body_fn();
-		lbcx.lir.functions.insert(interface.clone(), block);
+		lbcx.lir.functions.insert(
+			interface.id.clone(),
+			Function {
+				interface: interface.clone(),
+				block,
+			},
+		);
 		LIRInstruction::new(LIRInstrKind::Call(interface.id))
 	};
 

@@ -10,7 +10,7 @@ use crate::{
 pub mod constant;
 pub mod dce;
 pub mod dse;
-pub mod inline;
+pub mod func;
 pub mod inst_combine;
 pub mod modifiers;
 pub mod scoreboard_dataflow;

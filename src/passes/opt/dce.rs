@@ -17,11 +17,11 @@ impl MIRPass for DCEPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		// Find used functions
 		let used = DashSet::new();
-		for block in data.mir.functions.values() {
+		for func in data.mir.functions.values() {
 			let block = data
 				.mir
 				.blocks
-				.get(block)
+				.get(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			for instr in &block.contents {
@@ -34,13 +34,13 @@ impl MIRPass for DCEPass {
 
 		// Remove unused functions
 		let unused = DashSet::new();
-		for (func, block) in &data.mir.functions {
-			if func.annotations.preserve {
+		for (func_id, func) in &data.mir.functions {
+			if func.interface.annotations.preserve {
 				continue;
 			}
-			if !used.contains(&func.id) {
-				unused.insert(func.clone());
-				data.mir.blocks.remove(block);
+			if !used.contains(func_id) {
+				unused.insert(func_id.clone());
+				data.mir.blocks.remove(&func.block);
 			}
 		}
 		for unused in unused {

@@ -1,0 +1,28 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	call run "test:uses_all", 0s, 1s, 2s, 3s, 4s;
+	call run "test:uses_one", 0s, 1s, 2s;
+	call run "test:uses_two", 0s, 1s, 2s, 3s, 4s, 5s;
+}
+
+@no_inline
+"test:uses_all" score score score score score {
+	use &0;
+	use &1;
+	use &2;
+	use &3;
+	use &4;
+}
+
+@no_inline
+"test:uses_one" score score score {
+	use &1;
+}
+
+@no_inline
+"test:uses_two" score score score score score score {
+	use &1;
+	use &4;
+}

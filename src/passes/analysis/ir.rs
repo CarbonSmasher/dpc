@@ -15,10 +15,10 @@ impl Pass for ValidatePass {
 
 impl IRPass for ValidatePass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()> {
-		for (func, block) in &ir.functions {
+		for func in ir.functions.values() {
 			let block = ir
 				.blocks
-				.get_mut(block)
+				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 			let regs = RegisterList::new();
 			for (i, instr) in block.contents.iter().enumerate() {
@@ -27,7 +27,7 @@ impl IRPass for ValidatePass {
 						if regs.contains_key(left) {
 							bail!("Redefinition of register {left} at {i}");
 						}
-						let right_ty = right.get_ty(&regs, &func.sig)?;
+						let right_ty = right.get_ty(&regs, &func.interface.sig)?;
 						if let Some(right_ty) = right_ty {
 							if !right_ty.is_trivially_castable(ty) {
 								bail!("Register type does not match value type at {i}");
@@ -47,7 +47,8 @@ impl IRPass for ValidatePass {
 					| InstrKind::Mod { left, right }
 					| InstrKind::Min { left, right }
 					| InstrKind::Max { left, right } => {
-						let (left_ty, right_ty) = get_op_tys(left, right, &regs, &func.sig)?;
+						let (left_ty, right_ty) =
+							get_op_tys(left, right, &regs, &func.interface.sig)?;
 						if !right_ty.is_trivially_castable(&left_ty) {
 							bail!("Incompatible types in instruction at {i}");
 						}
@@ -55,7 +56,7 @@ impl IRPass for ValidatePass {
 					InstrKind::Push { left, right }
 					| InstrKind::PushFront { left, right }
 					| InstrKind::Insert { left, right, .. } => {
-						let (left, right) = get_op_tys(left, right, &regs, &func.sig)?;
+						let (left, right) = get_op_tys(left, right, &regs, &func.interface.sig)?;
 						let (DataType::NBT(left), DataType::NBT(right)) = (left, right) else {
 							bail!("Incompatible types in instruction at {i}");
 						};
@@ -65,8 +66,8 @@ impl IRPass for ValidatePass {
 					}
 					InstrKind::Swap { left, right } => {
 						if !right
-							.get_ty(&regs, &func.sig)?
-							.is_trivially_castable(&left.get_ty(&regs, &func.sig)?)
+							.get_ty(&regs, &func.interface.sig)?
+							.is_trivially_castable(&left.get_ty(&regs, &func.interface.sig)?)
 						{
 							bail!("Incompatible types in instruction at {i}");
 						}

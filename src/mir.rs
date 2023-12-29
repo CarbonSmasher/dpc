@@ -3,9 +3,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::condition::Condition;
-use crate::common::function::{
-	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
-};
+use crate::common::function::{CallInterface, Function};
 use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use crate::common::mc::entity::{AttributeType, EffectDuration, UUID};
 use crate::common::mc::item::ItemData;
@@ -22,7 +20,7 @@ use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, R
 
 #[derive(Debug, Clone)]
 pub struct MIR {
-	pub functions: HashMap<FunctionInterface, BlockID>,
+	pub functions: HashMap<ResourceLocation, Function>,
 	pub blocks: BlockAllocator<MIRBlock>,
 }
 
@@ -39,15 +37,6 @@ impl MIR {
 			functions: HashMap::with_capacity(function_capacity),
 			blocks: BlockAllocator::with_capacity(block_capacity),
 		}
-	}
-
-	/// Get the data and block of a function with an ID
-	pub fn get_fn(&self, id: &ResourceLocation) -> Option<(&FunctionInterface, &BlockID)> {
-		self.functions.get_key_value(&FunctionInterface {
-			id: id.clone(),
-			sig: FunctionSignature::new(),
-			annotations: FunctionAnnotations::new(),
-		})
 	}
 }
 

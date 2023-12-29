@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use anyhow::{bail, Context};
 
 use crate::common::function::{
-	FunctionAnnotations, FunctionInterface, FunctionSignature, ReturnType,
+	Function, FunctionAnnotations, FunctionInterface, FunctionSignature, ReturnType,
 };
 use crate::ir::{Block, IR};
 use crate::parse::lex::{Side, Token};
@@ -177,7 +177,8 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 		let mut block = Block::new();
 		block.contents = body;
 		let block = ir.blocks.add(block);
-		ir.functions.insert(interface, block);
+		ir.functions
+			.insert(interface.id.clone(), Function { interface, block });
 	}
 
 	Ok(())

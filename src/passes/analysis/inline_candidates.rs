@@ -21,11 +21,11 @@ impl MIRPass for InlineCandidatesPass {
 			set: HashSet::new(),
 		};
 		let mut checked = HashSet::new();
-		for fun in data.mir.functions.keys() {
+		for func in data.mir.functions.keys() {
 			checked.clear();
-			data.inline_candidates.insert(fun.id.clone());
+			data.inline_candidates.insert(func.clone());
 			check_recursion(
-				&fun.id,
+				&func,
 				data.mir,
 				&mut data.inline_candidates,
 				&mut call_stack,
@@ -38,24 +38,25 @@ impl MIRPass for InlineCandidatesPass {
 }
 
 fn check_recursion<'fun>(
-	func: &'fun ResourceLocation,
+	func_id: &'fun ResourceLocation,
 	mir: &'fun MIR,
 	candidates: &mut HashSet<ResourceLocation>,
 	call_stack: &mut CallStack,
 	checked: &mut HashSet<&'fun ResourceLocation>,
 ) -> anyhow::Result<()> {
-	checked.insert(func);
-	call_stack.set.insert(func.clone());
+	checked.insert(func_id);
+	call_stack.set.insert(func_id.clone());
 
 	let func_item = mir
-		.get_fn(func)
+		.functions
+		.get(func_id)
 		.ok_or(anyhow!("Called function does not exist"))?;
-	if func_item.0.annotations.no_inline {
-		candidates.remove(func);
+	if func_item.interface.annotations.no_inline {
+		candidates.remove(func_id);
 	}
 	let block = mir
 		.blocks
-		.get(func_item.1)
+		.get(&func_item.block)
 		.ok_or(anyhow!("Block does not exist"))?;
 
 	for instr in &block.contents {
@@ -75,7 +76,7 @@ fn check_recursion<'fun>(
 		}
 	}
 
-	call_stack.set.remove(func);
+	call_stack.set.remove(func_id);
 
 	Ok(())
 }

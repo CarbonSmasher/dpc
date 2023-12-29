@@ -22,15 +22,15 @@ pub fn link(lir: LIR, project: &ProjectSettings) -> anyhow::Result<Datapack> {
 	let mapping = self::strip::strip(&lir, project);
 
 	let mut ccx = CodegenCx::new(project, mapping);
-	for (interface, block) in lir.functions {
-		let mut func_id = interface.id.clone();
+	for (func_id, func) in lir.functions {
+		let mut func_id = func_id.clone();
 		if let Some(mapping) = &ccx.func_mapping {
 			if let Some(new_id) = mapping.0.get(&func_id) {
 				func_id = new_id.clone();
 			}
 		}
-		let fun = codegen_fn(&func_id, &lir.blocks, &mut ccx, &block)
-			.with_context(|| format!("In function {:?}", interface))?;
+		let fun = codegen_fn(&func_id, &lir.blocks, &mut ccx, &func.block)
+			.with_context(|| format!("In function {:?}", func.interface))?;
 
 		out.functions.insert(func_id, fun);
 	}

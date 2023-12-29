@@ -13,6 +13,7 @@ pub static TEST_ENTRYPOINT: &str = "test:main";
 pub fn get_control_comment(contents: &str) -> anyhow::Result<(CodegenIRSettings, ProjectSettings)> {
 	let default = CodegenIRSettings {
 		debug: false,
+		debug_functions: false,
 		ir_passes: false,
 		mir_passes: false,
 		lir_passes: false,
@@ -24,6 +25,7 @@ pub fn get_control_comment(contents: &str) -> anyhow::Result<(CodegenIRSettings,
 	let Token::Comment(comment) = &first.0 else { return Ok((default, project.build())) };
 
 	let debug = comment.contains("debug");
+	let debug_functions = comment.contains("debug_functions");
 	let ir_passes = comment.contains("ir_passes");
 	let mir_passes = comment.contains("mir_passes");
 	let lir_passes = comment.contains("lir_passes");
@@ -35,6 +37,7 @@ pub fn get_control_comment(contents: &str) -> anyhow::Result<(CodegenIRSettings,
 
 	let settings = CodegenIRSettings {
 		debug,
+		debug_functions,
 		ir_passes,
 		mir_passes,
 		lir_passes,
