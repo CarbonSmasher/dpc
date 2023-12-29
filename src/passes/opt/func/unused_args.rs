@@ -63,12 +63,8 @@ impl MIRPass for UnusedArgsPass {
 				})
 			}
 
-			// dbg!(&func.interface.sig.params);
 			remove_indices(&mut func.interface.sig.params, &unused_args);
-			// dbg!(&func.interface.sig.params);
 
-			// println!("{func_id}");
-			// dbg!(&unused_args);
 			unused.insert(func_id.clone(), unused_args);
 		}
 

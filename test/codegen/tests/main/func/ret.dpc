@@ -1,0 +1,14 @@
+# mir_passes lir_passes
+
+@preserve
+"test:main" {
+	ret 7s;
+	say "I should not exist";
+}
+
+@preserve
+"foo:bar" {
+	say "hello";
+	ret 1s;
+	say "I should not exist";
+}

@@ -1,0 +1,60 @@
+use crate::common::val::Value;
+use crate::mir::MIRInstrKind;
+use crate::passes::{MIRPass, MIRPassData, Pass};
+use anyhow::anyhow;
+
+pub struct CleanupReturnPass;
+
+impl Pass for CleanupReturnPass {
+	fn get_name(&self) -> &'static str {
+		"cleanup_return"
+	}
+}
+
+impl MIRPass for CleanupReturnPass {
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		for func in data.mir.functions.values_mut() {
+			let block = data
+				.mir
+				.blocks
+				.get_mut(&func.block)
+				.ok_or(anyhow!("Block does not exist"))?;
+
+			// Remove all instructions after an early return that is in the bare body
+			let mut rem_pos = None;
+			for (i, instr) in block.contents.iter().enumerate() {
+				match &instr.kind {
+					MIRInstrKind::Return { .. } | MIRInstrKind::ReturnRun { .. } => {
+						rem_pos = Some(i);
+						break;
+					}
+					_ => {}
+				}
+			}
+			if let Some(rem_pos) = rem_pos {
+				// Don't remove the return itself, we will do that next
+				block.contents.truncate(rem_pos + 1);
+			}
+
+			// Remove a ret 1 at the end of the block
+			let mut rem_last = false;
+			if let Some(last) = block.contents.last() {
+				if let MIRInstrKind::Return {
+					value: Value::Constant(val),
+				} = &last.kind
+				{
+					if let Some(val) = val.try_get_i32() {
+						if val == 1 {
+							rem_last = true;
+						}
+					}
+				}
+			}
+			if rem_last {
+				block.contents.pop();
+			}
+		}
+
+		Ok(())
+	}
+}
