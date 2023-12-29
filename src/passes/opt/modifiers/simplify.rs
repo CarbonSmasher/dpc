@@ -38,6 +38,9 @@ impl LIRPass for SimplifyModifiersPass {
 						Modifier::Positioned(coords) if coords.are_zero() => {
 							mods_to_remove.insert(i);
 						}
+						Modifier::As(target) if target.is_blank_this() => {
+							mods_to_remove.insert(i);
+						}
 						Modifier::If { condition, negate } => {
 							let result = optimize_condition(condition);
 							match result {

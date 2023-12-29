@@ -10,3 +10,4 @@ say guaranteed 2
 say guaranteed 3
 say guaranteed 4
 say hello
+say hello
