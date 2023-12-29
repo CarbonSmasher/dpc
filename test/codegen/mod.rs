@@ -1,6 +1,6 @@
 mod common;
 
-use std::{fmt::Debug, io::Write, panic::catch_unwind, path::PathBuf};
+use std::{fmt::Debug, io::Write, panic::catch_unwind, path::PathBuf, time::Instant};
 
 use anyhow::{bail, Context};
 use color_print::cprintln;
@@ -52,8 +52,9 @@ fn main() {
 		}
 	}
 
-	println!("Running {} tests", test_names.len());
-	for test in test_names {
+	cprintln!("Running <b>{}</> tests", test_names.len());
+	let start_time = Instant::now();
+	for test in &test_names {
 		println!("     - Running codegen test '{test}'");
 		let result = catch_unwind(|| {
 			run_test(&test, generate)
@@ -71,6 +72,8 @@ fn main() {
 			}
 		}
 	}
+	let elapsed = start_time.elapsed();
+	cprintln!("<g>Ran <b>{}</> tests in <m>{elapsed:?}</>", test_names.len());
 }
 
 fn run_test(test_name: &str, generate: bool) -> anyhow::Result<()> {
