@@ -761,6 +761,16 @@ fn parse_instr<'t>(
 				body: Box::new(instr),
 			})
 		}
+		"pos" => {
+			let pos = parse_double_coords(toks).context("Failed to parse position")?;
+			consume_expect!(toks, Colon, { bail!("Missing colon") });
+			let instr = parse_instr(toks).context("Failed to parse pos body instruction")?;
+			let Some(instr) = instr else { bail!("Pos instruction missing") };
+			Ok(InstrKind::Positioned {
+				position: pos,
+				body: Box::new(instr),
+			})
+		}
 		"retr" => {
 			consume_expect!(toks, Colon, { bail!("Missing colon") });
 			let instr = parse_instr(toks).context("Failed to parse retr body instruction")?;

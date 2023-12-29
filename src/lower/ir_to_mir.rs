@@ -368,6 +368,14 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 				body: Box::new(instr),
 			}
 		}
+		InstrKind::Positioned { position, body } => {
+			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower pos body")?;
+			prelude.extend(new_prelude);
+			MIRInstrKind::Positioned {
+				position,
+				body: Box::new(instr),
+			}
+		}
 		InstrKind::ReturnRun { body } => {
 			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower retr body")?;
 			prelude.extend(new_prelude);

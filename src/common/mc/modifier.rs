@@ -124,6 +124,13 @@ impl StoreModLocation {
 			Self::Score(..) | Self::Data(..) | Self::Bossbar(..) => Vec::new(),
 		}
 	}
+
+	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: F) {
+		match self {
+			Self::Reg(reg, ..) => f(reg),
+			_ => {}
+		}
+	}
 }
 
 impl Debug for StoreModLocation {

@@ -3,4 +3,6 @@
 		say "hello";
 	at @s[]:
 		say "hello";
+	pos ~0.0 ~0.0 ~0.0:
+		say "hello";
 }

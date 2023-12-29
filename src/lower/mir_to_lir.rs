@@ -347,6 +347,12 @@ fn lower_kind(
 			instr.modifiers.insert(0, Modifier::StoreSuccess(location));
 			lir_instrs.push(instr);
 		}
+		MIRInstrKind::Positioned { position, body } => {
+			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower pos body")?;
+
+			instr.modifiers.insert(0, Modifier::Positioned(position));
+			lir_instrs.push(instr);
+		}
 		MIRInstrKind::ReturnRun { body } => {
 			let instr = lower_subinstr(*body, lbcx).context("Failed to lower retr body")?;
 

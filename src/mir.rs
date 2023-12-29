@@ -513,6 +513,10 @@ pub enum MIRInstrKind {
 		location: StoreModLocation,
 		body: Box<MIRInstrKind>,
 	},
+	Positioned {
+		position: DoubleCoordinates,
+		body: Box<MIRInstrKind>,
+	},
 }
 
 impl Debug for MIRInstrKind {
@@ -740,6 +744,7 @@ impl Debug for MIRInstrKind {
 			Self::At { target, body } => format!("at {target:?}: {body:?}"),
 			Self::StoreResult { location, body } => format!("str {location:?}: {body:?}"),
 			Self::StoreSuccess { location, body } => format!("sts {location:?}: {body:?}"),
+			Self::Positioned { position, body } => format!("pos {position:?}: {body:?}"),
 		};
 		write!(f, "{text}")
 	}
@@ -771,7 +776,12 @@ impl MIRInstrKind {
 			Self::If { condition, body } => {
 				[condition.get_used_regs(), body.get_used_regs()].concat()
 			}
-			Self::As { body, .. } | Self::At { body, .. } => body.get_used_regs(),
+			Self::As { body, .. } | Self::At { body, .. } | Self::Positioned { body, .. } => {
+				body.get_used_regs()
+			}
+			Self::StoreResult { location, body } | Self::StoreSuccess { location, body } => {
+				[location.get_used_regs(), body.get_used_regs()].concat()
+			}
 			_ => Vec::new(),
 		}
 	}
@@ -843,7 +853,11 @@ impl MIRInstrKind {
 				}
 				body.replace_regs(f);
 			}
-			Self::As { body, .. } | Self::At { body, .. } => {
+			Self::As { body, .. } | Self::At { body, .. } | Self::Positioned { body, .. } => {
+				body.replace_regs(f);
+			}
+			Self::StoreResult { location, body } | Self::StoreSuccess { location, body } => {
+				location.replace_regs(&f);
 				body.replace_regs(f);
 			}
 			Self::ReturnValue { value, .. } => {
@@ -910,6 +924,9 @@ impl MIRInstrKind {
 				for val in condition.iter_mut_vals() {
 					f(val);
 				}
+				body.replace_mut_vals(f);
+			}
+			Self::As { body, .. } | Self::At { body, .. } | Self::Positioned { body, .. } => {
 				body.replace_mut_vals(f);
 			}
 			_ => {}

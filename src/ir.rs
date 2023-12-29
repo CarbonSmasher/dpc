@@ -498,6 +498,10 @@ pub enum InstrKind {
 		location: StoreModLocation,
 		body: Box<InstrKind>,
 	},
+	Positioned {
+		position: DoubleCoordinates,
+		body: Box<InstrKind>,
+	},
 }
 
 impl Debug for InstrKind {
@@ -726,6 +730,7 @@ impl Debug for InstrKind {
 			Self::At { target, body } => format!("at {target:?}: {body:?}"),
 			Self::StoreResult { location, body } => format!("str {location:?}: {body:?}"),
 			Self::StoreSuccess { location, body } => format!("sts {location:?}: {body:?}"),
+			Self::Positioned { position, body } => format!("pos {position:?}: {body:?}"),
 		};
 		write!(f, "{text}")
 	}
