@@ -1,6 +1,8 @@
 use anyhow::anyhow;
 
 use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
+use crate::common::mc::pos::{AbsOrRelCoord, Coordinates};
+use crate::common::ty::Double;
 use crate::lir::{LIRInstruction, LIR};
 use crate::passes::{LIRPass, Pass};
 
@@ -92,6 +94,21 @@ fn merge_modifiers(instr: &mut LIRInstruction) {
 					(l.clone(), Some(r.clone()))
 				}
 			}
+			(Modifier::Positioned(pos1), Modifier::Positioned(pos2)) => match (pos1, pos2) {
+				(Coordinates::XYZ(x1, y1, z1), Coordinates::XYZ(x2, y2, z2)) => (
+					Modifier::Positioned(Coordinates::XYZ(
+						merge_abs_rel_coords(x1.clone(), x2.clone()),
+						merge_abs_rel_coords(y1.clone(), y2.clone()),
+						merge_abs_rel_coords(z1.clone(), z2.clone()),
+					)),
+					None,
+				),
+				(Coordinates::Local(x1, y1, z1), Coordinates::Local(x2, y2, z2)) => (
+					Modifier::Positioned(Coordinates::Local(x1 + x2, y1 + y2, z1 + z2)),
+					None,
+				),
+				_ => (l.clone(), Some(r.clone())),
+			},
 			(l, r) => (l.clone(), Some(r.clone())),
 		};
 		mods.push(new_mods.0);
@@ -101,4 +118,18 @@ fn merge_modifiers(instr: &mut LIRInstruction) {
 	}
 
 	instr.modifiers = mods;
+}
+
+fn merge_abs_rel_coords(
+	l: AbsOrRelCoord<Double>,
+	r: AbsOrRelCoord<Double>,
+) -> AbsOrRelCoord<Double> {
+	match (l, r.clone()) {
+		// Absolute on right overrides the left
+		(AbsOrRelCoord::Rel(..) | AbsOrRelCoord::Abs(..), AbsOrRelCoord::Abs(..)) => r,
+		// Absolute with right added
+		(AbsOrRelCoord::Abs(l), AbsOrRelCoord::Rel(r)) => AbsOrRelCoord::Abs(l + r),
+		// Relative with right added
+		(AbsOrRelCoord::Rel(l), AbsOrRelCoord::Rel(r)) => AbsOrRelCoord::Rel(l + r),
+	}
 }
