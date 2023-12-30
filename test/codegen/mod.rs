@@ -64,10 +64,14 @@ fn main() {
 			Ok(..) => cprintln!("     - <g>Test {test} successful"),
 			Err(e) => {
 				if let Some(e) = e.downcast_ref::<Box<dyn Debug>>() {
-					cprintln!("     - <r>Test {test} failed with error:\n{e:#?}");
+					cprintln!("     - <s><r>Test {test} failed with error:\n{e:#?}");
 				} else {
-					cprintln!("     - <r>Test {test} failed");
+					cprintln!("     - <s><r>Test {test} failed");
 				}
+				let test_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+					.join("test/codegen/tests")
+					.join(format!("{test}.dpc"));
+				cprintln!("<s>Test from file:</> <r>{test_path:?}");
 				panic!("Test failed");
 			}
 		}
