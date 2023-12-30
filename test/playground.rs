@@ -6,6 +6,7 @@ use dpc::common::function::{
 };
 use dpc::common::mc::block::{BlockData, BlockProperties, SetBlockData, SetBlockMode};
 use dpc::common::mc::entity::{SelectorType, TargetSelector};
+use dpc::common::mc::instr::MinecraftInstr;
 use dpc::common::mc::pos::Coordinates;
 use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::val::{MutableValue, Value};
@@ -358,11 +359,11 @@ fn fuzz() {
 				},
 				10 => {
 					let amount = rng.gen_range(0..1024);
-					InstrKind::SetXP {
+					InstrKind::MC(MinecraftInstr::SetXP {
 						target: EntityTarget::Selector(TargetSelector::new(SelectorType::This)),
 						amount,
 						value: XPValue::Points,
-					}
+					})
 				}
 				11 => {
 					let func = rng.gen_range(0..fn_count);
@@ -377,13 +378,13 @@ fn fuzz() {
 						},
 					}
 				}
-				12 => InstrKind::SetBlock {
+				12 => InstrKind::MC(MinecraftInstr::SetBlock {
 					data: SetBlockData {
 						pos: Coordinates::here(),
 						block: BlockData::new("stone".into(), BlockProperties::new()),
 						mode: SetBlockMode::Replace,
 					},
-				},
+				}),
 				_ => continue,
 			};
 

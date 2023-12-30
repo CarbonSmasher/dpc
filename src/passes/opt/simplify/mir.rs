@@ -1,4 +1,5 @@
 use crate::common::condition::Condition;
+use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::StoreModLocation;
 use crate::common::ty::{DataTypeContents, NBTTypeContents, ScoreTypeContents};
 use crate::common::val::MutableValue;
@@ -82,12 +83,11 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				left: _,
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if score.get_i32() == 0 => true,
-			MIRInstrKind::AddTime { time } if time.amount.is_zero() => true,
-			MIRInstrKind::AddXP { amount, .. } | MIRInstrKind::TriggerAdd { amount, .. }
-				if amount.is_zero() =>
-			{
-				true
-			}
+			// Different Minecraft add instructions with zero as the amount can be removed
+			MIRInstrKind::MC(MinecraftInstr::AddTime { time }) if time.amount.is_zero() => true,
+			MIRInstrKind::MC(
+				MinecraftInstr::AddXP { amount, .. } | MinecraftInstr::TriggerAdd { amount, .. },
+			) if amount.is_zero() => true,
 			// Merge with empty compound doesn't do anything
 			MIRInstrKind::Merge {
 				right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Compound(_, comp))),

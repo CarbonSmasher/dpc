@@ -1,5 +1,6 @@
 pub mod block;
 pub mod entity;
+pub mod instr;
 pub mod item;
 pub mod modifier;
 pub mod pos;

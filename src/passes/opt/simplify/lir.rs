@@ -1,3 +1,4 @@
+use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::Modifier;
 use crate::common::ty::ScoreTypeContents;
 use crate::common::val::ScoreValue;
@@ -174,9 +175,14 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 				))
 			}
 			// Teleport with rotation and a zero rotation can be simplified to just a teleport
-			LIRInstrKind::TeleportWithRotation(src, pos, rot) if rot.are_zero() => {
-				Some(LIRInstrKind::TeleportToLocation(src.clone(), pos.clone()))
-			}
+			LIRInstrKind::MC(MinecraftInstr::TeleportWithRotation {
+				source,
+				dest,
+				rotation,
+			}) if rotation.are_zero() => Some(LIRInstrKind::MC(MinecraftInstr::TeleportToLocation {
+				source: source.clone(),
+				dest: dest.clone(),
+			})),
 			_ => None,
 		};
 

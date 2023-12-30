@@ -52,10 +52,7 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 		.rev()
 		.map(|x| x.0)
 	{
-		let func = lir
-			.functions
-			.values()
-			.find(|x| &x.interface.id == func_id);
+		let func = lir.functions.values().find(|x| &x.interface.id == func_id);
 		// If it doesn't exist, then its probably a extern call that we can ignore
 		let Some(func) = func else {
 			continue;

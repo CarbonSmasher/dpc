@@ -73,7 +73,10 @@ fn main() {
 		}
 	}
 	let elapsed = start_time.elapsed();
-	cprintln!("<g>Ran <b>{}</> tests in <m>{elapsed:?}</>", test_names.len());
+	cprintln!(
+		"<g>Ran <b>{}</> tests in <m>{elapsed:?}</>",
+		test_names.len()
+	);
 }
 
 fn run_test(test_name: &str, generate: bool) -> anyhow::Result<()> {

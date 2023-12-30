@@ -2,18 +2,9 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::Function;
-use crate::common::mc::block::{CloneData, FillBiomeData, FillData, SetBlockData};
-use crate::common::mc::entity::{AttributeType, EffectDuration, UUID};
-use crate::common::mc::item::ItemData;
+use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::Modifier;
-use crate::common::mc::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates};
-use crate::common::mc::scoreboard_and_teams::Criterion;
-use crate::common::mc::time::{Time, TimePreset, TimeQuery};
-use crate::common::mc::{
-	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode,
-	Location, Weather, XPValue,
-};
-use crate::common::ty::{ArraySize, Double, NBTCompoundTypeContents};
+use crate::common::ty::{ArraySize, Double};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
 use crate::common::{Identifier, RegisterList, ResourceLocation};
 
@@ -151,114 +142,9 @@ pub enum LIRInstrKind {
 	ReturnValue(i32),
 	ReturnFail,
 	ReturnRun(Box<LIRInstruction>),
-	TriggerAdd(String, i32),
-	TriggerSet(String, i32),
 	Command(String),
 	Comment(String),
-	// Chat
-	Say(String),
-	Tell(EntityTarget, String),
-	Me(String),
-	TeamMessage(String),
-	// Multiplayer
-	ListPlayers,
-	ListPlayerUUIDs,
-	StopServer,
-	BanPlayers(Vec<EntityTarget>, Option<String>),
-	BanIP(String, Option<String>),
-	PardonPlayers(Vec<EntityTarget>),
-	PardonIP(String),
-	Banlist,
-	Op(Vec<EntityTarget>),
-	Deop(Vec<EntityTarget>),
-	WhitelistAdd(Vec<EntityTarget>),
-	WhitelistRemove(Vec<EntityTarget>),
-	WhitelistOn,
-	WhitelistOff,
-	WhitelistReload,
-	WhitelistList,
-	Kick(Vec<EntityTarget>, Option<String>),
-	Publish,
-	// Entities
-	Kill(EntityTarget),
-	SetXP(EntityTarget, i32, XPValue),
-	AddXP(EntityTarget, i32, XPValue),
-	GetXP(EntityTarget, XPValue),
-	AddTag(EntityTarget, Identifier),
-	RemoveTag(EntityTarget, Identifier),
-	ListTags(EntityTarget),
-	RideMount(EntityTarget, EntityTarget),
-	RideDismount(EntityTarget),
-	Spectate(EntityTarget, EntityTarget),
-	SpectateStop,
-	SetGamemode(EntityTarget, Gamemode),
-	TeleportToEntity(EntityTarget, EntityTarget),
-	TeleportToLocation(EntityTarget, DoubleCoordinates),
-	TeleportWithRotation(EntityTarget, DoubleCoordinates, DoubleCoordinates2D),
-	TeleportFacingLocation(EntityTarget, DoubleCoordinates, DoubleCoordinates),
-	// TODO: Anchor
-	TeleportFacingEntity(EntityTarget, DoubleCoordinates, EntityTarget),
-	GetAttribute(EntityTarget, ResourceLocation, f64),
-	GetAttributeBase(EntityTarget, ResourceLocation, f64),
-	SetAttributeBase(EntityTarget, ResourceLocation, f64),
-	AddAttributeModifier(
-		EntityTarget,
-		ResourceLocation,
-		UUID,
-		String,
-		f64,
-		AttributeType,
-	),
-	RemoveAttributeModifier(EntityTarget, ResourceLocation, UUID),
-	GetAttributeModifier(EntityTarget, ResourceLocation, UUID, f64),
-	SummonEntity(ResourceLocation, DoubleCoordinates, NBTCompoundTypeContents),
-	SpreadPlayers {
-		center: DoubleCoordinates2D,
-		spread_distance: f32,
-		max_range: f32,
-		max_height: Option<f32>,
-		respect_teams: bool,
-		target: EntityTarget,
-	},
-	ClearEffect(EntityTarget, Option<ResourceLocation>),
-	GiveEffect(EntityTarget, ResourceLocation, EffectDuration, u8, bool),
-	// Items
-	GiveItem(EntityTarget, ItemData, u32),
-	Enchant(EntityTarget, ResourceLocation, i32),
-	ClearItems(Vec<EntityTarget>, Option<ItemData>, Option<u32>),
-	// Blocks
-	SetBlock(SetBlockData),
-	Fill(FillData),
-	Clone(CloneData),
-	FillBiome(FillBiomeData),
-	// World
-	Seed,
-	GetDifficulty,
-	SetDifficulty(Difficulty),
-	SetWeather(Weather, Option<Time>),
-	AddTime(Time),
-	SetTime(Time),
-	SetTimePreset(TimePreset),
-	GetTime(TimeQuery),
-	DefaultGamemode(Gamemode),
-	SetWorldSpawn(IntCoordinates, Angle),
-	SetSpawnpoint(Vec<EntityTarget>, IntCoordinates, Angle),
-	SetGameruleBool(String, bool),
-	SetGameruleInt(String, i32),
-	GetGamerule(String),
-	Locate(Location, ResourceLocation),
-	// Teams and scoreboards
-	AddScoreboardObjective(String, Criterion, Option<String>),
-	RemoveScoreboardObjective(String),
-	ListScoreboardObjectives,
-	// Misc
-	Reload,
-	StopSound,
-	DisableDatapack(String),
-	EnableDatapack(String),
-	SetDatapackPriority(String, DatapackPriority),
-	SetDatapackOrder(String, DatapackOrder, String),
-	ListDatapacks(DatapackListMode),
+	MC(MinecraftInstr),
 }
 
 impl LIRInstrKind {
@@ -325,118 +211,9 @@ impl Debug for LIRInstrKind {
 			Self::ReturnValue(val) => format!("retv {val}"),
 			Self::ReturnFail => "retf".into(),
 			Self::ReturnRun(cmd) => format!("retr {cmd:?}"),
-			Self::Say(text) => format!("say {text}"),
-			Self::Tell(target, text) => format!("tell {target:?} {text}"),
-			Self::Me(text) => format!("me {text}"),
-			Self::TeamMessage(text) => format!("tm {text}"),
-			Self::Kill(target) => format!("kill {target:?}"),
-			Self::Reload => "reload".into(),
-			Self::SetXP(target, amount, value) => format!("xps {target:?} {amount} {value}"),
-			Self::AddXP(target, amount, value) => format!("xpa {target:?} {amount} {value}"),
-			Self::GetXP(target, value) => format!("xpg {target:?} {value}"),
-			Self::AddTag(target, tag) => format!("taga {target:?} {tag}"),
-			Self::RemoveTag(target, tag) => format!("tagr {target:?} {tag}"),
-			Self::ListTags(target) => format!("tagl {target:?}"),
-			Self::RideMount(target, vehicle) => format!("mnt {target:?} {vehicle:?}"),
-			Self::RideDismount(target) => format!("dmnt {target:?}"),
-			Self::Spectate(target, spectator) => format!("spec {target:?} {spectator:?}"),
-			Self::SpectateStop => "specs".into(),
-			Self::ListPlayers => "lsp".into(),
-			Self::StopSound => "stops".into(),
-			Self::StopServer => "stop".into(),
-			Self::BanPlayers(targets, reason) => format!("ban {targets:?} {reason:?}"),
-			Self::BanIP(target, reason) => format!("bani {target} {reason:?}"),
-			Self::PardonPlayers(targets) => format!("par {targets:?}"),
-			Self::PardonIP(target) => format!("pari {target}"),
-			Self::Banlist => "banl".into(),
-			Self::Op(targets) => format!("op {targets:?}"),
-			Self::Deop(targets) => format!("deop {targets:?}"),
-			Self::WhitelistAdd(targets) => format!("wla {targets:?}"),
-			Self::WhitelistRemove(targets) => format!("wlr {targets:?}"),
-			Self::WhitelistOn => "wlon".into(),
-			Self::WhitelistOff => "wloff".into(),
-			Self::WhitelistReload => "wlrl".into(),
-			Self::WhitelistList => "wll".into(),
-			Self::Kick(targets, reason) => format!("kick {targets:?} {reason:?}"),
-			Self::Publish => "pub".into(),
-			Self::SetBlock(data) => format!("sb {data:?}"),
-			Self::Fill(data) => format!("fill {data:?}"),
-			Self::Clone(data) => format!("cln {data:?}"),
-			Self::FillBiome(data) => format!("fillb {data:?}"),
-			Self::Seed => "seed".into(),
-			Self::GetDifficulty => "diffg".into(),
-			Self::SetDifficulty(diff) => format!("diffs {diff}"),
-			Self::SetWeather(weather, duration) => format!("setw {weather} {duration:?}"),
-			Self::AddTime(time) => format!("tima {time:?}"),
-			Self::SetTime(time) => format!("tims {time:?}"),
-			Self::SetTimePreset(time) => format!("timp {time:?}"),
-			Self::GetTime(query) => format!("timg {query:?}"),
-			Self::Enchant(target, ench, lvl) => format!("ench {target:?} {ench} {lvl}"),
-			Self::SetGamemode(target, gm) => format!("setgm {target:?} {gm}"),
-			Self::DefaultGamemode(gm) => format!("dgm {gm}"),
-			Self::TeleportToEntity(src, dest) => format!("tpe {src:?} {dest:?}"),
-			Self::TeleportToLocation(src, dest) => format!("tpl {src:?} {dest:?}"),
-			Self::TeleportWithRotation(src, dest, rot) => format!("tpr {src:?} {dest:?} {rot:?}"),
-			Self::TeleportFacingLocation(src, dest, face) => {
-				format!("tpfl {src:?} {dest:?} {face:?}")
-			}
-			Self::TeleportFacingEntity(src, dest, face) => {
-				format!("tpfe {src:?} {dest:?} {face:?}")
-			}
-			Self::GiveItem(tgt, item, amt) => format!("itmg {tgt:?} {item:?} {amt}"),
-			Self::AddScoreboardObjective(obj, crit, disp) => {
-				format!("sboa {obj} {crit:?} {disp:?}")
-			}
-			Self::RemoveScoreboardObjective(obj) => format!("sbor {obj}"),
-			Self::ListScoreboardObjectives => "sbol".into(),
-			Self::TriggerAdd(obj, amt) => format!("trga {obj}, {amt}"),
-			Self::TriggerSet(obj, amt) => format!("trgs {obj}, {amt}"),
-			Self::GetAttribute(tgt, attr, scale) => format!("attrg {tgt:?} {attr} {scale}"),
-			Self::GetAttributeBase(tgt, attr, scale) => format!("attrgb {tgt:?} {attr} {scale}"),
-			Self::SetAttributeBase(tgt, attr, value) => format!("attrs {tgt:?} {attr} {value}"),
-			Self::AddAttributeModifier(tgt, attr, uuid, name, value, ty) => {
-				format!("attrma {tgt:?} {attr} {uuid:?} {name} {value} {ty:?}")
-			}
-			Self::RemoveAttributeModifier(tgt, attr, uuid) => {
-				format!("attrmr {tgt:?} {attr} {uuid:?}")
-			}
-			Self::GetAttributeModifier(tgt, attr, uuid, scale) => {
-				format!("attrmg {tgt:?} {attr} {uuid:?} {scale}")
-			}
-			Self::DisableDatapack(pack) => format!("dpd {pack}"),
-			Self::EnableDatapack(pack) => format!("dpe {pack}"),
-			Self::SetDatapackPriority(pack, priority) => format!("dpp {pack} {priority:?}"),
-			Self::SetDatapackOrder(pack, order, existing) => {
-				format!("dpo {pack} {order:?} {existing}")
-			}
-			Self::ListDatapacks(mode) => format!("dpl {mode:?}"),
-			Self::ListPlayerUUIDs => "lspu".into(),
-			Self::SummonEntity(entity, pos, nbt) => format!("smn {entity} {pos:?} {nbt:?}"),
-			Self::SetWorldSpawn(pos, angle) => format!("sws {pos:?} {angle:?}"),
-			Self::SetSpawnpoint(targets, pos, angle) => {
-				format!("ssp {targets:?} {pos:?} {angle:?}")
-			}
-			Self::ClearItems(targets, item, max_count) => {
-				format!("itmc {targets:?} {item:?} {max_count:?}")
-			}
-			Self::SpreadPlayers {
-				center,
-				spread_distance,
-				max_range,
-				max_height,
-				respect_teams,
-				target,
-			} => format!("spd {center:?} {spread_distance} {max_range} {max_height:?} {respect_teams} {target:?}"),
-			Self::ClearEffect(target, effect) => format!("effc {target:?} {effect:?}"),
-			Self::GiveEffect(target, effect, duration, amplifier, hide_particles) => {
-				format!("effg {target:?} {effect} {duration:?} {amplifier} {hide_particles}")
-			}
 			Self::Command(cmd) => format!("cmd {cmd}"),
 			Self::Comment(cmt) => format!("cmt {cmt}"),
-			Self::SetGameruleBool(rule, value) => format!("grsb {rule} {value}"),
-			Self::SetGameruleInt(rule, value) => format!("grsi {rule} {value}"),
-			Self::GetGamerule(rule) => format!("grg {rule}"),
-			Self::Locate(ty, loc) => format!("loc {ty:?} {loc}"),
+			Self::MC(instr) => format!("{instr:?}"),
 		};
 		write!(f, "{text}")
 	}

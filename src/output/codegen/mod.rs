@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use anyhow::{anyhow, bail, Context};
 
 use crate::common::mc::block::{CloneMaskMode, CloneMode, FillMode, SetBlockMode};
+use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::{DatapackListMode, Score};
@@ -265,29 +266,6 @@ pub fn codegen_instr(
 				cgformat!(cbcx, "data get storage ", val)?
 			}
 		}),
-		LIRInstrKind::Say(message) => Some(format!("say {message}")),
-		LIRInstrKind::Me(message) => Some(format!("me {message}")),
-		LIRInstrKind::TeamMessage(message) => Some(format!("tm {message}")),
-		LIRInstrKind::Tell(target, message) => Some(cgformat!(cbcx, "w ", target, " ", message)?),
-		LIRInstrKind::Kill(target) => {
-			if target.is_blank_this() {
-				Some("kill".into())
-			} else {
-				Some(cgformat!(cbcx, "kill ", target)?)
-			}
-		}
-		LIRInstrKind::Reload => Some("reload".into()),
-		LIRInstrKind::SetXP(target, amount, value) => {
-			// Command cannot take negative values
-			let amount = if amount < &0 { 0 } else { *amount };
-			Some(cgformat!(cbcx, "xp set ", target, " ", amount, " ", value)?)
-		}
-		LIRInstrKind::AddXP(target, amount, value) => {
-			Some(cgformat!(cbcx, "xp add ", target, " ", amount, " ", value)?)
-		}
-		LIRInstrKind::GetXP(target, value) => {
-			Some(cgformat!(cbcx, "xp query ", target, " ", value)?)
-		}
 		LIRInstrKind::Call(fun) => {
 			let mut func_id = fun;
 			if let Some(mapping) = &cbcx.ccx.func_mapping {
@@ -297,181 +275,6 @@ pub fn codegen_instr(
 			}
 			Some(format!("function {func_id}"))
 		}
-		LIRInstrKind::BanPlayers(targets, reason) => {
-			let list = SpaceSepListCG(targets);
-			if let Some(reason) = reason {
-				Some(cgformat!(cbcx, "ban ", list, " ", reason)?)
-			} else {
-				Some(cgformat!(cbcx, "ban ", list)?)
-			}
-		}
-		LIRInstrKind::BanIP(target, reason) => {
-			if let Some(reason) = reason {
-				Some(cgformat!(cbcx, "ban-ip ", target, " ", reason)?)
-			} else {
-				Some(cgformat!(cbcx, "ban-ip ", target)?)
-			}
-		}
-		LIRInstrKind::PardonPlayers(targets) => {
-			let list = SpaceSepListCG(targets);
-			Some(cgformat!(cbcx, "pardon ", list)?)
-		}
-		LIRInstrKind::PardonIP(target) => Some(format!("pardon-ip {target}")),
-		LIRInstrKind::Op(targets) => Some(cgformat!(cbcx, "op ", SpaceSepListCG(targets))?),
-		LIRInstrKind::Deop(targets) => Some(cgformat!(cbcx, "deop ", SpaceSepListCG(targets))?),
-		LIRInstrKind::WhitelistAdd(targets) => {
-			Some(cgformat!(cbcx, "whitelist add ", SpaceSepListCG(targets))?)
-		}
-		LIRInstrKind::WhitelistRemove(targets) => Some(cgformat!(
-			cbcx,
-			"whitelist remove ",
-			SpaceSepListCG(targets)
-		)?),
-		LIRInstrKind::WhitelistOn => Some("whitelist on".into()),
-		LIRInstrKind::WhitelistOff => Some("whitelist off".into()),
-		LIRInstrKind::WhitelistReload => Some("whitelist reload".into()),
-		LIRInstrKind::WhitelistList => Some("whitelist list".into()),
-		LIRInstrKind::Kick(targets, reason) => {
-			let list = SpaceSepListCG(targets);
-			if let Some(reason) = reason {
-				Some(cgformat!(cbcx, "kick ", list, " ", reason)?)
-			} else {
-				Some(cgformat!(cbcx, "kick ", list)?)
-			}
-		}
-		LIRInstrKind::Banlist => Some("banlist".into()),
-		LIRInstrKind::StopSound => Some("stopsound".into()),
-		LIRInstrKind::StopServer => Some("stop".into()),
-		LIRInstrKind::ListPlayers => Some("list".into()),
-		LIRInstrKind::Publish => Some("publish".into()),
-		LIRInstrKind::Seed => Some("seed".into()),
-		LIRInstrKind::GetDifficulty => Some("difficulty".into()),
-		LIRInstrKind::SetDifficulty(diff) => Some(cgformat!(cbcx, "difficulty ", diff)?),
-		LIRInstrKind::Enchant(target, ench, lvl) => {
-			if lvl == &1 {
-				Some(cgformat!(cbcx, "enchant ", target, " ", ench)?)
-			} else {
-				Some(cgformat!(cbcx, "enchant ", target, " ", ench, " ", lvl)?)
-			}
-		}
-		LIRInstrKind::SetBlock(data) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "setblock ", data.pos, " ", data.block)?;
-
-			// Replace mode is default and can be omitted
-			if let SetBlockMode::Replace = data.mode {
-			} else {
-				cgwrite!(&mut out, cbcx, " ", data.mode)?;
-			}
-			Some(out)
-		}
-		LIRInstrKind::Fill(data) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "fill ", data.start, " ", data.end, " ", data.block)?;
-
-			// Replace mode is default and can be omitted if there is no filter
-			if let FillMode::Replace(filter) = &data.mode {
-				cgwrite!(&mut out, cbcx, "replace")?;
-				if let Some(filter) = filter {
-					cgwrite!(&mut out, cbcx, " ", filter)?;
-				}
-			} else {
-				cgwrite!(&mut out, cbcx, " ", data.mode)?;
-			}
-			Some(out)
-		}
-		LIRInstrKind::Clone(data) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "clone ")?;
-
-			if let Some(source) = &data.source_dimension {
-				cgwrite!(&mut out, cbcx, "from ", source)?;
-			}
-
-			cgwrite!(&mut out, cbcx, data.start, " ", data.end)?;
-
-			if let Some(target) = &data.target_dimension {
-				cgwrite!(&mut out, cbcx, "to ", target)?;
-			}
-
-			cgwrite!(&mut out, cbcx, " ", data.destination, " ")?;
-
-			// Replace mode is default and can be omitted if there is no filter
-			match &data.mask_mode {
-				CloneMaskMode::Filtered(filter) => {
-					cgwrite!(&mut out, cbcx, "filter ", filter)?;
-				}
-				CloneMaskMode::Replace => {}
-				other => cgwrite!(&mut out, cbcx, " ", other)?,
-			}
-
-			// Normal mode is default and can be omitted
-			if let CloneMode::Normal = data.mode {
-			} else {
-				cgwrite!(&mut out, cbcx, " ", data.mode)?;
-			}
-
-			Some(out)
-		}
-		LIRInstrKind::FillBiome(data) => {
-			let mut out = String::new();
-			cgwrite!(
-				&mut out,
-				cbcx,
-				"fillbiome ",
-				data.start,
-				" ",
-				data.end,
-				" ",
-				data.biome
-			)?;
-
-			if let Some(filter) = &data.replace {
-				cgwrite!(&mut out, cbcx, " replace ", filter)?;
-			}
-
-			Some(out)
-		}
-		LIRInstrKind::SetWeather(weather, duration) => {
-			if let Some(duration) = duration {
-				Some(cgformat!(cbcx, "weather ", weather, " ", duration)?)
-			} else {
-				Some(cgformat!(cbcx, "weather ", weather)?)
-			}
-		}
-		LIRInstrKind::AddTime(time) => Some(cgformat!(cbcx, "time add ", time)?),
-		LIRInstrKind::SetTime(time) => {
-			// Using the day preset is shorter than the time it represents
-			if time.amount == 1000.0 {
-				Some("tmie set day".into())
-			} else {
-				Some(cgformat!(cbcx, "time set ", time)?)
-			}
-		}
-		LIRInstrKind::SetTimePreset(time) => Some(cgformat!(cbcx, "time set ", time)?),
-		LIRInstrKind::GetTime(query) => Some(cgformat!(cbcx, "time get ", query)?),
-		LIRInstrKind::AddTag(target, tag) => Some(cgformat!(cbcx, "tag ", target, " add ", tag)?),
-		LIRInstrKind::RemoveTag(target, tag) => {
-			Some(cgformat!(cbcx, "tag ", target, " remove ", tag)?)
-		}
-		LIRInstrKind::ListTags(target) => Some(cgformat!(cbcx, "tag ", target, " list")?),
-		LIRInstrKind::RideMount(target, vehicle) => {
-			Some(cgformat!(cbcx, "ride ", target, " mount ", vehicle)?)
-		}
-		LIRInstrKind::RideDismount(target) => Some(cgformat!(cbcx, "ride ", target, " dismount")?),
-		LIRInstrKind::Spectate(target, spectator) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "spectate ", target)?;
-			if !spectator.is_blank_this() {
-				cgwrite!(&mut out, cbcx, " ", spectator)?;
-			}
-			Some(out)
-		}
-		LIRInstrKind::SpectateStop => Some("spectate".into()),
-		LIRInstrKind::SetGamemode(target, gm) => {
-			Some(cgformat!(cbcx, "gamemode ", gm, " ", target)?)
-		}
-		LIRInstrKind::DefaultGamemode(gm) => Some(cgformat!(cbcx, "defaultgamemode ", gm)?),
 		LIRInstrKind::ReturnValue(val) => Some(cgformat!(cbcx, "return ", val)?),
 		LIRInstrKind::ReturnFail => Some("return fail".into()),
 		LIRInstrKind::ReturnRun(instr) => {
@@ -480,304 +283,620 @@ pub fn codegen_instr(
 				.context("Return run command is missing after codegen")?;
 			Some(cgformat!(cbcx, "return run ", cmd)?)
 		}
-		LIRInstrKind::TeleportToEntity(src, dest) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "tp ")?;
-			if !src.is_blank_this() {
-				cgwrite!(&mut out, cbcx, src, " ")?;
+		LIRInstrKind::MC(instr) => match instr {
+			MinecraftInstr::Say { message } => Some(format!("say {message}")),
+			MinecraftInstr::Me { message } => Some(format!("me {message}")),
+			MinecraftInstr::TeamMessage { message } => Some(format!("tm {message}")),
+			MinecraftInstr::Tell { target, message } => {
+				Some(cgformat!(cbcx, "w ", target, " ", message)?)
 			}
-			cgwrite!(&mut out, cbcx, dest)?;
-
-			Some(out)
-		}
-		LIRInstrKind::TeleportToLocation(src, dest) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "tp ")?;
-			if !src.is_blank_this() {
-				cgwrite!(&mut out, cbcx, src, " ")?;
+			MinecraftInstr::Kill { target } => {
+				if target.is_blank_this() {
+					Some("kill".into())
+				} else {
+					Some(cgformat!(cbcx, "kill ", target)?)
+				}
 			}
-			cgwrite!(&mut out, cbcx, dest)?;
-
-			Some(out)
-		}
-		LIRInstrKind::TeleportWithRotation(src, dest, rot) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "tp ", src, " ", dest, " ", rot)?;
-
-			Some(out)
-		}
-		LIRInstrKind::TeleportFacingLocation(src, dest, face) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "tp ", src, " ", dest, " facing ", face)?;
-
-			Some(out)
-		}
-		LIRInstrKind::TeleportFacingEntity(src, dest, face) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "tp ", src, " ", dest, " facing ", face)?;
-
-			Some(out)
-		}
-		LIRInstrKind::GiveItem(target, item, amount) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "give ", target, " ", item)?;
-			if *amount == 0 || (*amount as i64) > (i32::MAX as i64) {
-				bail!("Invalid item count");
+			MinecraftInstr::Reload => Some("reload".into()),
+			MinecraftInstr::SetXP {
+				target,
+				amount,
+				value,
+			} => {
+				// Command cannot take negative values
+				let amount = if amount < &0 { 0 } else { *amount };
+				Some(cgformat!(cbcx, "xp set ", target, " ", amount, " ", value)?)
 			}
-			if *amount != 1 {
-				cgwrite!(&mut out, cbcx, " ", amount)?;
+			MinecraftInstr::AddXP {
+				target,
+				amount,
+				value,
+			} => Some(cgformat!(cbcx, "xp add ", target, " ", amount, " ", value)?),
+			MinecraftInstr::GetXP { target, value } => {
+				Some(cgformat!(cbcx, "xp query ", target, " ", value)?)
 			}
-			Some(out)
-		}
-		LIRInstrKind::AddScoreboardObjective(obj, crit, disp) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "scoreboard objectives add ", obj, " ")?;
-			match crit {
-				Criterion::Single(val) => val.gen_writer(&mut out, cbcx)?,
-				Criterion::Compound(val) => val.gen_writer(&mut out, cbcx)?,
+			MinecraftInstr::BanPlayers { targets, reason } => {
+				let list = SpaceSepListCG(targets);
+				if let Some(reason) = reason {
+					Some(cgformat!(cbcx, "ban ", list, " ", reason)?)
+				} else {
+					Some(cgformat!(cbcx, "ban ", list)?)
+				}
 			}
-
-			if let Some(disp) = disp {
-				cgwrite!(&mut out, cbcx, " ", disp)?;
+			MinecraftInstr::BanIP { target, reason } => {
+				if let Some(reason) = reason {
+					Some(cgformat!(cbcx, "ban-ip ", target, " ", reason)?)
+				} else {
+					Some(cgformat!(cbcx, "ban-ip ", target)?)
+				}
 			}
-			Some(out)
-		}
-		LIRInstrKind::RemoveScoreboardObjective(obj) => {
-			Some(cgformat!(cbcx, "scoreboard objectives remove ", obj)?)
-		}
-		LIRInstrKind::ListScoreboardObjectives => Some("scoreboard objectives list".into()),
-		LIRInstrKind::TriggerAdd(obj, amt) => {
-			if *amt == 1 {
-				Some(cgformat!(cbcx, "trigger ", obj)?)
-			} else {
-				Some(cgformat!(cbcx, "trigger ", obj, " add ", amt)?)
+			MinecraftInstr::PardonPlayers { targets } => {
+				let list = SpaceSepListCG(targets);
+				Some(cgformat!(cbcx, "pardon ", list)?)
 			}
-		}
-		LIRInstrKind::TriggerSet(obj, amt) => Some(cgformat!(cbcx, "trigger ", obj, " set ", amt)?),
-		LIRInstrKind::GetAttribute(tgt, attr, scale) => {
-			if *scale == 1.0 {
-				Some(cgformat!(cbcx, "attribute ", tgt, " get ", attr)?)
-			} else {
-				Some(cgformat!(
-					cbcx,
-					"attribute ",
-					tgt,
-					" get ",
-					attr,
-					" ",
-					FloatCG(*scale, false, true, true)
-				)?)
+			MinecraftInstr::PardonIP { target } => Some(format!("pardon-ip {target}")),
+			MinecraftInstr::Op { targets } => {
+				Some(cgformat!(cbcx, "op ", SpaceSepListCG(targets))?)
 			}
-		}
-		LIRInstrKind::GetAttributeBase(tgt, attr, scale) => {
-			if *scale == 1.0 {
-				Some(cgformat!(cbcx, "attribute ", tgt, " base get ", attr)?)
-			} else {
-				Some(cgformat!(
-					cbcx,
-					"attribute ",
-					tgt,
-					" base get ",
-					attr,
-					" ",
-					FloatCG(*scale, false, true, true)
-				)?)
+			MinecraftInstr::Deop { targets } => {
+				Some(cgformat!(cbcx, "deop ", SpaceSepListCG(targets))?)
 			}
-		}
-		LIRInstrKind::SetAttributeBase(tgt, attr, value) => Some(cgformat!(
-			cbcx,
-			"attribute ",
-			tgt,
-			" ",
-			attr,
-			" base set ",
-			FloatCG(*value, false, true, true)
-		)?),
-		LIRInstrKind::AddAttributeModifier(tgt, attr, uuid, name, value, ty) => Some(cgformat!(
-			cbcx,
-			"attribute ",
-			tgt,
-			" ",
-			attr,
-			" modifier add ",
-			uuid,
-			" ",
-			name,
-			" ",
-			FloatCG(*value, false, true, true),
-			" ",
-			ty
-		)?),
-		LIRInstrKind::RemoveAttributeModifier(tgt, attr, uuid) => Some(cgformat!(
-			cbcx,
-			"attribute ",
-			tgt,
-			" ",
-			attr,
-			" modifier remove ",
-			uuid
-		)?),
-		LIRInstrKind::GetAttributeModifier(tgt, attr, uuid, scale) => {
-			let mut out = String::new();
-			cgwrite!(
-				&mut out,
+			MinecraftInstr::WhitelistAdd { targets } => {
+				Some(cgformat!(cbcx, "whitelist add ", SpaceSepListCG(targets))?)
+			}
+			MinecraftInstr::WhitelistRemove { targets } => Some(cgformat!(
 				cbcx,
-				"attribute ",
-				tgt,
-				" ",
-				attr,
-				" modifier get ",
-				uuid
-			)?;
-			if *scale != 1.0 {
-				cgwrite!(&mut out, cbcx, " ", FloatCG(*scale, false, true, true))?;
+				"whitelist remove ",
+				SpaceSepListCG(targets)
+			)?),
+			MinecraftInstr::WhitelistOn => Some("whitelist on".into()),
+			MinecraftInstr::WhitelistOff => Some("whitelist off".into()),
+			MinecraftInstr::WhitelistReload => Some("whitelist reload".into()),
+			MinecraftInstr::WhitelistList => Some("whitelist list".into()),
+			MinecraftInstr::Kick { targets, reason } => {
+				let list = SpaceSepListCG(targets);
+				if let Some(reason) = reason {
+					Some(cgformat!(cbcx, "kick ", list, " ", reason)?)
+				} else {
+					Some(cgformat!(cbcx, "kick ", list)?)
+				}
 			}
+			MinecraftInstr::Banlist => Some("banlist".into()),
+			MinecraftInstr::StopSound => Some("stopsound".into()),
+			MinecraftInstr::StopServer => Some("stop".into()),
+			MinecraftInstr::ListPlayers => Some("list".into()),
+			MinecraftInstr::Publish => Some("publish".into()),
+			MinecraftInstr::Seed => Some("seed".into()),
+			MinecraftInstr::GetDifficulty => Some("difficulty".into()),
+			MinecraftInstr::SetDifficulty { difficulty } => {
+				Some(cgformat!(cbcx, "difficulty ", difficulty)?)
+			}
+			MinecraftInstr::Enchant {
+				target,
+				enchantment,
+				level,
+			} => {
+				if level == &1 {
+					Some(cgformat!(cbcx, "enchant ", target, " ", enchantment)?)
+				} else {
+					Some(cgformat!(
+						cbcx,
+						"enchant ",
+						target,
+						" ",
+						enchantment,
+						" ",
+						level
+					)?)
+				}
+			}
+			MinecraftInstr::SetBlock { data } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "setblock ", data.pos, " ", data.block)?;
 
-			Some(out)
-		}
-		LIRInstrKind::DisableDatapack(pack) => Some(cgformat!(cbcx, "datapack disable ", pack)?),
-		LIRInstrKind::EnableDatapack(pack) => Some(cgformat!(cbcx, "datapack enable ", pack)?),
-		LIRInstrKind::SetDatapackPriority(pack, priority) => {
-			Some(cgformat!(cbcx, "datapack enable ", pack, " ", priority)?)
-		}
-		LIRInstrKind::SetDatapackOrder(pack, order, existing) => Some(cgformat!(
-			cbcx,
-			"datapack enable ",
-			pack,
-			" ",
-			order,
-			" ",
-			existing
-		)?),
-		LIRInstrKind::ListDatapacks(mode) => match mode {
-			DatapackListMode::All => Some("datapack list".into()),
-			other => Some(cgformat!(cbcx, "datapack list ", other)?),
-		},
-		LIRInstrKind::ListPlayerUUIDs => Some("list uuids".into()),
-		LIRInstrKind::SummonEntity(entity, pos, nbt) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "summon ", entity)?;
-			if !pos.are_zero() || !nbt.is_empty() {
-				cgwrite!(&mut out, cbcx, " ", pos)?;
+				// Replace mode is default and can be omitted
+				if let SetBlockMode::Replace = data.mode {
+				} else {
+					cgwrite!(&mut out, cbcx, " ", data.mode)?;
+				}
+				Some(out)
 			}
-			if !nbt.is_empty() {
-				cgwrite!(&mut out, cbcx, " ", nbt.get_literal_str())?;
+			MinecraftInstr::Fill { data } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "fill ", data.start, " ", data.end, " ", data.block)?;
+
+				// Replace mode is default and can be omitted if there is no filter
+				if let FillMode::Replace(filter) = &data.mode {
+					cgwrite!(&mut out, cbcx, "replace")?;
+					if let Some(filter) = filter {
+						cgwrite!(&mut out, cbcx, " ", filter)?;
+					}
+				} else {
+					cgwrite!(&mut out, cbcx, " ", data.mode)?;
+				}
+				Some(out)
 			}
-			Some(out)
-		}
-		LIRInstrKind::SetWorldSpawn(pos, angle) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "setworldspawn")?;
-			if !pos.are_zero() || !angle.is_absolute_zero() {
-				cgwrite!(&mut out, cbcx, " ", pos)?;
+			MinecraftInstr::Clone { data } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "clone ")?;
+
+				if let Some(source) = &data.source_dimension {
+					cgwrite!(&mut out, cbcx, "from ", source)?;
+				}
+
+				cgwrite!(&mut out, cbcx, data.start, " ", data.end)?;
+
+				if let Some(target) = &data.target_dimension {
+					cgwrite!(&mut out, cbcx, "to ", target)?;
+				}
+
+				cgwrite!(&mut out, cbcx, " ", data.destination, " ")?;
+
+				// Replace mode is default and can be omitted if there is no filter
+				match &data.mask_mode {
+					CloneMaskMode::Filtered(filter) => {
+						cgwrite!(&mut out, cbcx, "filter ", filter)?;
+					}
+					CloneMaskMode::Replace => {}
+					other => cgwrite!(&mut out, cbcx, " ", other)?,
+				}
+
+				// Normal mode is default and can be omitted
+				if let CloneMode::Normal = data.mode {
+				} else {
+					cgwrite!(&mut out, cbcx, " ", data.mode)?;
+				}
+
+				Some(out)
 			}
-			if !angle.is_absolute_zero() {
-				cgwrite!(&mut out, cbcx, " ", angle)?;
-			}
-			Some(out)
-		}
-		LIRInstrKind::ClearItems(targets, item, max_count) => {
-			let mut out = String::new();
-			if targets.is_empty() {
-				bail!("Target list empty");
-			}
-			cgwrite!(&mut out, cbcx, "clear")?;
-			if !targets.first().expect("Not empty").is_blank_this() {
-				cgwrite!(&mut out, cbcx, SpaceSepListCG(targets))?;
-			}
-			if let Some(item) = item {
-				cgwrite!(&mut out, cbcx, " ", item)?;
-			}
-			if let Some(max_count) = max_count {
-				cgwrite!(&mut out, cbcx, " ", max_count)?;
-			}
-			Some(out)
-		}
-		LIRInstrKind::SetSpawnpoint(targets, pos, angle) => {
-			let mut out = String::new();
-			if targets.is_empty() {
-				bail!("Target list empty");
-			}
-			cgwrite!(&mut out, cbcx, "spawnpoint")?;
-			if !(targets.first().expect("Not empty").is_blank_this()
-				&& pos.are_zero()
-				&& angle.is_absolute_zero())
-			{
-				cgwrite!(&mut out, cbcx, " ", SpaceSepListCG(targets))?;
-			}
-			if !pos.are_zero() || !angle.is_absolute_zero() {
-				cgwrite!(&mut out, cbcx, " ", pos)?;
-			}
-			if !angle.is_absolute_zero() {
-				cgwrite!(&mut out, cbcx, " ", angle)?;
-			}
-			Some(out)
-		}
-		LIRInstrKind::SpreadPlayers {
-			center,
-			spread_distance,
-			max_range,
-			max_height,
-			respect_teams,
-			target,
-		} => {
-			let mut out = String::new();
-			cgwrite!(
-				&mut out,
-				cbcx,
-				"spreadplayers ",
-				center,
-				" ",
-				FloatCG((*spread_distance).into(), false, true, true),
-				" ",
-				FloatCG((*max_range).into(), false, true, true),
-				" "
-			)?;
-			if let Some(max_height) = max_height {
+			MinecraftInstr::FillBiome { data } => {
+				let mut out = String::new();
 				cgwrite!(
 					&mut out,
 					cbcx,
-					"under ",
-					FloatCG((*max_height).into(), false, true, true),
+					"fillbiome ",
+					data.start,
+					" ",
+					data.end,
+					" ",
+					data.biome
+				)?;
+
+				if let Some(filter) = &data.replace {
+					cgwrite!(&mut out, cbcx, " replace ", filter)?;
+				}
+
+				Some(out)
+			}
+			MinecraftInstr::SetWeather { weather, duration } => {
+				if let Some(duration) = duration {
+					Some(cgformat!(cbcx, "weather ", weather, " ", duration)?)
+				} else {
+					Some(cgformat!(cbcx, "weather ", weather)?)
+				}
+			}
+			MinecraftInstr::AddTime { time } => Some(cgformat!(cbcx, "time add ", time)?),
+			MinecraftInstr::SetTime { time } => {
+				// Using the day preset is shorter than the time it represents
+				if time.amount == 1000.0 {
+					Some("tmie set day".into())
+				} else {
+					Some(cgformat!(cbcx, "time set ", time)?)
+				}
+			}
+			MinecraftInstr::SetTimePreset { time } => Some(cgformat!(cbcx, "time set ", time)?),
+			MinecraftInstr::GetTime { query } => Some(cgformat!(cbcx, "time get ", query)?),
+			MinecraftInstr::AddTag { target, tag } => {
+				Some(cgformat!(cbcx, "tag ", target, " add ", tag)?)
+			}
+			MinecraftInstr::RemoveTag { target, tag } => {
+				Some(cgformat!(cbcx, "tag ", target, " remove ", tag)?)
+			}
+			MinecraftInstr::ListTags { target } => Some(cgformat!(cbcx, "tag ", target, " list")?),
+			MinecraftInstr::RideMount { target, vehicle } => {
+				Some(cgformat!(cbcx, "ride ", target, " mount ", vehicle)?)
+			}
+			MinecraftInstr::RideDismount { target } => {
+				Some(cgformat!(cbcx, "ride ", target, " dismount")?)
+			}
+			MinecraftInstr::Spectate { target, spectator } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "spectate ", target)?;
+				if !spectator.is_blank_this() {
+					cgwrite!(&mut out, cbcx, " ", spectator)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::SpectateStop => Some("spectate".into()),
+			MinecraftInstr::SetGamemode { target, gamemode } => {
+				Some(cgformat!(cbcx, "gamemode ", gamemode, " ", target)?)
+			}
+			MinecraftInstr::DefaultGamemode { gamemode } => {
+				Some(cgformat!(cbcx, "defaultgamemode ", gamemode)?)
+			}
+			MinecraftInstr::TeleportToEntity { source, dest } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "tp ")?;
+				if !source.is_blank_this() {
+					cgwrite!(&mut out, cbcx, source, " ")?;
+				}
+				cgwrite!(&mut out, cbcx, dest)?;
+
+				Some(out)
+			}
+			MinecraftInstr::TeleportToLocation { source, dest } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "tp ")?;
+				if !source.is_blank_this() {
+					cgwrite!(&mut out, cbcx, source, " ")?;
+				}
+				cgwrite!(&mut out, cbcx, dest)?;
+
+				Some(out)
+			}
+			MinecraftInstr::TeleportWithRotation {
+				source,
+				dest,
+				rotation,
+			} => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "tp ", source, " ", dest, " ", rotation)?;
+
+				Some(out)
+			}
+			MinecraftInstr::TeleportFacingLocation {
+				source,
+				dest,
+				facing,
+			} => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "tp ", source, " ", dest, " facing ", facing)?;
+
+				Some(out)
+			}
+			MinecraftInstr::TeleportFacingEntity {
+				source,
+				dest,
+				facing,
+			} => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "tp ", source, " ", dest, " facing ", facing)?;
+
+				Some(out)
+			}
+			MinecraftInstr::GiveItem {
+				target,
+				item,
+				amount,
+			} => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "give ", target, " ", item)?;
+				if *amount == 0 || (*amount as i64) > (i32::MAX as i64) {
+					bail!("Invalid item count");
+				}
+				if *amount != 1 {
+					cgwrite!(&mut out, cbcx, " ", amount)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::AddScoreboardObjective {
+				objective,
+				criterion,
+				display_name,
+			} => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "scoreboard objectives add ", objective, " ")?;
+				match criterion {
+					Criterion::Single(val) => val.gen_writer(&mut out, cbcx)?,
+					Criterion::Compound(val) => val.gen_writer(&mut out, cbcx)?,
+				}
+
+				if let Some(disp) = display_name {
+					cgwrite!(&mut out, cbcx, " ", disp)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::RemoveScoreboardObjective { objective } => {
+				Some(cgformat!(cbcx, "scoreboard objectives remove ", objective)?)
+			}
+			MinecraftInstr::ListScoreboardObjectives => Some("scoreboard objectives list".into()),
+			MinecraftInstr::TriggerAdd { objective, amount } => {
+				if *amount == 1 {
+					Some(cgformat!(cbcx, "trigger ", objective)?)
+				} else {
+					Some(cgformat!(cbcx, "trigger ", objective, " add ", amount)?)
+				}
+			}
+			MinecraftInstr::TriggerSet { objective, amount } => {
+				Some(cgformat!(cbcx, "trigger ", objective, " set ", amount)?)
+			}
+			MinecraftInstr::GetAttribute {
+				target,
+				attribute,
+				scale,
+			} => {
+				if *scale == 1.0 {
+					Some(cgformat!(cbcx, "attribute ", target, " get ", attribute)?)
+				} else {
+					Some(cgformat!(
+						cbcx,
+						"attribute ",
+						target,
+						" get ",
+						attribute,
+						" ",
+						FloatCG(*scale, false, true, true)
+					)?)
+				}
+			}
+			MinecraftInstr::GetAttributeBase {
+				target,
+				attribute,
+				scale,
+			} => {
+				if *scale == 1.0 {
+					Some(cgformat!(
+						cbcx,
+						"attribute ",
+						target,
+						" base get ",
+						attribute
+					)?)
+				} else {
+					Some(cgformat!(
+						cbcx,
+						"attribute ",
+						target,
+						" base get ",
+						attribute,
+						" ",
+						FloatCG(*scale, false, true, true)
+					)?)
+				}
+			}
+			MinecraftInstr::SetAttributeBase {
+				target,
+				attribute,
+				value,
+			} => Some(cgformat!(
+				cbcx,
+				"attribute ",
+				target,
+				" ",
+				attribute,
+				" base set ",
+				FloatCG(*value, false, true, true)
+			)?),
+			MinecraftInstr::AddAttributeModifier {
+				target,
+				attribute,
+				uuid,
+				name,
+				value,
+				ty,
+			} => Some(cgformat!(
+				cbcx,
+				"attribute ",
+				target,
+				" ",
+				attribute,
+				" modifier add ",
+				uuid,
+				" ",
+				name,
+				" ",
+				FloatCG(*value, false, true, true),
+				" ",
+				ty
+			)?),
+			MinecraftInstr::RemoveAttributeModifier {
+				target,
+				attribute,
+				uuid,
+			} => Some(cgformat!(
+				cbcx,
+				"attribute ",
+				target,
+				" ",
+				attribute,
+				" modifier remove ",
+				uuid
+			)?),
+			MinecraftInstr::GetAttributeModifier {
+				target,
+				attribute,
+				uuid,
+				scale,
+			} => {
+				let mut out = String::new();
+				cgwrite!(
+					&mut out,
+					cbcx,
+					"attribute ",
+					target,
+					" ",
+					attribute,
+					" modifier get ",
+					uuid
+				)?;
+				if *scale != 1.0 {
+					cgwrite!(&mut out, cbcx, " ", FloatCG(*scale, false, true, true))?;
+				}
+
+				Some(out)
+			}
+			MinecraftInstr::DisableDatapack { pack } => {
+				Some(cgformat!(cbcx, "datapack disable ", pack)?)
+			}
+			MinecraftInstr::EnableDatapack { pack } => {
+				Some(cgformat!(cbcx, "datapack enable ", pack)?)
+			}
+			MinecraftInstr::SetDatapackPriority { pack, priority } => {
+				Some(cgformat!(cbcx, "datapack enable ", pack, " ", priority)?)
+			}
+			MinecraftInstr::SetDatapackOrder {
+				pack,
+				order,
+				existing,
+			} => Some(cgformat!(
+				cbcx,
+				"datapack enable ",
+				pack,
+				" ",
+				order,
+				" ",
+				existing
+			)?),
+			MinecraftInstr::ListDatapacks { mode } => match mode {
+				DatapackListMode::All => Some("datapack list".into()),
+				other => Some(cgformat!(cbcx, "datapack list ", other)?),
+			},
+			MinecraftInstr::ListPlayerUUIDs => Some("list uuids".into()),
+			MinecraftInstr::SummonEntity { entity, pos, nbt } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "summon ", entity)?;
+				if !pos.are_zero() || !nbt.is_empty() {
+					cgwrite!(&mut out, cbcx, " ", pos)?;
+				}
+				if !nbt.is_empty() {
+					cgwrite!(&mut out, cbcx, " ", nbt.get_literal_str())?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::SetWorldSpawn { pos, angle } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "setworldspawn")?;
+				if !pos.are_zero() || !angle.is_absolute_zero() {
+					cgwrite!(&mut out, cbcx, " ", pos)?;
+				}
+				if !angle.is_absolute_zero() {
+					cgwrite!(&mut out, cbcx, " ", angle)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::ClearItems {
+				targets,
+				item,
+				max_count,
+			} => {
+				let mut out = String::new();
+				if targets.is_empty() {
+					bail!("Target list empty");
+				}
+				cgwrite!(&mut out, cbcx, "clear")?;
+				if !targets.first().expect("Not empty").is_blank_this() {
+					cgwrite!(&mut out, cbcx, SpaceSepListCG(targets))?;
+				}
+				if let Some(item) = item {
+					cgwrite!(&mut out, cbcx, " ", item)?;
+				}
+				if let Some(max_count) = max_count {
+					cgwrite!(&mut out, cbcx, " ", max_count)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::SetSpawnpoint {
+				targets,
+				pos,
+				angle,
+			} => {
+				let mut out = String::new();
+				if targets.is_empty() {
+					bail!("Target list empty");
+				}
+				cgwrite!(&mut out, cbcx, "spawnpoint")?;
+				if !(targets.first().expect("Not empty").is_blank_this()
+					&& pos.are_zero() && angle.is_absolute_zero())
+				{
+					cgwrite!(&mut out, cbcx, " ", SpaceSepListCG(targets))?;
+				}
+				if !pos.are_zero() || !angle.is_absolute_zero() {
+					cgwrite!(&mut out, cbcx, " ", pos)?;
+				}
+				if !angle.is_absolute_zero() {
+					cgwrite!(&mut out, cbcx, " ", angle)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::SpreadPlayers {
+				center,
+				spread_distance,
+				max_range,
+				max_height,
+				respect_teams,
+				target,
+			} => {
+				let mut out = String::new();
+				cgwrite!(
+					&mut out,
+					cbcx,
+					"spreadplayers ",
+					center,
+					" ",
+					FloatCG((*spread_distance).into(), false, true, true),
+					" ",
+					FloatCG((*max_range).into(), false, true, true),
 					" "
 				)?;
+				if let Some(max_height) = max_height {
+					cgwrite!(
+						&mut out,
+						cbcx,
+						"under ",
+						FloatCG((*max_height).into(), false, true, true),
+						" "
+					)?;
+				}
+				cgwrite!(&mut out, cbcx, respect_teams, " ", target)?;
+				Some(out)
 			}
-			cgwrite!(&mut out, cbcx, respect_teams, " ", target)?;
-			Some(out)
-		}
-		LIRInstrKind::ClearEffect(tgt, effect) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "effect clear")?;
-			if !tgt.is_blank_this() || effect.is_some() {
-				cgwrite!(&mut out, cbcx, " ", tgt)?;
-			}
-			if let Some(effect) = effect {
-				cgwrite!(&mut out, cbcx, " ", effect)?;
-			}
+			MinecraftInstr::ClearEffect { target, effect } => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "effect clear")?;
+				if !target.is_blank_this() || effect.is_some() {
+					cgwrite!(&mut out, cbcx, " ", target)?;
+				}
+				if let Some(effect) = effect {
+					cgwrite!(&mut out, cbcx, " ", effect)?;
+				}
 
-			Some(out)
-		}
-		LIRInstrKind::GiveEffect(tgt, effect, duration, amplifier, hide_particles) => {
-			let mut out = String::new();
-			cgwrite!(&mut out, cbcx, "effect give ", tgt, " ", effect)?;
-			if !duration.is_default() || *amplifier != 1 || *hide_particles {
-				cgwrite!(&mut out, cbcx, " ", duration)?;
+				Some(out)
 			}
-			if *amplifier != 1 || *hide_particles {
-				cgwrite!(&mut out, cbcx, " ", amplifier)?;
-			}
-			if *hide_particles {
-				cgwrite!(&mut out, cbcx, " true")?;
-			}
+			MinecraftInstr::GiveEffect {
+				target,
+				effect,
+				duration,
+				amplifier,
+				hide_particles,
+			} => {
+				let mut out = String::new();
+				cgwrite!(&mut out, cbcx, "effect give ", target, " ", effect)?;
+				if !duration.is_default() || *amplifier != 1 || *hide_particles {
+					cgwrite!(&mut out, cbcx, " ", duration)?;
+				}
+				if *amplifier != 1 || *hide_particles {
+					cgwrite!(&mut out, cbcx, " ", amplifier)?;
+				}
+				if *hide_particles {
+					cgwrite!(&mut out, cbcx, " true")?;
+				}
 
-			Some(out)
-		}
+				Some(out)
+			}
+			MinecraftInstr::SetGameruleBool { rule, value } => {
+				Some(format!("gamerule {rule} {value}"))
+			}
+			MinecraftInstr::SetGameruleInt { rule, value } => {
+				Some(format!("gamerule {rule} {value}"))
+			}
+			MinecraftInstr::GetGamerule { rule } => Some(format!("gamerule {rule}")),
+			MinecraftInstr::Locate {
+				location_type,
+				location,
+			} => Some(format!("locate {location_type:?} {location}")),
+		},
 		LIRInstrKind::Command(cmd) => Some(cmd.clone()),
 		LIRInstrKind::Comment(cmt) => Some(format!("#{cmt}")),
-		LIRInstrKind::SetGameruleBool(rule, value) => Some(format!("gamerule {rule} {value}")),
-		LIRInstrKind::SetGameruleInt(rule, value) => Some(format!("gamerule {rule} {value}")),
-		LIRInstrKind::GetGamerule(rule) => Some(format!("gamerule {rule}")),
-		LIRInstrKind::Locate(ty, loc) => Some(format!("locate {ty:?} {loc}")),
 		LIRInstrKind::Use(..) | LIRInstrKind::NoOp => None,
 	};
 

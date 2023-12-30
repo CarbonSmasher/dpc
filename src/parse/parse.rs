@@ -6,6 +6,7 @@ use anyhow::{bail, Context};
 use crate::common::condition::Condition;
 use crate::common::function::CallInterface;
 use crate::common::mc::entity::{EffectDuration, SelectorParameter, SelectorType, TargetSelector};
+use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::item::ItemData;
 use crate::common::mc::modifier::{StoreDataType, StoreModLocation};
 use crate::common::mc::pos::{
@@ -216,70 +217,72 @@ fn parse_instr<'t>(
 		}
 		"say" => {
 			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
-			Ok(InstrKind::Say {
+			Ok(InstrKind::MC(MinecraftInstr::Say {
 				message: msg.clone(),
-			})
+			}))
 		}
 		"tell" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
-			Ok(InstrKind::Tell {
+			Ok(InstrKind::MC(MinecraftInstr::Tell {
 				target: tgt,
 				message: msg.clone(),
-			})
+			}))
 		}
 		"me" => {
 			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
-			Ok(InstrKind::Me {
+			Ok(InstrKind::MC(MinecraftInstr::Me {
 				message: msg.clone(),
-			})
+			}))
 		}
 		"tm" => {
 			let msg = consume_extract!(toks, Str, { bail!("Missing message") });
-			Ok(InstrKind::TeamMessage {
+			Ok(InstrKind::MC(MinecraftInstr::TeamMessage {
 				message: msg.clone(),
-			})
+			}))
 		}
-		"banl" => Ok(InstrKind::Banlist),
+		"banl" => Ok(InstrKind::MC(MinecraftInstr::Banlist)),
 		"bani" => {
 			let tgt = consume_extract!(toks, Str, { bail!("Missing target") });
 			consume_optional_expect!(toks, Comma);
 			let reason = consume_optional_extract!(toks, Str);
-			Ok(InstrKind::BanIP {
+			Ok(InstrKind::MC(MinecraftInstr::BanIP {
 				target: tgt.clone(),
 				reason: reason.cloned(),
-			})
+			}))
 		}
 		"pari" => {
 			let tgt = consume_extract!(toks, Str, { bail!("Missing target") });
-			Ok(InstrKind::PardonIP {
+			Ok(InstrKind::MC(MinecraftInstr::PardonIP {
 				target: tgt.clone(),
-			})
+			}))
 		}
-		"wlon" => Ok(InstrKind::WhitelistOn),
-		"wloff" => Ok(InstrKind::WhitelistOff),
-		"wlrl" => Ok(InstrKind::WhitelistReload),
-		"wll" => Ok(InstrKind::WhitelistList),
-		"lsp" => Ok(InstrKind::ListPlayers),
-		"pub" => Ok(InstrKind::Publish),
-		"rl" => Ok(InstrKind::Reload),
-		"seed" => Ok(InstrKind::Seed),
-		"stop" => Ok(InstrKind::StopServer),
-		"stops" => Ok(InstrKind::StopSound),
-		"diffg" => Ok(InstrKind::GetDifficulty),
+		"wlon" => Ok(InstrKind::MC(MinecraftInstr::WhitelistOn)),
+		"wloff" => Ok(InstrKind::MC(MinecraftInstr::WhitelistOff)),
+		"wlrl" => Ok(InstrKind::MC(MinecraftInstr::WhitelistReload)),
+		"wll" => Ok(InstrKind::MC(MinecraftInstr::WhitelistList)),
+		"lsp" => Ok(InstrKind::MC(MinecraftInstr::ListPlayers)),
+		"pub" => Ok(InstrKind::MC(MinecraftInstr::Publish)),
+		"rl" => Ok(InstrKind::MC(MinecraftInstr::Reload)),
+		"seed" => Ok(InstrKind::MC(MinecraftInstr::Seed)),
+		"stop" => Ok(InstrKind::MC(MinecraftInstr::StopServer)),
+		"stops" => Ok(InstrKind::MC(MinecraftInstr::StopSound)),
+		"diffg" => Ok(InstrKind::MC(MinecraftInstr::GetDifficulty)),
 		"diffs" => {
 			let diff = consume_extract!(toks, Ident, { bail!("Missing difficulty") });
 			let Some(diff) = Difficulty::parse(diff) else {
 				bail!("Invalid difficulty");
 			};
-			Ok(InstrKind::SetDifficulty { difficulty: diff })
+			Ok(InstrKind::MC(MinecraftInstr::SetDifficulty {
+				difficulty: diff,
+			}))
 		}
-		"specs" => Ok(InstrKind::SpectateStop),
+		"specs" => Ok(InstrKind::MC(MinecraftInstr::SpectateStop)),
 		"if" => parse_if(toks).context("Failed to parse if"),
 		"kill" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
-			Ok(InstrKind::Kill { target: tgt })
+			Ok(InstrKind::MC(MinecraftInstr::Kill { target: tgt }))
 		}
 		"ench" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
@@ -289,11 +292,11 @@ fn parse_instr<'t>(
 			let lvl = consume_extract!(toks, Num, { bail!("Missing level") });
 			let lvl: i32 = (*lvl).try_into().context("Level is not an i32")?;
 
-			Ok(InstrKind::Enchant {
+			Ok(InstrKind::MC(MinecraftInstr::Enchant {
 				target: tgt,
 				enchantment: ench.clone().into(),
 				level: lvl,
-			})
+			}))
 		}
 		"xps" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
@@ -305,11 +308,11 @@ fn parse_instr<'t>(
 			let Some(kind) = XPValue::parse(kind) else {
 				bail!("Invalid XP value");
 			};
-			Ok(InstrKind::SetXP {
+			Ok(InstrKind::MC(MinecraftInstr::SetXP {
 				target: tgt,
 				amount: amt,
 				value: kind,
-			})
+			}))
 		}
 		"xpa" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
@@ -321,11 +324,11 @@ fn parse_instr<'t>(
 			let Some(kind) = XPValue::parse(kind) else {
 				bail!("Invalid XP value");
 			};
-			Ok(InstrKind::AddXP {
+			Ok(InstrKind::MC(MinecraftInstr::AddXP {
 				target: tgt,
 				amount: amt,
 				value: kind,
-			})
+			}))
 		}
 		"xpg" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
@@ -334,63 +337,63 @@ fn parse_instr<'t>(
 			let Some(kind) = XPValue::parse(kind) else {
 				bail!("Invalid XP value");
 			};
-			Ok(InstrKind::GetXP {
+			Ok(InstrKind::MC(MinecraftInstr::GetXP {
 				target: tgt,
 				value: kind,
-			})
+			}))
 		}
 		"taga" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let tag = consume_extract!(toks, Str, { bail!("Missing tag") });
-			Ok(InstrKind::AddTag {
+			Ok(InstrKind::MC(MinecraftInstr::AddTag {
 				target: tgt,
 				tag: tag.clone().into(),
-			})
+			}))
 		}
 		"tagr" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let tag = consume_extract!(toks, Str, { bail!("Missing tag") });
-			Ok(InstrKind::RemoveTag {
+			Ok(InstrKind::MC(MinecraftInstr::RemoveTag {
 				target: tgt,
 				tag: tag.clone().into(),
-			})
+			}))
 		}
 		"tagl" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
-			Ok(InstrKind::ListTags { target: tgt })
+			Ok(InstrKind::MC(MinecraftInstr::ListTags { target: tgt }))
 		}
 		"mnt" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let vehicle = parse_entity_target(toks).context("Failed to parse vehicle target")?;
-			Ok(InstrKind::RideMount {
+			Ok(InstrKind::MC(MinecraftInstr::RideMount {
 				target: tgt,
 				vehicle,
-			})
+			}))
 		}
 		"dmnt" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
-			Ok(InstrKind::RideDismount { target: tgt })
+			Ok(InstrKind::MC(MinecraftInstr::RideDismount { target: tgt }))
 		}
 		"spec" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let spectator =
 				parse_entity_target(toks).context("Failed to parse spectator target")?;
-			Ok(InstrKind::Spectate {
+			Ok(InstrKind::MC(MinecraftInstr::Spectate {
 				target: tgt,
 				spectator,
-			})
+			}))
 		}
 		"sbor" => {
 			let obj = consume_extract!(toks, Str, { bail!("Missing objective") });
-			Ok(InstrKind::RemoveScoreboardObjective {
+			Ok(InstrKind::MC(MinecraftInstr::RemoveScoreboardObjective {
 				objective: obj.clone(),
-			})
+			}))
 		}
-		"sbol" => Ok(InstrKind::ListScoreboardObjectives),
+		"sbol" => Ok(InstrKind::MC(MinecraftInstr::ListScoreboardObjectives)),
 		"cmd" => {
 			let cmd = consume_extract!(toks, Str, { bail!("Missing command") });
 			Ok(InstrKind::Command {
@@ -408,30 +411,34 @@ fn parse_instr<'t>(
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let amt = consume_extract!(toks, Num, { bail!("Missing amount") });
 			let amt: i32 = (*amt).try_into().context("Amount is not an i32")?;
-			Ok(InstrKind::TriggerAdd {
+			Ok(InstrKind::MC(MinecraftInstr::TriggerAdd {
 				objective: obj.clone(),
 				amount: amt,
-			})
+			}))
 		}
 		"trgs" => {
 			let obj = consume_extract!(toks, Str, { bail!("Missing objective") });
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let amt = consume_extract!(toks, Num, { bail!("Missing amount") });
 			let amt: i32 = (*amt).try_into().context("Amount is not an i32")?;
-			Ok(InstrKind::TriggerSet {
+			Ok(InstrKind::MC(MinecraftInstr::TriggerSet {
 				objective: obj.clone(),
 				amount: amt,
-			})
+			}))
 		}
 		"dpd" => {
 			let pack = consume_extract!(toks, Str, { bail!("Missing pack") });
-			Ok(InstrKind::DisableDatapack { pack: pack.clone() })
+			Ok(InstrKind::MC(MinecraftInstr::DisableDatapack {
+				pack: pack.clone(),
+			}))
 		}
 		"dpe" => {
 			let pack = consume_extract!(toks, Str, { bail!("Missing pack") });
-			Ok(InstrKind::EnableDatapack { pack: pack.clone() })
+			Ok(InstrKind::MC(MinecraftInstr::EnableDatapack {
+				pack: pack.clone(),
+			}))
 		}
-		"lspu" => Ok(InstrKind::ListPlayerUUIDs),
+		"lspu" => Ok(InstrKind::MC(MinecraftInstr::ListPlayerUUIDs)),
 		"call" => {
 			// Return
 			let mut ret = Vec::new();
@@ -512,17 +519,17 @@ fn parse_instr<'t>(
 			} else {
 				None
 			};
-			Ok(InstrKind::AddScoreboardObjective {
+			Ok(InstrKind::MC(MinecraftInstr::AddScoreboardObjective {
 				objective: obj.clone(),
 				criterion,
 				display_name: display_name.cloned(),
-			})
+			}))
 		}
 		"sws" => {
 			let pos = parse_int_coords(toks).context("Failed to parse position")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let angle = parse_angle(toks).context("Failed to parse angle")?;
-			Ok(InstrKind::SetWorldSpawn { pos, angle })
+			Ok(InstrKind::MC(MinecraftInstr::SetWorldSpawn { pos, angle }))
 		}
 		"ssp" => {
 			let target = parse_entity_target(toks).context("Failed to parse target")?;
@@ -530,11 +537,11 @@ fn parse_instr<'t>(
 			let pos = parse_int_coords(toks).context("Failed to parse position")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let angle = parse_angle(toks).context("Failed to parse angle")?;
-			Ok(InstrKind::SetSpawnpoint {
+			Ok(InstrKind::MC(MinecraftInstr::SetSpawnpoint {
 				targets: vec![target],
 				pos,
 				angle,
-			})
+			}))
 		}
 		"smn" => {
 			let entity = consume_extract!(toks, Str, { bail!("Missing entity") });
@@ -545,11 +552,11 @@ fn parse_instr<'t>(
 				bail!("Missing NBT opening")
 			});
 			let (_, nbt) = parse_compound_lit(toks).context("Failed to parse NBT")?;
-			Ok(InstrKind::SummonEntity {
+			Ok(InstrKind::MC(MinecraftInstr::SummonEntity {
 				entity: entity.clone().into(),
 				pos,
 				nbt,
-			})
+			}))
 		}
 		"itmg" => {
 			let target = parse_entity_target(toks).context("Failed to parse target")?;
@@ -558,29 +565,29 @@ fn parse_instr<'t>(
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let amt = consume_extract!(toks, Num, { bail!("Missing amount") });
 			let amt: u32 = (*amt).try_into().context("Amount is not a u32")?;
-			Ok(InstrKind::GiveItem {
+			Ok(InstrKind::MC(MinecraftInstr::GiveItem {
 				target,
 				item,
 				amount: amt,
-			})
+			}))
 		}
 		"itmc" => {
 			// TODO: Flesh this out
 			let target = parse_entity_target(toks).context("Failed to parse target")?;
-			Ok(InstrKind::ClearItems {
+			Ok(InstrKind::MC(MinecraftInstr::ClearItems {
 				targets: vec![target],
 				item: None,
 				max_count: None,
-			})
+			}))
 		}
 		"effc" => {
 			let target = parse_entity_target(toks).context("Failed to parse target")?;
 			consume_optional_expect!(toks, Comma);
 			let effect = consume_optional_extract!(toks, Str);
-			Ok(InstrKind::ClearEffect {
+			Ok(InstrKind::MC(MinecraftInstr::ClearEffect {
 				target,
 				effect: effect.map(|x| x.clone().into()),
-			})
+			}))
 		}
 		"effg" => {
 			let target = parse_entity_target(toks).context("Failed to parse target")?;
@@ -607,21 +614,21 @@ fn parse_instr<'t>(
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let hide_particles =
 				parse_bool(toks).context("Failed to parse hide particles setting")?;
-			Ok(InstrKind::GiveEffect {
+			Ok(InstrKind::MC(MinecraftInstr::GiveEffect {
 				target,
 				effect: effect.clone().into(),
 				duration,
 				amplifier: amp,
 				hide_particles,
-			})
+			}))
 		}
 		"tima" => {
 			let time = parse_time(toks).context("Failed to parse time")?;
-			Ok(InstrKind::AddTime { time })
+			Ok(InstrKind::MC(MinecraftInstr::AddTime { time }))
 		}
 		"tims" => {
 			let time = parse_time(toks).context("Failed to parse time")?;
-			Ok(InstrKind::SetTime { time })
+			Ok(InstrKind::MC(MinecraftInstr::SetTime { time }))
 		}
 		"retv" => {
 			let idx = consume_extract!(toks, Num, { bail!("Missing return index") });
@@ -638,14 +645,20 @@ fn parse_instr<'t>(
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let dest = parse_entity_target(toks).context("Failed to parse dest target")?;
 
-			Ok(InstrKind::TeleportToEntity { source: src, dest })
+			Ok(InstrKind::MC(MinecraftInstr::TeleportToEntity {
+				source: src,
+				dest,
+			}))
 		}
 		"tpl" => {
 			let src = parse_entity_target(toks).context("Failed to parse source target")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let dest = parse_double_coords(toks).context("Failed to parse dest location")?;
 
-			Ok(InstrKind::TeleportToLocation { source: src, dest })
+			Ok(InstrKind::MC(MinecraftInstr::TeleportToLocation {
+				source: src,
+				dest,
+			}))
 		}
 		"tpr" => {
 			let src = parse_entity_target(toks).context("Failed to parse source target")?;
@@ -654,11 +667,11 @@ fn parse_instr<'t>(
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let rot = parse_double_coords_2d(toks).context("Failed to parse rotation")?;
 
-			Ok(InstrKind::TeleportWithRotation {
+			Ok(InstrKind::MC(MinecraftInstr::TeleportWithRotation {
 				source: src,
 				dest,
 				rotation: rot,
-			})
+			}))
 		}
 		"tpfl" => {
 			let src = parse_entity_target(toks).context("Failed to parse source target")?;
@@ -667,11 +680,11 @@ fn parse_instr<'t>(
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let face = parse_double_coords(toks).context("Failed to parse facing location")?;
 
-			Ok(InstrKind::TeleportFacingLocation {
+			Ok(InstrKind::MC(MinecraftInstr::TeleportFacingLocation {
 				source: src,
 				dest,
 				facing: face,
-			})
+			}))
 		}
 		"tpfe" => {
 			let src = parse_entity_target(toks).context("Failed to parse source target")?;
@@ -680,20 +693,20 @@ fn parse_instr<'t>(
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let face = parse_entity_target(toks).context("Failed to parse facing target")?;
 
-			Ok(InstrKind::TeleportFacingEntity {
+			Ok(InstrKind::MC(MinecraftInstr::TeleportFacingEntity {
 				source: src,
 				dest,
 				facing: face,
-			})
+			}))
 		}
 		"grsb" => {
 			let rule = consume_extract!(toks, Str, { bail!("Missing rule") });
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let value = parse_bool(toks).context("Missing value")?;
-			Ok(InstrKind::SetGameruleBool {
+			Ok(InstrKind::MC(MinecraftInstr::SetGameruleBool {
 				rule: rule.clone(),
 				value,
-			})
+			}))
 		}
 		"grsi" => {
 			let rule = consume_extract!(toks, Str, { bail!("Missing rule") });
@@ -701,25 +714,27 @@ fn parse_instr<'t>(
 			let value = consume_extract!(toks, Num, { bail!("Missing value") });
 			let value: i32 = (*value).try_into().context("Value is not an i32")?;
 
-			Ok(InstrKind::SetGameruleInt {
+			Ok(InstrKind::MC(MinecraftInstr::SetGameruleInt {
 				rule: rule.clone(),
 				value,
-			})
+			}))
 		}
 		"grg" => {
 			let rule = consume_extract!(toks, Str, { bail!("Missing rule") });
 
-			Ok(InstrKind::GetGamerule { rule: rule.clone() })
+			Ok(InstrKind::MC(MinecraftInstr::GetGamerule {
+				rule: rule.clone(),
+			}))
 		}
 		"loc" => {
 			let ty = consume_extract!(toks, Ident, { bail!("Missing location type") });
 			let ty = Location::parse(ty).context("Invalid location type")?;
 			let location = consume_extract!(toks, Str, { bail!("Missing location") });
 
-			Ok(InstrKind::Locate {
+			Ok(InstrKind::MC(MinecraftInstr::Locate {
 				location_type: ty,
 				location: location.clone().into(),
-			})
+			}))
 		}
 		"as" => {
 			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
