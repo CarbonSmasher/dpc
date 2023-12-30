@@ -176,6 +176,9 @@ pub enum MIRInstrKind {
 		value: MutableValue,
 		scale: Double,
 	},
+	GetConst {
+		value: i32,
+	},
 	Merge {
 		left: MutableValue,
 		right: Value,
@@ -225,6 +228,7 @@ pub enum MIRInstrKind {
 	Comment {
 		comment: String,
 	},
+	// Modifiers
 	As {
 		target: EntityTarget,
 		body: Box<MIRInstrKind>,
@@ -263,6 +267,7 @@ impl Debug for MIRInstrKind {
 			Self::Abs { val } => format!("abs {val:?}"),
 			Self::Pow { base, exp } => format!("pow {base:?}, {exp}"),
 			Self::Get { value, scale } => format!("get {value:?} {scale}"),
+			Self::GetConst { value } => format!("getc {value:?}"),
 			Self::Merge { left, right } => format!("merge {left:?}, {right:?}"),
 			Self::Push { left, right } => format!("push {left:?}, {right:?}"),
 			Self::PushFront { left, right } => format!("pushf {left:?}, {right:?}"),
@@ -315,9 +320,10 @@ impl MIRInstrKind {
 			Self::If { condition, body } => {
 				[condition.get_used_regs(), body.get_used_regs()].concat()
 			}
-			Self::As { body, .. } | Self::At { body, .. } | Self::Positioned { body, .. } => {
-				body.get_used_regs()
-			}
+			Self::As { body, .. }
+			| Self::At { body, .. }
+			| Self::Positioned { body, .. }
+			| Self::ReturnRun { body } => body.get_used_regs(),
 			Self::StoreResult { location, body } | Self::StoreSuccess { location, body } => {
 				[location.get_used_regs(), body.get_used_regs()].concat()
 			}
@@ -392,7 +398,10 @@ impl MIRInstrKind {
 				}
 				body.replace_regs(f);
 			}
-			Self::As { body, .. } | Self::At { body, .. } | Self::Positioned { body, .. } => {
+			Self::As { body, .. }
+			| Self::At { body, .. }
+			| Self::Positioned { body, .. }
+			| Self::ReturnRun { body } => {
 				body.replace_regs(f);
 			}
 			Self::StoreResult { location, body } | Self::StoreSuccess { location, body } => {

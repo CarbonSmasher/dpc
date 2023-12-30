@@ -122,6 +122,7 @@ fn lower_kind(
 			lir_instrs.push(LIRInstruction::new(lower_insert(left, right, index, lbcx)?));
 		}
 		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
+		MIRInstrKind::GetConst { value } => lower!(lir_instrs, GetConst, value),
 		MIRInstrKind::Call { call } => {
 			// Set the arguments
 			for (i, arg) in call.args.iter().enumerate() {
@@ -822,7 +823,7 @@ fn lower_condition(
 
 fn lower_subinstr(instr: MIRInstrKind, lbcx: &mut LowerBlockCx) -> anyhow::Result<LIRInstruction> {
 	let mut new_lir_instrs = Vec::new();
-	lower_kind(instr, &mut new_lir_instrs, lbcx).context("Failed to lower if body")?;
+	lower_kind(instr, &mut new_lir_instrs, lbcx).context("Failed to lower subinstruction body")?;
 
 	// Create a new function or just inline it
 	let out = if new_lir_instrs.len() == 1 {

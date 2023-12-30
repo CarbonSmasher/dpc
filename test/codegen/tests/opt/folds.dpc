@@ -36,9 +36,9 @@
 	mrg ent @s[] "name", {"bar": 7nb};
 
 	# Store & get
-	let store_get: score = null;
+	let store_get: nint = null;
 	str reg store_get, 0.5:
-		get sco @s[] "foo", 2.0;
+		get ent @s[] "foo", 2.0;
 	# Don't fold this
 	str data ent "foo" "bar", float, 0.7:
 		get ent @s[] "foo", 9.0;

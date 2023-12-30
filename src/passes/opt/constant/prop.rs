@@ -97,6 +97,17 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 				}
 			}
 		}
+		// Prop get to get const
+		MIRInstrKind::Get { value, scale } => {
+			if let MutableValue::Register(reg) = value.clone() {
+				if let Some(val) = an.vals.get(&reg) {
+					if let Some(val) = val.try_get_i32() {
+						let scaled = ((val as f64) * *scale) as i32;
+						*instr = MIRInstrKind::GetConst { value: scaled };
+					}
+				}
+			}
+		}
 		MIRInstrKind::If { condition, body } => {
 			match condition {
 				Condition::Equal(l, r)
@@ -148,6 +159,14 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 					an.vals.remove(&previous_reg);
 				}
 			}
+		}
+		MIRInstrKind::As { body, .. }
+		| MIRInstrKind::At { body, .. }
+		| MIRInstrKind::StoreResult { body, .. }
+		| MIRInstrKind::StoreSuccess { body, .. }
+		| MIRInstrKind::Positioned { body, .. }
+		| MIRInstrKind::ReturnRun { body } => {
+			const_prop_instr(body, an, run_again);
 		}
 		_ => {}
 	};

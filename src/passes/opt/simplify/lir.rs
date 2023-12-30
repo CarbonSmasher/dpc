@@ -183,6 +183,11 @@ fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<us
 				source: source.clone(),
 				dest: dest.clone(),
 			})),
+			// Return run get const is replaced with return value
+			LIRInstrKind::ReturnRun(body) => match body.as_ref().kind {
+				LIRInstrKind::GetConst(val) => Some(LIRInstrKind::ReturnValue(val)),
+				_ => None,
+			},
 			_ => None,
 		};
 

@@ -1,0 +1,12 @@
+# mir_passes lir_passes
+
+@preserve
+"test:main" {
+	call run "test:1";
+}
+
+"test:1" {
+	let x: nint = val 7ni;
+	retr:
+		get %x, 1.8;
+}

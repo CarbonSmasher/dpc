@@ -21,7 +21,7 @@ use crate::project::ProjectSettings;
 
 use self::modifier::codegen_modifier;
 use self::t::macros::cgwrite;
-use self::util::{get_mut_score_val_score, FloatCG, SpaceSepListCG};
+use self::util::{create_lit_score, get_mut_score_val_score, FloatCG, SpaceSepListCG};
 
 use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
 use super::strip::FunctionMapping;
@@ -224,6 +224,10 @@ pub fn codegen_instr(
 				cgwrite!(&mut out, cbcx, " ", scale)?;
 			}
 			Some(out)
+		}
+		LIRInstrKind::GetConst(val) => {
+			let lit = create_lit_score(*val);
+			Some(cgformat!(cbcx, "scoreboard players get ", lit)?)
 		}
 		LIRInstrKind::PushData(left, right) => {
 			let rhs = cg_data_modify_rhs(cbcx, right)?;
