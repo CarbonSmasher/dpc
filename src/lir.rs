@@ -6,7 +6,7 @@ use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::Modifier;
 use crate::common::ty::{ArraySize, Double};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
-use crate::common::{Identifier, RegisterList, ResourceLocation};
+use crate::common::{IRType, Identifier, RegisterList, ResourceLocation};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
@@ -27,6 +27,28 @@ impl LIR {
 			functions: HashMap::with_capacity(function_capacity),
 			blocks: BlockAllocator::with_capacity(block_capacity),
 		}
+	}
+}
+
+impl IRType for LIR {
+	type BlockType = LIRBlock;
+	type InstrType = LIRInstruction;
+	type InstrKindType = LIRInstrKind;
+
+	fn get_fns<'this>(&'this self) -> &'this HashMap<ResourceLocation, Function> {
+		&self.functions
+	}
+
+	fn get_fns_mut<'this>(&'this mut self) -> &'this mut HashMap<ResourceLocation, Function> {
+		&mut self.functions
+	}
+
+	fn get_blocks<'this>(&'this self) -> &'this BlockAllocator<Self::BlockType> {
+		&self.blocks
+	}
+
+	fn get_blocks_mut<'this>(&'this mut self) -> &'this mut BlockAllocator<Self::BlockType> {
+		&mut self.blocks
 	}
 }
 

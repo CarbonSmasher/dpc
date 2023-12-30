@@ -8,6 +8,7 @@ use crate::common::mc::modifier::StoreModLocation;
 use crate::common::mc::pos::DoubleCoordinates;
 use crate::common::mc::EntityTarget;
 use crate::common::ty::{DataType, Double};
+use crate::common::IRType;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 
 #[derive(Debug, Clone)]
@@ -22,6 +23,28 @@ impl IR {
 			functions: HashMap::new(),
 			blocks: BlockAllocator::new(),
 		}
+	}
+}
+
+impl IRType for IR {
+	type BlockType = Block;
+	type InstrType = Instruction;
+	type InstrKindType = InstrKind;
+
+	fn get_fns<'this>(&'this self) -> &'this HashMap<ResourceLocation, Function> {
+		&self.functions
+	}
+
+	fn get_fns_mut<'this>(&'this mut self) -> &'this mut HashMap<ResourceLocation, Function> {
+		&mut self.functions
+	}
+
+	fn get_blocks<'this>(&'this self) -> &'this BlockAllocator<Self::BlockType> {
+		&self.blocks
+	}
+
+	fn get_blocks_mut<'this>(&'this mut self) -> &'this mut BlockAllocator<Self::BlockType> {
+		&mut self.blocks
 	}
 }
 

@@ -6,11 +6,13 @@ pub mod range;
 pub mod ty;
 pub mod val;
 
+use std::collections::HashMap;
 use std::{fmt::Debug, sync::Arc};
 
 use dashmap::DashMap;
 
-use self::function::FunctionSignature;
+use self::block::BlockAllocator;
+use self::function::{Function, FunctionSignature};
 use self::ty::DataType;
 use self::val::{MutableValue, Value};
 
@@ -76,3 +78,26 @@ pub type RegisterList = DashMap<Identifier, Register>;
 
 pub type ResourceLocation = Identifier;
 pub type ResourceLocationTag = Identifier;
+
+/// Trait used to implement helper functions for the different
+/// stages of IR we use
+pub trait IRType {
+	type BlockType;
+	type InstrType;
+	type InstrKindType;
+
+	// Interface functions for trait methods
+	fn get_fns<'this>(&'this self) -> &'this HashMap<ResourceLocation, Function>;
+	fn get_fns_mut<'this>(&'this mut self) -> &'this mut HashMap<ResourceLocation, Function>;
+	fn get_blocks<'this>(&'this self) -> &'this BlockAllocator<Self::BlockType>;
+	fn get_blocks_mut<'this>(&'this mut self) -> &'this mut BlockAllocator<Self::BlockType>;
+
+	// Iteration methods
+	fn iter_fns(&self) -> std::collections::hash_map::Iter<ResourceLocation, Function> {
+		self.get_fns().iter()
+	}
+
+	fn iter_fns_mut(&mut self) -> std::collections::hash_map::IterMut<ResourceLocation, Function> {
+		self.get_fns_mut().iter_mut()
+	}
+}

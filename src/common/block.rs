@@ -67,6 +67,8 @@ impl<BlockT: Block> BlockAllocator<BlockT> {
 	}
 }
 
+/// Trait for the different types of blocks we use at different
+/// stages of IR. Includes some utility methods
 pub trait Block {
 	fn instr_count(&self) -> usize;
 
