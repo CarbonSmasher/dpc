@@ -134,7 +134,6 @@ impl Debug for LIRInstruction {
 
 #[derive(Clone)]
 pub enum LIRInstrKind {
-	// Basic
 	SetScore(MutableScoreValue, ScoreValue),
 	AddScore(MutableScoreValue, ScoreValue),
 	SubScore(MutableScoreValue, ScoreValue),
