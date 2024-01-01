@@ -4,7 +4,8 @@ use crate::common::{ty::NBTCompoundTypeContents, Identifier, ResourceLocation};
 
 use super::block::{CloneData, FillBiomeData, FillData, SetBlockData};
 use super::entity::{AttributeType, EffectDuration, UUID};
-use super::item::ItemData;
+use super::item::LootSource;
+use super::item::{ItemData, ItemModifyLocation};
 use super::pos::{Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates};
 use super::scoreboard_and_teams::Criterion;
 use super::time::{Time, TimePreset, TimeQuery};
@@ -304,6 +305,85 @@ pub enum MinecraftInstr {
 		amplifier: u8,
 		hide_particles: bool,
 	},
+	LootGive {
+		player: EntityTarget,
+		source: LootSource,
+	},
+	LootInsert {
+		pos: IntCoordinates,
+		source: LootSource,
+	},
+	LootSpawn {
+		pos: DoubleCoordinates,
+		source: LootSource,
+	},
+	LootReplaceBlock {
+		pos: IntCoordinates,
+		slot: String,
+		count: i32,
+		source: LootSource,
+	},
+	LootReplaceEntity {
+		target: EntityTarget,
+		slot: String,
+		count: i32,
+		source: LootSource,
+	},
+	ItemModify {
+		location: ItemModifyLocation,
+		slot: String,
+		modifier: ResourceLocation,
+	},
+	ItemReplaceWith {
+		location: ItemModifyLocation,
+		slot: String,
+		item: ItemData,
+		count: i32,
+	},
+	ItemReplaceFrom {
+		dest: ItemModifyLocation,
+		slot: String,
+		source: ItemModifyLocation,
+		modifier: Option<ResourceLocation>,
+	},
+	PlaceFeature {
+		feature: ResourceLocation,
+		pos: IntCoordinates,
+	},
+	PlaceJigsaw {
+		pool: ResourceLocation,
+		target: ResourceLocation,
+		max_depth: u8,
+		pos: IntCoordinates,
+	},
+	PlaceStructure {
+		structure: ResourceLocation,
+		pos: IntCoordinates,
+	},
+	WorldBorderAdd {
+		dist: f64,
+		time: i32,
+	},
+	WorldBorderSet {
+		dist: f64,
+		time: i32,
+	},
+	WorldBorderGet,
+	WorldBorderCenter {
+		pos: IntCoordinates,
+	},
+	WorldBorderDamage {
+		damage: f64,
+	},
+	WorldBorderBuffer {
+		buffer: f64,
+	},
+	WorldBorderWarningDistance {
+		dist: f64,
+	},
+	WorldBorderWarningTime {
+		time: i32,
+	},
 }
 
 impl Debug for MinecraftInstr {
@@ -499,6 +579,25 @@ impl Debug for MinecraftInstr {
 			} => format!("grsi {rule} {value}"),
 			Self::GetGamerule { rule } => format!("grg {rule}"),
 			Self::Locate { location_type, location } => format!("loc {location_type:?} {location}"),
+			Self::LootGive { player, source } => format!("lootg {player:?} {source:?}"),
+			Self::LootInsert { pos, source } => format!("looti {pos:?} {source:?}"),
+			Self::LootSpawn { pos, source } => format!("loots {pos:?} {source:?}"),
+			Self::LootReplaceBlock { pos, slot, count, source } => format!("lootrb {pos:?} {slot} {count} {source:?}"),
+			Self::LootReplaceEntity { target, slot, count, source } => format!("lootre {target:?} {slot} {count} {source:?}"),
+			Self::ItemModify { location, slot, modifier } => format!("itmm {location:?} {slot} {modifier}"),
+			Self::ItemReplaceWith { location, slot, item, count } => format!("itmrw {location:?} {slot} {item:?} {count}"),
+			Self::ItemReplaceFrom { dest, slot, source, modifier } => format!("itmrf {dest:?} {slot} {source:?} {modifier:?}"),
+			Self::PlaceFeature { feature, pos } => format!("plf {feature} {pos:?}"),
+			Self::PlaceJigsaw { pool, target, max_depth, pos } => format!("plj {pool} {target} {max_depth} {pos:?}"),
+			Self::PlaceStructure { structure, pos } => format!("pls {structure} {pos:?}"),
+			Self::WorldBorderAdd { dist, time } => format!("wba {dist} {time}"),
+			Self::WorldBorderSet { dist, time } => format!("wbs {dist} {time}"),
+			Self::WorldBorderGet => "wbg".into(),
+			Self::WorldBorderCenter { pos } => format!("wbc {pos:?}"),
+			Self::WorldBorderDamage { damage } => format!("wbd {damage}"),
+			Self::WorldBorderBuffer { buffer } => format!("wbb {buffer}"),
+			Self::WorldBorderWarningDistance { dist } => format!("wbwd {dist}"),
+			Self::WorldBorderWarningTime { time } => format!("wbwt {time}"),
 		};
 		write!(f, "{text}")
 	}

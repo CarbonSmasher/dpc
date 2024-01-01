@@ -100,4 +100,12 @@ gamerule doFireTick true
 gamerule randomTickSpeed 2345
 gamerule doDaylightCycle
 locate biome minecraft:taiga
+worldborder add .5
+worldborder set 0 64
+worldborder get
+worldborder center 0 ~3 ~
+worldborder damage amount .4
+worldborder damage buffer 24
+worldborder warning distance .8
+worldborder warning time 3
 return run say hello

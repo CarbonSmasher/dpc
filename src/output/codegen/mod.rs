@@ -898,6 +898,212 @@ pub fn codegen_instr(
 				location_type,
 				location,
 			} => Some(format!("locate {location_type:?} {location}")),
+			MinecraftInstr::LootGive { player, source } => {
+				Some(cgformat!(cbcx, "loot give ", player, " ", source)?)
+			}
+			MinecraftInstr::LootInsert { pos, source } => {
+				Some(cgformat!(cbcx, "loot insert ", pos, " ", source)?)
+			}
+			MinecraftInstr::LootSpawn { pos, source } => {
+				Some(cgformat!(cbcx, "loot spawn ", pos, " ", source)?)
+			}
+			MinecraftInstr::LootReplaceBlock {
+				pos,
+				slot,
+				count,
+				source,
+			} => {
+				if *count == 1 {
+					Some(cgformat!(
+						cbcx,
+						"loot replace block ",
+						pos,
+						" ",
+						slot,
+						" ",
+						source
+					)?)
+				} else {
+					Some(cgformat!(
+						cbcx,
+						"loot replace block ",
+						pos,
+						" ",
+						slot,
+						" ",
+						count,
+						" ",
+						source
+					)?)
+				}
+			}
+			MinecraftInstr::LootReplaceEntity {
+				target,
+				slot,
+				count,
+				source,
+			} => {
+				if *count == 1 {
+					Some(cgformat!(
+						cbcx,
+						"loot replace entity ",
+						target,
+						" ",
+						slot,
+						" ",
+						source
+					)?)
+				} else {
+					Some(cgformat!(
+						cbcx,
+						"loot replace entity ",
+						target,
+						" ",
+						slot,
+						" ",
+						count,
+						" ",
+						source
+					)?)
+				}
+			}
+			MinecraftInstr::ItemModify {
+				location,
+				slot,
+				modifier,
+			} => Some(cgformat!(
+				cbcx,
+				"item modify ",
+				location,
+				" ",
+				slot,
+				" ",
+				modifier
+			)?),
+			MinecraftInstr::ItemReplaceWith {
+				location,
+				slot,
+				item,
+				count,
+			} => {
+				if *count == 1 {
+					Some(cgformat!(
+						cbcx,
+						"item replace ",
+						location,
+						" ",
+						slot,
+						" with ",
+						item
+					)?)
+				} else {
+					Some(cgformat!(
+						cbcx,
+						"item replace ",
+						location,
+						" ",
+						slot,
+						" with ",
+						item,
+						" ",
+						count
+					)?)
+				}
+			}
+			MinecraftInstr::ItemReplaceFrom {
+				dest,
+				slot,
+				source,
+				modifier,
+			} => {
+				if let Some(modifier) = modifier {
+					Some(cgformat!(
+						cbcx,
+						"item replace ",
+						dest,
+						" ",
+						slot,
+						" with ",
+						source,
+						" ",
+						modifier
+					)?)
+				} else {
+					Some(cgformat!(
+						cbcx,
+						"item replace ",
+						dest,
+						" ",
+						slot,
+						" with ",
+						source
+					)?)
+				}
+			}
+			MinecraftInstr::PlaceFeature { feature, pos } => {
+				let mut out = cgformat!(cbcx, "place feature ", feature)?;
+				if !pos.are_zero() {
+					cgwrite!(&mut out, cbcx, " ", pos)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::PlaceJigsaw {
+				pool,
+				target,
+				max_depth,
+				pos,
+			} => {
+				let mut out = cgformat!(cbcx, "place jigsaw ", pool, " ", target, " ", max_depth)?;
+				if !pos.are_zero() {
+					cgwrite!(&mut out, cbcx, " ", pos)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::PlaceStructure { structure, pos } => {
+				let mut out = cgformat!(cbcx, "place structure ", structure)?;
+				if !pos.are_zero() {
+					cgwrite!(&mut out, cbcx, " ", pos)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::WorldBorderAdd { dist, time } => {
+				let mut out =
+					cgformat!(cbcx, "worldborder add ", FloatCG(*dist, false, true, true))?;
+				if *time != 0 {
+					cgwrite!(&mut out, cbcx, " ", time)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::WorldBorderSet { dist, time } => {
+				let mut out =
+					cgformat!(cbcx, "worldborder set ", FloatCG(*dist, false, true, true))?;
+				if *time != 0 {
+					cgwrite!(&mut out, cbcx, " ", time)?;
+				}
+				Some(out)
+			}
+			MinecraftInstr::WorldBorderGet => Some("worldborder get".into()),
+			MinecraftInstr::WorldBorderCenter { pos } => {
+				Some(cgformat!(cbcx, "worldborder center ", pos)?)
+			}
+			MinecraftInstr::WorldBorderDamage { damage } => Some(cgformat!(
+				cbcx,
+				"worldborder damage amount ",
+				FloatCG(*damage, false, true, true)
+			)?),
+			MinecraftInstr::WorldBorderBuffer { buffer } => Some(cgformat!(
+				cbcx,
+				"worldborder damage buffer ",
+				FloatCG(*buffer, false, true, true)
+			)?),
+			MinecraftInstr::WorldBorderWarningDistance { dist } => Some(cgformat!(
+				cbcx,
+				"worldborder warning distance ",
+				FloatCG(*dist, false, true, true)
+			)?),
+			MinecraftInstr::WorldBorderWarningTime { time } => {
+				Some(cgformat!(cbcx, "worldborder warning time ", time)?)
+			}
 		},
 		LIRInstrKind::Command(cmd) => Some(cmd.clone()),
 		LIRInstrKind::Comment(cmt) => Some(format!("#{cmt}")),

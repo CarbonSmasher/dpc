@@ -394,6 +394,7 @@ fn parse_instr<'t>(
 			}))
 		}
 		"sbol" => Ok(InstrKind::MC(MinecraftInstr::ListScoreboardObjectives)),
+		"wbg" => Ok(InstrKind::MC(MinecraftInstr::WorldBorderGet)),
 		"cmd" => {
 			let cmd = consume_extract!(toks, Str, { bail!("Missing command") });
 			Ok(InstrKind::Command {
@@ -717,6 +718,62 @@ fn parse_instr<'t>(
 			Ok(InstrKind::MC(MinecraftInstr::SetGameruleInt {
 				rule: rule.clone(),
 				value,
+			}))
+		}
+		"wba" => {
+			let dist = consume_extract!(toks, Decimal, { bail!("Missing distance") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let time = consume_extract!(toks, Num, { bail!("Missing time") });
+			let time: i32 = (*time).try_into().context("Time is not an i32")?;
+
+			Ok(InstrKind::MC(MinecraftInstr::WorldBorderAdd {
+				dist: *dist,
+				time,
+			}))
+		}
+		"wbs" => {
+			let dist = consume_extract!(toks, Decimal, { bail!("Missing distance") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let time = consume_extract!(toks, Num, { bail!("Missing time") });
+			let time: i32 = (*time).try_into().context("Time is not an i32")?;
+
+			Ok(InstrKind::MC(MinecraftInstr::WorldBorderSet {
+				dist: *dist,
+				time,
+			}))
+		}
+		"wbc" => {
+			let pos = parse_int_coords(toks).context("Failed to parse pos")?;
+
+			Ok(InstrKind::MC(MinecraftInstr::WorldBorderCenter { pos }))
+		}
+		"wbd" => {
+			let val = consume_extract!(toks, Decimal, { bail!("Missing damage") });
+
+			Ok(InstrKind::MC(MinecraftInstr::WorldBorderDamage {
+				damage: *val,
+			}))
+		}
+		"wbb" => {
+			let val = consume_extract!(toks, Decimal, { bail!("Missing buffer") });
+
+			Ok(InstrKind::MC(MinecraftInstr::WorldBorderBuffer {
+				buffer: *val,
+			}))
+		}
+		"wbwd" => {
+			let val = consume_extract!(toks, Decimal, { bail!("Missing distance") });
+
+			Ok(InstrKind::MC(MinecraftInstr::WorldBorderWarningDistance {
+				dist: *val,
+			}))
+		}
+		"wbwt" => {
+			let time = consume_extract!(toks, Num, { bail!("Missing time") });
+			let time: i32 = (*time).try_into().context("Time is not an i32")?;
+
+			Ok(InstrKind::MC(MinecraftInstr::WorldBorderWarningTime {
+				time,
 			}))
 		}
 		"grg" => {
