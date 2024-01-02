@@ -190,13 +190,25 @@ impl LIRInstrKind {
 			LIRInstrKind::SwapScore(left, right) => {
 				[left.get_used_regs(), right.get_used_regs()].concat()
 			}
-			LIRInstrKind::GetScore(score) => score.get_used_regs(),
-			LIRInstrKind::GetData(data, ..) => data.get_used_regs(),
+			LIRInstrKind::GetScore(score) | LIRInstrKind::ResetScore(score) => {
+				score.get_used_regs()
+			}
+			LIRInstrKind::GetData(data, ..) | LIRInstrKind::RemoveData(data) => {
+				data.get_used_regs()
+			}
 			LIRInstrKind::ConstIndexToScore { score, value, .. } => {
 				[score.get_used_regs(), value.get_used_regs()].concat()
 			}
 			LIRInstrKind::Use(val) => val.get_used_regs(),
-			_ => Vec::new(),
+			LIRInstrKind::NoOp
+			| LIRInstrKind::GetConst(..)
+			| LIRInstrKind::Call(..)
+			| LIRInstrKind::ReturnValue(..)
+			| LIRInstrKind::ReturnFail
+			| LIRInstrKind::Command(..)
+			| LIRInstrKind::Comment(..)
+			| LIRInstrKind::MC(..) => Vec::new(),
+			LIRInstrKind::ReturnRun(body) => body.get_used_regs(),
 		}
 	}
 }

@@ -86,11 +86,9 @@ impl Debug for Modifier {
 	}
 }
 
-// TODO: Type and scale
 #[derive(Clone, PartialEq)]
 pub enum StoreModLocation {
 	Reg(Identifier, Double),
-	// LocalReg(Identifier, Double),
 	Score(Score),
 	Data(FullDataLocation, StoreDataType, Double),
 	Bossbar(ResourceLocation, StoreBossbarMode),
