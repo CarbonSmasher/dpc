@@ -88,6 +88,7 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 			MIRInstrKind::MC(
 				MinecraftInstr::AddXP { amount, .. } | MinecraftInstr::TriggerAdd { amount, .. },
 			) if amount.is_zero() => true,
+			MIRInstrKind::MC(MinecraftInstr::WorldBorderAdd { dist, .. }) if *dist == 0.0 => true,
 			// Merge with empty compound doesn't do anything
 			MIRInstrKind::Merge {
 				right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Compound(_, comp))),

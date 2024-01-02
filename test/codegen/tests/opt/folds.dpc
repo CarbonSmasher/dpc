@@ -44,5 +44,10 @@
 		get ent @s[] "foo", 9.0;
 	use %store_get;
 
+	# Game instrs
+	xpa @s[], 0, levels;
+	tima 0.0t;
+	wba 0.0, 0;
+
 	use %x;
 }
