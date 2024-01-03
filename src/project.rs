@@ -1,6 +1,7 @@
 use crate::output::strip::StripMode;
 
 /// Settings for a generated project
+#[derive(Clone)]
 pub struct ProjectSettings {
 	pub(crate) name: String,
 	pub(crate) strip_mode: StripMode,

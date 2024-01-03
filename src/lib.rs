@@ -106,6 +106,7 @@ pub fn codegen_ir(
 }
 
 /// Settings for the codegen_ir utility function
+#[derive(Clone)]
 pub struct CodegenIRSettings {
 	pub debug: bool,
 	pub debug_functions: bool,

@@ -10,6 +10,11 @@ keywords = ["minecraft", "datapack", "compiler"]
 categories = ["games"]
 default-run = "dpc"
 
+[workspace]
+members = [
+	"bind/py",
+]
+
 [[bin]]
 name = "cg_gen"
 path = "test/codegen/gen_test.rs"

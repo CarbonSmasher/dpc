@@ -1,0 +1,3 @@
+"pack:main" {
+	say "hello";
+}

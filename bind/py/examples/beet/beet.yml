@@ -1,0 +1,5 @@
+require:
+  - dpc_plugin
+data_pack:
+  load: ["pack"]
+output: build
