@@ -37,7 +37,6 @@ whitelist off
 whitelist reload
 whitelist list
 list
-publish
 reload
 seed
 stop

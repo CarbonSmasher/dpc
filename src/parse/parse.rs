@@ -263,7 +263,6 @@ fn parse_instr<'t>(
 		"wlrl" => Ok(InstrKind::MC(MinecraftInstr::WhitelistReload)),
 		"wll" => Ok(InstrKind::MC(MinecraftInstr::WhitelistList)),
 		"lsp" => Ok(InstrKind::MC(MinecraftInstr::ListPlayers)),
-		"pub" => Ok(InstrKind::MC(MinecraftInstr::Publish)),
 		"rl" => Ok(InstrKind::MC(MinecraftInstr::Reload)),
 		"seed" => Ok(InstrKind::MC(MinecraftInstr::Seed)),
 		"stop" => Ok(InstrKind::MC(MinecraftInstr::StopServer)),

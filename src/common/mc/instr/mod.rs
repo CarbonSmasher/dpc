@@ -77,7 +77,6 @@ pub enum MinecraftInstr {
 	WhitelistOff,
 	WhitelistReload,
 	WhitelistList,
-	Publish,
 	Kick {
 		targets: Vec<EntityTarget>,
 		reason: Option<String>,
@@ -408,7 +407,6 @@ impl Debug for MinecraftInstr {
 			Self::WhitelistList => "wll".into(),
 			Self::Kick { targets, reason } => format!("kick {targets:?} {reason:?}"),
 			Self::ListPlayers => "lsp".into(),
-			Self::Publish => "pub".into(),
 			Self::Kill { target } => format!("kill {target:?}"),
 			Self::Reload => "rl".into(),
 			Self::Seed => "seed".into(),

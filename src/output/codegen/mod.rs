@@ -369,7 +369,6 @@ pub fn codegen_instr(
 			MinecraftInstr::StopSound => Some("stopsound".into()),
 			MinecraftInstr::StopServer => Some("stop".into()),
 			MinecraftInstr::ListPlayers => Some("list".into()),
-			MinecraftInstr::Publish => Some("publish".into()),
 			MinecraftInstr::Seed => Some("seed".into()),
 			MinecraftInstr::GetDifficulty => Some("difficulty".into()),
 			MinecraftInstr::SetDifficulty { difficulty } => {
