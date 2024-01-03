@@ -1,18 +1,14 @@
-use crate::{
-	common::{
-		function::CallInterface,
-		val::{MutableScoreValue, MutableValue},
-		Identifier,
-	},
-	mir::MIRInstrKind,
-};
+use crate::common::function::CallInterface;
+use crate::common::val::{MutableScoreValue, MutableValue};
+use crate::common::Identifier;
+use crate::mir::MIRInstrKind;
 
 pub mod constant;
 pub mod dce;
 pub mod dse;
 pub mod func;
-pub mod inst_combine;
 pub mod modifiers;
+pub mod multifold;
 pub mod scoreboard_dataflow;
 pub mod simplify;
 

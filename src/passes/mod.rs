@@ -16,9 +16,9 @@ use self::opt::dse::DSEPass;
 use self::opt::func::cleanup_return::CleanupReturnPass;
 use self::opt::func::inline::SimpleInlinePass;
 use self::opt::func::unused_args::UnusedArgsPass;
-use self::opt::inst_combine::InstCombinePass;
 use self::opt::modifiers::merge::MergeModifiersPass;
 use self::opt::modifiers::simplify::SimplifyModifiersPass;
+use self::opt::multifold::inst_combine::InstCombinePass;
 use self::opt::scoreboard_dataflow::ScoreboardDataflowPass;
 use self::opt::simplify::{lir::LIRSimplifyPass, mir::MIRSimplifyPass};
 
