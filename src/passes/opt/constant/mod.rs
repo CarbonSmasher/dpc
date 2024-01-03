@@ -5,8 +5,9 @@ pub mod prop;
 use anyhow::Context;
 use dashmap::DashMap;
 
-use crate::common::ty::DataTypeContents;
+use crate::common::ty::{DataType, DataTypeContents};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier};
+use crate::common::{Register, RegisterList};
 use crate::mir::MIRInstrKind;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
@@ -44,8 +45,9 @@ impl MIRPass for ConstComboPass {
 }
 
 struct ConstAnalyzer {
-	vals: DashMap<Identifier, DataTypeContents>,
+	vals: DashMap<Identifier, ConstAnalyzerValue>,
 	store_self: bool,
+	regs: RegisterList,
 }
 
 impl ConstAnalyzer {
@@ -53,6 +55,7 @@ impl ConstAnalyzer {
 		Self {
 			vals: DashMap::new(),
 			store_self: true,
+			regs: RegisterList::new(),
 		}
 	}
 
@@ -60,19 +63,31 @@ impl ConstAnalyzer {
 		Self {
 			vals: DashMap::with_capacity(0),
 			store_self: false,
+			regs: RegisterList::new(),
 		}
 	}
 
-	fn feed(&mut self, kind: &MIRInstrKind) -> ConstAnalyzerResult {
-		match kind {
+	fn feed(&mut self, kind: &MIRInstrKind) -> anyhow::Result<ConstAnalyzerResult> {
+		let out = match kind {
+			MIRInstrKind::Declare { left, ty } => {
+				self.regs.insert(
+					left.clone(),
+					Register {
+						id: left.clone(),
+						ty: ty.clone(),
+					},
+				);
+				ConstAnalyzerResult::Other
+			}
 			MIRInstrKind::Assign {
 				left: MutableValue::Register(reg),
 				right: DeclareBinding::Value(Value::Constant(val)),
 			} => {
 				if self.store_self {
-					self.vals.insert(reg.clone(), val.clone());
+					self.vals
+						.insert(reg.clone(), ConstAnalyzerValue::Value(val.clone()));
 				}
-				ConstAnalyzerResult::Add(reg.clone(), val.clone())
+				ConstAnalyzerResult::Add(reg.clone(), ConstAnalyzerValue::Value(val.clone()))
 			}
 			MIRInstrKind::Assign { left, right, .. } => {
 				let mut out = Vec::new();
@@ -91,6 +106,12 @@ impl ConstAnalyzer {
 					}
 				}
 				ConstAnalyzerResult::Remove(out)
+			}
+			MIRInstrKind::Remove {
+				val: MutableValue::Register(reg),
+			} => {
+				let ty = &self.regs.get(reg).context("Register does not exist")?.ty;
+				ConstAnalyzerResult::Add(reg.clone(), ConstAnalyzerValue::Reset(ty.clone()))
 			}
 			MIRInstrKind::Add { left, .. }
 			| MIRInstrKind::Sub { left, .. }
@@ -128,9 +149,6 @@ impl ConstAnalyzer {
 			}
 			| MIRInstrKind::Use {
 				val: MutableValue::Register(reg),
-			}
-			| MIRInstrKind::Remove {
-				val: MutableValue::Register(reg),
 			} => {
 				if self.store_self {
 					self.vals.remove(reg);
@@ -146,12 +164,21 @@ impl ConstAnalyzer {
 				}
 				ConstAnalyzerResult::Remove(used.into_iter().cloned().collect())
 			}
-		}
+		};
+
+		Ok(out)
 	}
 }
 
 enum ConstAnalyzerResult {
 	Other,
-	Add(Identifier, DataTypeContents),
+	Add(Identifier, ConstAnalyzerValue),
 	Remove(Vec<Identifier>),
+}
+
+pub enum ConstAnalyzerValue {
+	/// The value is just the value
+	Value(DataTypeContents),
+	/// The value has been reset to not exist
+	Reset(DataType),
 }

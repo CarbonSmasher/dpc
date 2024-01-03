@@ -7,7 +7,7 @@ use crate::common::DeclareBinding;
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
-use super::ConstAnalyzer;
+use super::{ConstAnalyzer, ConstAnalyzerValue};
 
 pub struct ConstPropPass {
 	pub(super) made_changes: bool,
@@ -46,7 +46,7 @@ impl MIRPass for ConstPropPass {
 				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 			loop {
-				let run_again = run_const_prop_iter(block);
+				let run_again = run_const_prop_iter(block)?;
 				if run_again {
 					self.made_changes = true;
 				} else {
@@ -61,18 +61,19 @@ impl MIRPass for ConstPropPass {
 
 /// Runs an iteration of const prop. Returns true if another iteration
 /// should be run
-fn run_const_prop_iter(block: &mut MIRBlock) -> bool {
+fn run_const_prop_iter(block: &mut MIRBlock) -> anyhow::Result<bool> {
 	let mut run_again = false;
 
 	let mut an = ConstAnalyzer::new();
 	for instr in &mut block.contents {
 		const_prop_instr(&mut instr.kind, &mut an, &mut run_again);
-		an.feed(&instr.kind);
+		an.feed(&instr.kind)?;
 	}
 
-	run_again
+	Ok(run_again)
 }
 
+// TODO: Remove assignments and operations with an uninitialized value on the rhs
 fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again: &mut bool) {
 	match instr {
 		MIRInstrKind::Assign {
@@ -92,8 +93,10 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 		| MIRInstrKind::Insert { right, .. } => {
 			if let Value::Mutable(MutableValue::Register(reg)) = right.clone() {
 				if let Some(val) = an.vals.get(&reg) {
-					*right = Value::Constant(val.clone());
-					*run_again = true;
+					if let ConstAnalyzerValue::Value(val) = val.value() {
+						*right = Value::Constant(val.clone());
+						*run_again = true;
+					}
 				}
 			}
 		}
@@ -101,9 +104,11 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 		MIRInstrKind::Get { value, scale } => {
 			if let MutableValue::Register(reg) = value.clone() {
 				if let Some(val) = an.vals.get(&reg) {
-					if let Some(val) = val.try_get_i32() {
-						let scaled = ((val as f64) * *scale) as i32;
-						*instr = MIRInstrKind::GetConst { value: scaled };
+					if let ConstAnalyzerValue::Value(val) = val.value() {
+						if let Some(val) = val.try_get_i32() {
+							let scaled = ((val as f64) * *scale) as i32;
+							*instr = MIRInstrKind::GetConst { value: scaled };
+						}
 					}
 				}
 			}
@@ -117,13 +122,36 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 				| Condition::LessThanOrEqual(l, r) => {
 					if let Value::Mutable(MutableValue::Register(reg)) = l.clone() {
 						if let Some(val) = an.vals.get(&reg) {
-							*l = Value::Constant(val.clone());
-							*run_again = true;
+							if let ConstAnalyzerValue::Value(val) = val.value() {
+								*l = Value::Constant(val.clone());
+								*run_again = true;
+							}
 						}
 					}
 					if let Value::Mutable(MutableValue::Register(reg)) = r.clone() {
 						if let Some(val) = an.vals.get(&reg) {
-							*r = Value::Constant(val.clone());
+							if let ConstAnalyzerValue::Value(val) = val.value() {
+								*r = Value::Constant(val.clone());
+								*run_again = true;
+							}
+						}
+					}
+				}
+				Condition::Exists(val) => {
+					if let Value::Mutable(MutableValue::Register(reg)) = val.clone() {
+						if let Some(val) = an.vals.get(&reg) {
+							match val.value() {
+								ConstAnalyzerValue::Reset(..) => {
+									*condition = Condition::Bool(Value::Constant(
+										DataTypeContents::Score(ScoreTypeContents::Bool(false)),
+									));
+								}
+								ConstAnalyzerValue::Value(..) => {
+									*condition = Condition::Bool(Value::Constant(
+										DataTypeContents::Score(ScoreTypeContents::Bool(true)),
+									));
+								}
+							}
 							*run_again = true;
 						}
 					}
@@ -138,7 +166,9 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 					Some(reg.clone()),
 					an.vals.insert(
 						reg.clone(),
-						DataTypeContents::Score(ScoreTypeContents::Bool(true)),
+						ConstAnalyzerValue::Value(DataTypeContents::Score(
+							ScoreTypeContents::Bool(true),
+						)),
 					),
 				),
 				Condition::Equal(
@@ -146,7 +176,8 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 					Value::Constant(right),
 				) => (
 					Some(reg.clone()),
-					an.vals.insert(reg.clone(), right.clone()),
+					an.vals
+						.insert(reg.clone(), ConstAnalyzerValue::Value(right.clone())),
 				),
 				_ => (None, None),
 			};

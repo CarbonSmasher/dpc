@@ -24,6 +24,11 @@
 		mul %x, 0s;
 	if not bool sco "foo" "bar":
 		set %x, 0s;
+
+	# If exists const folds
+	let exists: score = val 0s;
+	if exi %exists:
+		say "Guaranteed";
 	
 	# Math folds
 	add %x, %x;
