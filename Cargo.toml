@@ -2,6 +2,12 @@
 name = "dpc"
 version = "0.1.0"
 edition = "2021"
+description = "A compiler for Minecraft datapacks"
+license = "GPL-3.0-or-later"
+authors = ["CarbonSmasher"]
+repository = "https://github.com/CarbonSmasher/dpc"
+keywords = ["minecraft", "datapack", "compiler"]
+categories = ["games"]
 default-run = "dpc"
 
 [[bin]]
