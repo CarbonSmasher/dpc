@@ -163,6 +163,14 @@ fn parse_instr<'t>(
 			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Max { left: l, right: r })
 		}
+		"and" => {
+			let (l, r) = parse_simple_op(toks)?;
+			Ok(InstrKind::And { left: l, right: r })
+		}
+		"or" => {
+			let (l, r) = parse_simple_op(toks)?;
+			Ok(InstrKind::Or { left: l, right: r })
+		}
 		"swap" => {
 			let (l, r) = parse_swap(toks)?;
 			Ok(InstrKind::Swap { left: l, right: r })
@@ -174,6 +182,10 @@ fn parse_instr<'t>(
 		"abs" => {
 			let val = parse_mut_val(toks).context("Failed to parse value")?;
 			Ok(InstrKind::Abs { val })
+		}
+		"not" => {
+			let val = parse_mut_val(toks).context("Failed to parse value")?;
+			Ok(InstrKind::Not { value: val })
 		}
 		"pow" => {
 			let (l, r) = parse_pow(toks)?;

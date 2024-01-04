@@ -83,6 +83,16 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 				left: _,
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if score.get_i32() == 0 => true,
+			// x || 0 can be removed
+			MIRInstrKind::Or {
+				left: _,
+				right: Value::Constant(DataTypeContents::Score(score)),
+			} if score.get_i32() == 0 => true,
+			// x && 1 can be removed
+			MIRInstrKind::And {
+				left: _,
+				right: Value::Constant(DataTypeContents::Score(score)),
+			} if score.get_i32() == 1 => true,
 			// Different Minecraft add instructions with zero as the amount can be removed
 			MIRInstrKind::MC(MinecraftInstr::AddTime { time }) if time.amount.is_zero() => true,
 			MIRInstrKind::MC(
@@ -161,6 +171,26 @@ fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<us
 					))),
 				})
 			}
+			// x && 0 is always false
+			MIRInstrKind::And {
+				left,
+				right: Value::Constant(DataTypeContents::Score(score)),
+			} if score.get_i32() == 0 => Some(MIRInstrKind::Assign {
+				left: left.clone(),
+				right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+					ScoreTypeContents::Bool(false),
+				))),
+			}),
+			// x || 1 is always true
+			MIRInstrKind::Or {
+				left,
+				right: Value::Constant(DataTypeContents::Score(score)),
+			} if score.get_i32() == 1 => Some(MIRInstrKind::Assign {
+				left: left.clone(),
+				right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+					ScoreTypeContents::Bool(true),
+				))),
+			}),
 			MIRInstrKind::If {
 				condition: Condition::Equal(Value::Mutable(left1), right1),
 				body,

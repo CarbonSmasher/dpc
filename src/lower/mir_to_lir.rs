@@ -121,6 +121,42 @@ fn lower_kind(
 		MIRInstrKind::Insert { left, right, index } => {
 			lir_instrs.push(LIRInstruction::new(lower_insert(left, right, index, lbcx)?));
 		}
+		MIRInstrKind::Not { value } => {
+			let mut instr = LIRInstruction::new(LIRInstrKind::NoOp);
+			let store_loc =
+				StoreModLocation::from_mut_val(value.clone(), &lbcx.registers, &lbcx.sig)?;
+			instr.modifiers.push(Modifier::StoreSuccess(store_loc));
+			instr.modifiers.push(Modifier::If {
+				condition: Box::new(IfModCondition::Score(IfScoreCondition::Single {
+					left: ScoreValue::Mutable(value.to_mutable_score_value()?),
+					right: ScoreValue::Constant(ScoreTypeContents::Bool(false)),
+				})),
+				negate: false,
+			});
+			lir_instrs.push(instr);
+		}
+		MIRInstrKind::And { left, right } => {
+			lower!(
+				lir_instrs,
+				MulScore,
+				left.to_mutable_score_value()?,
+				right.to_score_value()?
+			);
+		}
+		MIRInstrKind::Or { left, right } => {
+			lower!(
+				lir_instrs,
+				AddScore,
+				left.clone().to_mutable_score_value()?,
+				right.to_score_value()?
+			);
+			lower!(
+				lir_instrs,
+				DivScore,
+				left.clone().to_mutable_score_value()?,
+				ScoreValue::Mutable(left.to_mutable_score_value()?)
+			);
+		}
 		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
 		MIRInstrKind::GetConst { value } => lower!(lir_instrs, GetConst, value),
 		MIRInstrKind::Call { call } => {

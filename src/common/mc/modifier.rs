@@ -1,10 +1,11 @@
 use std::fmt::Debug;
 
-use anyhow::bail;
+use anyhow::{bail, Context};
 
-use crate::common::ty::{Double, NBTType, NBTTypeContents};
-use crate::common::val::{MutableNBTValue, MutableScoreValue, ScoreValue};
-use crate::common::ResourceLocationTag;
+use crate::common::function::FunctionSignature;
+use crate::common::ty::{DataType, Double, NBTType, NBTTypeContents};
+use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, ScoreValue};
+use crate::common::{RegisterList, ResourceLocationTag};
 
 use super::block::BlockFilter;
 use super::pos::{DoubleCoordinates, DoubleCoordinates2D};
@@ -95,6 +96,20 @@ pub enum StoreModLocation {
 }
 
 impl StoreModLocation {
+	pub fn from_mut_val(
+		val: MutableValue,
+		regs: &RegisterList,
+		sig: &FunctionSignature,
+	) -> anyhow::Result<Self> {
+		match val.get_ty(regs, sig)? {
+			DataType::Score(..) => Self::from_mut_score_val(&val.to_mutable_score_value()?),
+			DataType::NBT(ty) => {
+				let ty = StoreDataType::from_nbt_ty(&ty).context("Unsupported type")?;
+				Self::from_mut_nbt_val(&val.to_mutable_nbt_value()?, ty, 1.0)
+			}
+			_ => bail!("Unsupported type"),
+		}
+	}
 	// TODO: Support storing in args
 	pub fn from_mut_score_val(val: &MutableScoreValue) -> anyhow::Result<Self> {
 		match val {

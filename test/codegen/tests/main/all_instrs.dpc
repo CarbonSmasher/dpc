@@ -12,6 +12,9 @@
 	swap %x, %y;
 	rm %x;
 	abs %x;
+	not %x;
+	and %x, %y;
+	or %x, %y;
 	use %x;
 	pow %x, 3s;
 	get %x, 1.0;

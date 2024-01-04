@@ -90,7 +90,9 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 		| MIRInstrKind::Merge { right, .. }
 		| MIRInstrKind::Push { right, .. }
 		| MIRInstrKind::PushFront { right, .. }
-		| MIRInstrKind::Insert { right, .. } => {
+		| MIRInstrKind::Insert { right, .. }
+		| MIRInstrKind::And { right, .. }
+		| MIRInstrKind::Or { right, .. } => {
 			if let Value::Mutable(MutableValue::Register(reg)) = right.clone() {
 				if let Some(val) = an.vals.get(&reg) {
 					if let ConstAnalyzerValue::Value(val) = val.value() {

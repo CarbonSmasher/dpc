@@ -21,9 +21,12 @@ impl MIRInstrKind {
 			| Self::Merge { left, right }
 			| Self::Push { left, right }
 			| Self::PushFront { left, right }
-			| Self::Insert { left, right, .. } => [left.get_used_regs(), right.get_used_regs()].concat(),
+			| Self::Insert { left, right, .. }
+			| Self::And { left, right }
+			| Self::Or { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Swap { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
 			Self::Abs { val } => val.get_used_regs(),
+			Self::Not { value } => value.get_used_regs(),
 			Self::Pow { base, .. } => base.get_used_regs(),
 			Self::Get { value, .. } => value.get_used_regs(),
 			Self::Use { val } => val.get_used_regs(),
@@ -80,7 +83,9 @@ impl MIRInstrKind {
 			| Self::Merge { left, right }
 			| Self::Push { left, right }
 			| Self::PushFront { left, right }
-			| Self::Insert { left, right, .. } => {
+			| Self::Insert { left, right, .. }
+			| Self::And { left, right }
+			| Self::Or { left, right } => {
 				for reg in left
 					.get_used_regs_mut()
 					.into_iter()
@@ -102,6 +107,7 @@ impl MIRInstrKind {
 			| Self::Pow { base: val, .. }
 			| Self::Get { value: val, .. }
 			| Self::Use { val }
+			| Self::Not { value: val }
 			| Self::Remove { val } => {
 				for reg in val.get_used_regs_mut() {
 					f(reg);
@@ -167,7 +173,9 @@ impl MIRInstrKind {
 			| Self::Merge { left, right }
 			| Self::Push { left, right }
 			| Self::PushFront { left, right }
-			| Self::Insert { left, right, .. } => {
+			| Self::Insert { left, right, .. }
+			| Self::And { left, right }
+			| Self::Or { left, right } => {
 				for reg in iter::once(left).chain(right.iter_mut_val()) {
 					f(reg);
 				}
@@ -180,6 +188,7 @@ impl MIRInstrKind {
 			| Self::Pow { base: val, .. }
 			| Self::Get { value: val, .. }
 			| Self::Use { val }
+			| Self::Not { value: val }
 			| Self::ReturnValue {
 				value: Value::Mutable(val),
 				..

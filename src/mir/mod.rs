@@ -197,6 +197,18 @@ pub enum MIRInstrKind {
 		right: Value,
 		index: i32,
 	},
+	// Binops
+	Not {
+		value: MutableValue,
+	},
+	And {
+		left: MutableValue,
+		right: Value,
+	},
+	Or {
+		left: MutableValue,
+		right: Value,
+	},
 	Use {
 		val: MutableValue,
 	},
@@ -273,6 +285,9 @@ impl Debug for MIRInstrKind {
 			Self::Push { left, right } => format!("push {left:?}, {right:?}"),
 			Self::PushFront { left, right } => format!("pushf {left:?}, {right:?}"),
 			Self::Insert { left, right, index } => format!("ins {left:?}, {right:?}, {index}"),
+			Self::Not { value } => format!("not {value:?}"),
+			Self::And { left, right } => format!("and {left:?}, {right:?}"),
+			Self::Or { left, right } => format!("or {left:?}, {right:?}"),
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Call { call } => format!("call {call:?}"),
 			Self::CallExtern { func } => format!("callx {func}"),

@@ -1134,29 +1134,38 @@ impl CommandBuilder {
 		let mut out = String::new();
 
 		let command = if let Some(command) = command {
-			command
+			Some(command)
 		} else {
 			// If the command is a no-op and none of the modifiers have any side effects
 			// then it can be omitted
 			if !self.modifiers.iter().any(|x| x.has_extra_side_efects()) {
 				return Ok(None);
 			} else {
-				"say foo".into()
+				None
 			}
 		};
 
 		if !self.modifiers.is_empty() {
 			out.push_str("execute ");
-			for modifier in self.modifiers {
+			let len = self.modifiers.len();
+			for (i, modifier) in self.modifiers.into_iter().enumerate() {
 				if let Some(modifier) = codegen_modifier(modifier, cbcx)? {
 					out.push_str(&modifier);
+					// Don't add a space at the end for a missing command
+					if command.is_none() && i == len - 1 {
+						continue;
+					}
 					out.push(' ');
 				}
 			}
-			out.push_str("run ");
+			if command.is_some() {
+				out.push_str("run ");
+			}
 		}
 
-		out.push_str(&command);
+		if let Some(command) = command {
+			out.push_str(&command);
+		}
 
 		Ok(Some(out))
 	}

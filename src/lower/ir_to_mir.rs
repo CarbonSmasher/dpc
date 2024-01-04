@@ -85,6 +85,9 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 		InstrKind::Insert { left, right, index } => {
 			lower!(Insert, left, right, index)
 		}
+		InstrKind::Not { value } => lower!(Not, value),
+		InstrKind::And { left, right } => lower!(And, left, right),
+		InstrKind::Or { left, right } => lower!(Or, left, right),
 		InstrKind::Use { val } => lower!(Use, val),
 		InstrKind::Call { call } => lower!(Call, call),
 		InstrKind::CallExtern { func } => lower!(CallExtern, func),

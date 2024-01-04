@@ -36,6 +36,12 @@
 	div %x, 1s;
 	mod %x, 1s;
 
+	# Boolean folds
+	or sco @s[] "foo", 0s;
+	or sco @s[] "foo", 1s;
+	and sco @s[] "foo", 0s;
+	and sco @s[] "foo", 1s;
+
 	# NBT folds
 	mrg ent @s[] "name", {};
 	mrg ent @s[] "name", {"bar": 7nb};
