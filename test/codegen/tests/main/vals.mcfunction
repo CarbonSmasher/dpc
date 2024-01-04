@@ -1,6 +1,5 @@
 # === dpc:init === #
 scoreboard objectives add _r dummy
-data merge storage dpc:r {}
 
 # === test:main === #
 data modify storage dpc:r stest_main0 set from entity foo bar

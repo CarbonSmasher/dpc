@@ -6,7 +6,7 @@ use crate::common::ResourceLocation;
 
 use super::codegen::CodegenCx;
 use super::datapack::{Function, Tag, TagInner};
-use super::text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE, REG_STORAGE_LOCATION};
+use super::text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE};
 
 pub fn gen_fns(
 	ccx: &CodegenCx,
@@ -41,11 +41,6 @@ fn gen_init(ccx: &CodegenCx) -> Option<Function> {
 
 	if ccx.racx.has_allocated_reg() {
 		let cmd = format!("scoreboard objectives add {REG_OBJECTIVE} dummy");
-		out.contents.push(cmd);
-		function_needed = true;
-	}
-	if ccx.racx.has_allocated_local() {
-		let cmd = format!("data merge storage {REG_STORAGE_LOCATION} {{}}");
 		out.contents.push(cmd);
 		function_needed = true;
 	}

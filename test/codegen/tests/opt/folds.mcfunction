@@ -1,6 +1,5 @@
 # === dpc:init === #
 scoreboard objectives add _r dummy
-data merge storage dpc:r {}
 scoreboard objectives add _l dummy
 scoreboard players set %l2 _l 2
 

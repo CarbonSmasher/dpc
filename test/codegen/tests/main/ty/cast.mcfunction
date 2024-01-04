@@ -1,6 +1,5 @@
 # === dpc:init === #
 scoreboard objectives add _r dummy
-data merge storage dpc:r {}
 
 # === test:main === #
 execute store result storage dpc:r stest_main0 int 1 run scoreboard players get @s name
