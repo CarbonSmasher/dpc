@@ -297,7 +297,6 @@ fn run_const_fold_iter(
 					if let Some(mut left) = fold_points.get_mut(left) {
 						if !left.finished {
 							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = std::cmp::max(*value, right.get_i32());
 								*value = ((value != &0) && (right.get_i32() != 0)) as i32;
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
@@ -313,7 +312,6 @@ fn run_const_fold_iter(
 					if let Some(mut left) = fold_points.get_mut(left) {
 						if !left.finished {
 							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = std::cmp::max(*value, right.get_i32());
 								*value = ((value != &0) || (right.get_i32() != 0)) as i32;
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
@@ -329,7 +327,7 @@ fn run_const_fold_iter(
 					if let Some(mut left) = fold_points.get_mut(left) {
 						if !left.finished {
 							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = value.pow((*exp).into());
+								*value = value.overflowing_pow((*exp).into()).0;
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
 								run_again = true;
