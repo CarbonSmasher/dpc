@@ -236,4 +236,16 @@ impl MIRInstrKind {
 			| Self::MC(..) => {}
 		}
 	}
+
+	pub fn get_body(&self) -> Option<&MIRInstrKind> {
+		match self {
+			Self::As { body, .. }
+			| Self::At { body, .. }
+			| Self::If { body, .. }
+			| Self::StoreResult { body, .. }
+			| Self::StoreSuccess { body, .. }
+			| Self::Positioned { body, .. } => Some(body),
+			_ => None,
+		}
+	}
 }

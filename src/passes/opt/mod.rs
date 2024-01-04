@@ -41,7 +41,6 @@ impl MutableScoreValue {
 pub fn get_instr_call(instr: &MIRInstrKind) -> Option<&CallInterface> {
 	match instr {
 		MIRInstrKind::Call { call } => Some(call),
-		MIRInstrKind::If { body, .. } => get_instr_call(body),
-		_ => None,
+		other => other.get_body().and_then(get_instr_call),
 	}
 }
