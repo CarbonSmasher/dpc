@@ -204,13 +204,24 @@ pub fn codegen_instr(
 		LIRInstrKind::RemoveData(val) => Some(cgformat!(cbcx, "data remove ", val)?),
 		LIRInstrKind::MergeData(left, right) => {
 			if let NBTValue::Constant(rhs) = right {
-				Some(cgformat!(
-					cbcx,
-					"data merge ",
-					left,
-					" ",
-					rhs.get_literal_str()
-				)?)
+				// Raw data merge only works on the root: you can't specify a path
+				if left.is_root() {
+					Some(cgformat!(
+						cbcx,
+						"data merge ",
+						left,
+						" ",
+						rhs.get_literal_str()
+					)?)
+				} else {
+					Some(cgformat!(
+						cbcx,
+						"data modify ",
+						left,
+						" merge ",
+						rhs.get_literal_str()
+					)?)
+				}
 			} else {
 				let rhs = cg_data_modify_rhs(cbcx, right)?;
 				Some(cgformat!(cbcx, "data modify ", left, " merge ", rhs)?)

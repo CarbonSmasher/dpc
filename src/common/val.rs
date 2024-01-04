@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use anyhow::{bail, Context};
 
+use crate::common::mc::DataPath;
+
 use super::function::{FunctionSignature, ReturnType};
 use super::mc::{FullDataLocation, Score};
 use super::{ty, Identifier, RegisterList, ResourceLocation};
@@ -371,6 +373,16 @@ impl MutableNBTValue {
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Data(l), Self::Data(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::Reg(l), Self::Reg(r)) if l == r)
+	}
+
+	pub fn is_root(&self) -> bool {
+		matches!(
+			self,
+			Self::Data(FullDataLocation {
+				path: DataPath::This,
+				..
+			})
+		)
 	}
 }
 
