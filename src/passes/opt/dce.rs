@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use dashmap::DashSet;
+use rustc_hash::FxHashSet;
 
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
@@ -16,7 +16,7 @@ impl Pass for DCEPass {
 impl MIRPass for DCEPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		// Find used functions
-		let used = DashSet::new();
+		let mut used = FxHashSet::default();
 		for func in data.mir.functions.values() {
 			let block = data
 				.mir
@@ -33,7 +33,7 @@ impl MIRPass for DCEPass {
 		}
 
 		// Remove unused functions
-		let unused = DashSet::new();
+		let mut unused = FxHashSet::default();
 		for (func_id, func) in &data.mir.functions {
 			if func.interface.annotations.preserve {
 				continue;

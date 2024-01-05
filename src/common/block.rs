@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+use std::hash::BuildHasherDefault;
+
+use rustc_hash::FxHashMap;
 
 #[derive(Debug, Clone)]
 pub struct BlockAllocator<Block> {
-	blocks: HashMap<BlockID, Block>,
+	blocks: FxHashMap<BlockID, Block>,
 	block_count: BlockID,
 }
 
@@ -11,14 +13,14 @@ pub type BlockID = usize;
 impl<Block> BlockAllocator<Block> {
 	pub fn new() -> Self {
 		Self {
-			blocks: HashMap::new(),
+			blocks: FxHashMap::default(),
 			block_count: 0,
 		}
 	}
 
 	pub fn with_capacity(capacity: usize) -> Self {
 		Self {
-			blocks: HashMap::with_capacity(capacity),
+			blocks: FxHashMap::with_capacity_and_hasher(capacity, BuildHasherDefault::default()),
 			block_count: 0,
 		}
 	}

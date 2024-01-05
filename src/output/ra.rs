@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, bail};
-use dashmap::{DashMap, DashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::ty::DataType;
 use crate::common::Identifier;
@@ -69,7 +67,7 @@ impl Default for RegAllocCx {
 #[derive(Debug)]
 pub struct RegAllocator {
 	count: u32,
-	available: DashSet<u32>,
+	available: FxHashSet<u32>,
 	available_ordered: Vec<u32>,
 }
 
@@ -77,7 +75,7 @@ impl RegAllocator {
 	pub fn new() -> Self {
 		Self {
 			count: 0,
-			available: DashSet::new(),
+			available: FxHashSet::default(),
 			available_ordered: Vec::new(),
 		}
 	}
@@ -122,15 +120,15 @@ impl Default for RegAllocator {
 /// Result from allocating registers for a block
 #[derive(Debug)]
 pub struct RegAllocResult {
-	pub regs: HashMap<Identifier, String>,
-	pub locals: HashMap<Identifier, String>,
+	pub regs: FxHashMap<Identifier, String>,
+	pub locals: FxHashMap<Identifier, String>,
 }
 
 impl RegAllocResult {
 	pub fn new() -> Self {
 		Self {
-			regs: HashMap::new(),
-			locals: HashMap::new(),
+			regs: FxHashMap::default(),
+			locals: FxHashMap::default(),
 		}
 	}
 }
@@ -147,8 +145,8 @@ pub fn alloc_block_registers(
 	racx: &mut RegAllocCx,
 ) -> anyhow::Result<RegAllocResult> {
 	let func_id = func_id.to_string().replace([':', '/'], "_");
-	let mut out_regs = HashMap::new();
-	let mut out_locals = HashMap::new();
+	let mut out_regs = FxHashMap::default();
+	let mut out_locals = FxHashMap::default();
 
 	let last_uses = analyze_last_register_uses(block);
 
@@ -211,9 +209,9 @@ pub fn alloc_block_registers(
 	Ok(out)
 }
 
-fn analyze_last_register_uses(block: &LIRBlock) -> DashMap<usize, Vec<Identifier>> {
-	let last_used_positions = DashMap::new();
-	let mut already_spent = DashSet::new();
+fn analyze_last_register_uses(block: &LIRBlock) -> FxHashMap<usize, Vec<Identifier>> {
+	let mut last_used_positions = FxHashMap::default();
+	let mut already_spent = FxHashSet::default();
 	for (i, instr) in block.contents.iter().enumerate().rev() {
 		let used_regs = instr.get_used_regs();
 		last_used_positions.insert(

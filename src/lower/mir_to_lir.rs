@@ -342,7 +342,7 @@ impl<'lir> LowerBlockCx<'lir> {
 	fn new(lir: &'lir mut LIR, sig: FunctionSignature) -> Self {
 		Self {
 			lir,
-			registers: RegisterList::new(),
+			registers: RegisterList::default(),
 			additional_reg_count: 0,
 			if_body_count: 0,
 			sig,

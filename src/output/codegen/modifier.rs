@@ -323,7 +323,7 @@ mod tests {
 		let mut cbcx = CodegenBlockCx {
 			ccx: &mut ccx,
 			ra: RegAllocResult::new(),
-			regs: RegisterList::new(),
+			regs: RegisterList::default(),
 			func_id: "foo".into(),
 			macro_line: false,
 		};

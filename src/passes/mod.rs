@@ -1,7 +1,7 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use dashmap::{DashMap, DashSet};
+use rustc_hash::FxHashSet;
 
 use crate::common::block::BlockID;
 use crate::common::ResourceLocation;
@@ -51,7 +51,7 @@ pub trait MIRPass: Pass {
 
 pub struct MIRPassData<'mir> {
 	pub mir: &'mir mut MIR,
-	pub inline_candidates: HashSet<ResourceLocation>,
+	pub inline_candidates: FxHashSet<ResourceLocation>,
 }
 
 pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
@@ -84,7 +84,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 
 	let mut data = MIRPassData {
 		mir,
-		inline_candidates: HashSet::new(),
+		inline_candidates: FxHashSet::default(),
 	};
 
 	for mut pass in passes {

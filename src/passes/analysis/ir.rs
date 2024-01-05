@@ -22,9 +22,9 @@ impl IRPass for ValidatePass {
 				.blocks
 				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
-			let regs = RegisterList::new();
+			let mut regs = RegisterList::default();
 			for (i, instr) in block.contents.iter().enumerate() {
-				validate_instr_kind(&instr.kind, &regs, func, &i)?;
+				validate_instr_kind(&instr.kind, &mut regs, func, &i)?;
 			}
 		}
 
@@ -34,7 +34,7 @@ impl IRPass for ValidatePass {
 
 fn validate_instr_kind(
 	instr: &InstrKind,
-	regs: &RegisterList,
+	regs: &mut RegisterList,
 	func: &Function,
 	i: &usize,
 ) -> anyhow::Result<()> {
@@ -87,16 +87,14 @@ fn validate_instr_kind(
 				bail!("Incompatible types in instruction at {i}");
 			}
 		}
-		InstrKind::Get { value, scale } => {
-			match value.get_ty(&regs, &func.interface.sig)? {
-				DataType::Score(..) => {
-					if *scale != 1.0 {
-						bail!("Scale that is not 1.0 cannot be used for getting a value of score type");
-					}
+		InstrKind::Get { value, scale } => match value.get_ty(&regs, &func.interface.sig)? {
+			DataType::Score(..) => {
+				if *scale != 1.0 {
+					bail!("Scale that is not 1.0 cannot be used for getting a value of score type");
 				}
-				_ => {}
 			}
-		}
+			_ => {}
+		},
 		InstrKind::StoreResult { location, body } => {
 			validate_instr_kind(body, regs, func, i)?;
 			if let StoreModLocation::Reg(reg, scale) = location {

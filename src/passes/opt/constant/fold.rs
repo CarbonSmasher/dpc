@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail};
-use dashmap::DashMap;
+use rustc_hash::FxHashMap;
 use std::fmt::Debug;
 
 use crate::common::ty::{
@@ -10,7 +10,7 @@ use crate::common::val::{MutableValue, Value};
 use crate::common::{DeclareBinding, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::{remove_indices, DashSetEmptyTracker};
+use crate::util::{remove_indices, HashSetEmptyTracker};
 
 use super::{ConstAnalyzer, ConstAnalyzerResult, ConstAnalyzerValue};
 
@@ -40,7 +40,8 @@ impl Pass for ConstFoldPass {
 
 impl MIRPass for ConstFoldPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		let mut fold_points = DashMap::new();
+		let mut fold_points = FxHashMap::default();
+		let mut an = ConstAnalyzer::new();
 		for func in data.mir.functions.values_mut() {
 			let block = data
 				.mir
@@ -49,11 +50,12 @@ impl MIRPass for ConstFoldPass {
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			fold_points.clear();
+			an.reset();
 
-			let mut instrs_to_remove = DashSetEmptyTracker::new();
+			let mut instrs_to_remove = HashSetEmptyTracker::new();
 			loop {
 				let run_again =
-					run_const_fold_iter(block, &mut instrs_to_remove, &mut fold_points)?;
+					run_const_fold_iter(block, &mut instrs_to_remove, &mut fold_points, &mut an)?;
 				if run_again {
 					self.made_changes = true;
 				} else {
@@ -71,8 +73,9 @@ impl MIRPass for ConstFoldPass {
 /// should be run
 fn run_const_fold_iter(
 	block: &mut MIRBlock,
-	instrs_to_remove: &mut DashSetEmptyTracker<usize>,
-	fold_points: &mut DashMap<Identifier, FoldPoint>,
+	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
+	fold_points: &mut FxHashMap<Identifier, FoldPoint>,
+	an: &mut ConstAnalyzer,
 ) -> anyhow::Result<bool> {
 	let mut run_again = false;
 	// We have to store this array of instructions to replace and do it at the end
@@ -80,356 +83,352 @@ fn run_const_fold_iter(
 	let mut instrs_to_replace = Vec::new();
 
 	// Scope here because the analyzer holds references to the data type contents
-	{
-		let mut an = ConstAnalyzer::new_dont_store();
-		for (i, instr) in block.contents.iter().enumerate() {
-			if instrs_to_remove.contains(&i) {
-				continue;
+
+	for (i, instr) in block.contents.iter().enumerate() {
+		if instrs_to_remove.contains(&i) {
+			continue;
+		}
+
+		match &instr.kind {
+			MIRInstrKind::Assign {
+				left: MutableValue::Register(left),
+				right: DeclareBinding::Value(Value::Constant(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						match right {
+							DataTypeContents::Score(right) => {
+								let FoldValue::Score(value) = &mut left.value else {
+										bail!("Incorrect types");
+									};
+								*value = Some(right.get_i32());
+							}
+							DataTypeContents::NBT(NBTTypeContents::Byte(right)) => {
+								let FoldValue::Byte(value) = &mut left.value else {
+										bail!("Incorrect types");
+									};
+								*value = Some(*right);
+							}
+							DataTypeContents::NBT(NBTTypeContents::Short(right)) => {
+								let FoldValue::Short(value) = &mut left.value else {
+										bail!("Incorrect types");
+									};
+								*value = Some(*right);
+							}
+							DataTypeContents::NBT(NBTTypeContents::Int(right)) => {
+								let FoldValue::Int(value) = &mut left.value else {
+										bail!("Incorrect types");
+									};
+								*value = Some(*right);
+							}
+							DataTypeContents::NBT(NBTTypeContents::Long(right)) => {
+								let FoldValue::Long(value) = &mut left.value else {
+										bail!("Incorrect types");
+									};
+								*value = Some(*right);
+							}
+							DataTypeContents::NBT(NBTTypeContents::Float(right)) => {
+								let FoldValue::Float(value) = &mut left.value else {
+										bail!("Incorrect types");
+									};
+								*value = Some(*right);
+							}
+							DataTypeContents::NBT(NBTTypeContents::Double(right)) => {
+								let FoldValue::Double(value) = &mut left.value else {
+										bail!("Incorrect types");
+									};
+								*value = Some(*right);
+							}
+							DataTypeContents::NBT(NBTTypeContents::String(right)) => {
+								let FoldValue::String(value) = &mut left.value else {
+										bail!("Incorrect types");
+									};
+								*value = Some(right.to_string());
+							}
+							_ => continue,
+						}
+						instrs_to_remove.insert(i);
+						left.has_folded = true;
+						run_again = true;
+					}
+				}
 			}
-
-			match &instr.kind {
-				MIRInstrKind::Assign {
-					left: MutableValue::Register(left),
-					right: DeclareBinding::Value(Value::Constant(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							match right {
-								DataTypeContents::Score(right) => {
-									let FoldValue::Score(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
-									*value = Some(right.get_i32());
-								}
-								DataTypeContents::NBT(NBTTypeContents::Byte(right)) => {
-									let FoldValue::Byte(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
-									*value = Some(*right);
-								}
-								DataTypeContents::NBT(NBTTypeContents::Short(right)) => {
-									let FoldValue::Short(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
-									*value = Some(*right);
-								}
-								DataTypeContents::NBT(NBTTypeContents::Int(right)) => {
-									let FoldValue::Int(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
-									*value = Some(*right);
-								}
-								DataTypeContents::NBT(NBTTypeContents::Long(right)) => {
-									let FoldValue::Long(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
-									*value = Some(*right);
-								}
-								DataTypeContents::NBT(NBTTypeContents::Float(right)) => {
-									let FoldValue::Float(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
-									*value = Some(*right);
-								}
-								DataTypeContents::NBT(NBTTypeContents::Double(right)) => {
-									let FoldValue::Double(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
-									*value = Some(*right);
-								}
-								DataTypeContents::NBT(NBTTypeContents::String(right)) => {
-									let FoldValue::String(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
-									*value = Some(right.to_string());
-								}
-								_ => continue,
-							}
-							instrs_to_remove.insert(i);
-							left.has_folded = true;
-							run_again = true;
-						}
-					}
-				}
-				MIRInstrKind::Add {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = value.overflowing_add(right.get_i32()).0;
-								instrs_to_remove.insert(i);
-								left.has_folded = true;
-								run_again = true;
-							}
-						}
-					}
-				}
-				MIRInstrKind::Sub {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = value.overflowing_sub(right.get_i32()).0;
-								instrs_to_remove.insert(i);
-								left.has_folded = true;
-								run_again = true;
-							}
-						}
-					}
-				}
-				MIRInstrKind::Mul {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = value.overflowing_mul(right.get_i32()).0;
-								instrs_to_remove.insert(i);
-								left.has_folded = true;
-								run_again = true;
-							}
-						}
-					}
-				}
-				MIRInstrKind::Div {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if right.get_i32() != 0 {
-								if let FoldValue::Score(Some(value)) = &mut left.value {
-									*value /= right.get_i32();
-									instrs_to_remove.insert(i);
-									left.has_folded = true;
-									run_again = true;
-								}
-							} else {
-								left.finished = true;
-							}
-						}
-					}
-				}
-				MIRInstrKind::Mod {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if right.get_i32() != 0 {
-								if let FoldValue::Score(Some(value)) = &mut left.value {
-									*value %= right.get_i32();
-									instrs_to_remove.insert(i);
-									left.has_folded = true;
-									run_again = true;
-								}
-							} else {
-								left.finished = true;
-							}
-						}
-					}
-				}
-				MIRInstrKind::Min {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
+			MIRInstrKind::Add {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
 						if let FoldValue::Score(Some(value)) = &mut left.value {
-							*value = std::cmp::min(*value, right.get_i32());
+							*value = value.overflowing_add(right.get_i32()).0;
 							instrs_to_remove.insert(i);
 							left.has_folded = true;
 							run_again = true;
 						}
 					}
 				}
-				MIRInstrKind::Max {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
+			}
+			MIRInstrKind::Sub {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							*value = value.overflowing_sub(right.get_i32()).0;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
+					}
+				}
+			}
+			MIRInstrKind::Mul {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							*value = value.overflowing_mul(right.get_i32()).0;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
+					}
+				}
+			}
+			MIRInstrKind::Div {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if right.get_i32() != 0 {
 							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = std::cmp::max(*value, right.get_i32());
+								*value /= right.get_i32();
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
 								run_again = true;
 							}
+						} else {
+							left.finished = true;
 						}
 					}
 				}
-				MIRInstrKind::Abs {
-					val: MutableValue::Register(left),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
+			}
+			MIRInstrKind::Mod {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if right.get_i32() != 0 {
 							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = value.abs();
+								*value %= right.get_i32();
 								instrs_to_remove.insert(i);
 								left.has_folded = true;
 								run_again = true;
 							}
+						} else {
+							left.finished = true;
 						}
 					}
 				}
-				MIRInstrKind::Not {
-					value: MutableValue::Register(left),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = (value != &0) as i32;
-								instrs_to_remove.insert(i);
-								left.has_folded = true;
-								run_again = true;
-							}
+			}
+			MIRInstrKind::Min {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if let FoldValue::Score(Some(value)) = &mut left.value {
+						*value = std::cmp::min(*value, right.get_i32());
+						instrs_to_remove.insert(i);
+						left.has_folded = true;
+						run_again = true;
+					}
+				}
+			}
+			MIRInstrKind::Max {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							*value = std::cmp::max(*value, right.get_i32());
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
 						}
 					}
 				}
-				MIRInstrKind::And {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = ((value != &0) && (right.get_i32() != 0)) as i32;
-								instrs_to_remove.insert(i);
-								left.has_folded = true;
-								run_again = true;
-							}
+			}
+			MIRInstrKind::Abs {
+				val: MutableValue::Register(left),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							*value = value.abs();
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
 						}
 					}
 				}
-				MIRInstrKind::Or {
-					left: MutableValue::Register(left),
-					right: Value::Constant(DataTypeContents::Score(right)),
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = ((value != &0) || (right.get_i32() != 0)) as i32;
-								instrs_to_remove.insert(i);
-								left.has_folded = true;
-								run_again = true;
-							}
+			}
+			MIRInstrKind::Not {
+				value: MutableValue::Register(left),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							*value = (value != &0) as i32;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
 						}
 					}
 				}
-				MIRInstrKind::Pow {
-					base: MutableValue::Register(left),
-					exp,
-				} => {
-					if let Some(mut left) = fold_points.get_mut(left) {
-						if !left.finished {
-							if let FoldValue::Score(Some(value)) = &mut left.value {
-								*value = value.overflowing_pow((*exp).into()).0;
-								instrs_to_remove.insert(i);
-								left.has_folded = true;
-								run_again = true;
-							}
+			}
+			MIRInstrKind::And {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							*value = ((value != &0) && (right.get_i32() != 0)) as i32;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
 						}
 					}
 				}
-				_ => {}
-			};
-			let an_result = an.feed(&instr.kind)?;
-			match an_result {
-				ConstAnalyzerResult::Add(reg, val) => {
-					let val = match val {
-						ConstAnalyzerValue::Value(val) => match val {
-							DataTypeContents::Score(val) => FoldValue::Score(Some(val.get_i32())),
-							DataTypeContents::NBT(NBTTypeContents::Byte(val)) => {
-								FoldValue::Byte(Some(val))
-							}
-							DataTypeContents::NBT(NBTTypeContents::Short(val)) => {
-								FoldValue::Short(Some(val))
-							}
-							DataTypeContents::NBT(NBTTypeContents::Int(val)) => {
-								FoldValue::Int(Some(val))
-							}
-							DataTypeContents::NBT(NBTTypeContents::Long(val)) => {
-								FoldValue::Long(Some(val))
-							}
-							DataTypeContents::NBT(NBTTypeContents::Float(val)) => {
-								FoldValue::Float(Some(val))
-							}
-							DataTypeContents::NBT(NBTTypeContents::Double(val)) => {
-								FoldValue::Double(Some(val))
-							}
-							DataTypeContents::NBT(NBTTypeContents::String(val)) => {
-								FoldValue::String(Some(val.to_string()))
-							}
-							_ => continue,
-						},
-						ConstAnalyzerValue::Reset(ty) => match ty {
-							DataType::Score(..) => FoldValue::Score(None),
-							DataType::NBT(NBTType::Byte) => FoldValue::Byte(None),
-							DataType::NBT(NBTType::Short) => FoldValue::Short(None),
-							DataType::NBT(NBTType::Int) => FoldValue::Int(None),
-							DataType::NBT(NBTType::Long) => FoldValue::Long(None),
-							DataType::NBT(NBTType::Float) => FoldValue::Float(None),
-							DataType::NBT(NBTType::Double) => FoldValue::Double(None),
-							DataType::NBT(NBTType::String) => FoldValue::String(None),
-							_ => continue,
-						},
-					};
+			}
+			MIRInstrKind::Or {
+				left: MutableValue::Register(left),
+				right: Value::Constant(DataTypeContents::Score(right)),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							*value = ((value != &0) || (right.get_i32() != 0)) as i32;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
+					}
+				}
+			}
+			MIRInstrKind::Pow {
+				base: MutableValue::Register(left),
+				exp,
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							*value = value.overflowing_pow((*exp).into()).0;
+							instrs_to_remove.insert(i);
+							left.has_folded = true;
+							run_again = true;
+						}
+					}
+				}
+			}
+			_ => {}
+		};
+		let an_result = an.feed(&instr.kind)?;
+		match an_result {
+			ConstAnalyzerResult::Add(reg, val) => {
+				let val = match val {
+					ConstAnalyzerValue::Value(val) => match val {
+						DataTypeContents::Score(val) => FoldValue::Score(Some(val.get_i32())),
+						DataTypeContents::NBT(NBTTypeContents::Byte(val)) => {
+							FoldValue::Byte(Some(val))
+						}
+						DataTypeContents::NBT(NBTTypeContents::Short(val)) => {
+							FoldValue::Short(Some(val))
+						}
+						DataTypeContents::NBT(NBTTypeContents::Int(val)) => {
+							FoldValue::Int(Some(val))
+						}
+						DataTypeContents::NBT(NBTTypeContents::Long(val)) => {
+							FoldValue::Long(Some(val))
+						}
+						DataTypeContents::NBT(NBTTypeContents::Float(val)) => {
+							FoldValue::Float(Some(val))
+						}
+						DataTypeContents::NBT(NBTTypeContents::Double(val)) => {
+							FoldValue::Double(Some(val))
+						}
+						DataTypeContents::NBT(NBTTypeContents::String(val)) => {
+							FoldValue::String(Some(val.to_string()))
+						}
+						_ => continue,
+					},
+					ConstAnalyzerValue::Reset(ty) => match ty {
+						DataType::Score(..) => FoldValue::Score(None),
+						DataType::NBT(NBTType::Byte) => FoldValue::Byte(None),
+						DataType::NBT(NBTType::Short) => FoldValue::Short(None),
+						DataType::NBT(NBTType::Int) => FoldValue::Int(None),
+						DataType::NBT(NBTType::Long) => FoldValue::Long(None),
+						DataType::NBT(NBTType::Float) => FoldValue::Float(None),
+						DataType::NBT(NBTType::Double) => FoldValue::Double(None),
+						DataType::NBT(NBTType::String) => FoldValue::String(None),
+						_ => continue,
+					},
+				};
 
-					if let Some(mut existing) = fold_points.get_mut(&reg) {
-						instrs_to_replace
-							.push((existing.pos, create_set_instr(&reg, existing.value.clone())));
-						existing.pos = i;
-						existing.value = val;
-						existing.finished = true;
-					} else {
-						fold_points.insert(
-							reg,
-							FoldPoint {
-								pos: i,
-								value: val,
-								finished: false,
-								has_folded: false,
-							},
-						);
-					}
+				if let Some(existing) = fold_points.get_mut(&reg) {
+					instrs_to_replace
+						.push((existing.pos, create_set_instr(&reg, existing.value.clone())));
+					existing.pos = i;
+					existing.value = val;
+					existing.finished = true;
+				} else {
+					fold_points.insert(
+						reg,
+						FoldPoint {
+							pos: i,
+							value: val,
+							finished: false,
+							has_folded: false,
+						},
+					);
 				}
-				ConstAnalyzerResult::Remove(regs) => {
-					for reg in regs {
-						// let mut should_remove = false;
-						if let Some(mut point) = fold_points.get_mut(&reg) {
-							point.finished = true;
-							// if !point.finished {
-							// 	instrs_to_replace.push((
-							// 		point.pos,
-							// 		MIRInstrKind::Assign {
-							// 			left: MutableValue::Register(reg.clone()),
-							// 			right: DeclareBinding::Value(Value::Constant(
-							// 				DataTypeContents::Score(ScoreTypeContents::Score(
-							// 					point.value,
-							// 				)),
-							// 			)),
-							// 		},
-							// 	));
-							// 	should_remove = true;
-							// }
-						}
-						// if should_remove {
-						// 	fold_points.remove(&reg);
+			}
+			ConstAnalyzerResult::Remove(regs) => {
+				for reg in regs {
+					// let mut should_remove = false;
+					if let Some(point) = fold_points.get_mut(reg) {
+						point.finished = true;
+						// if !point.finished {
+						// 	instrs_to_replace.push((
+						// 		point.pos,
+						// 		MIRInstrKind::Assign {
+						// 			left: MutableValue::Register(reg.clone()),
+						// 			right: DeclareBinding::Value(Value::Constant(
+						// 				DataTypeContents::Score(ScoreTypeContents::Score(
+						// 					point.value,
+						// 				)),
+						// 			)),
+						// 		},
+						// 	));
+						// 	should_remove = true;
 						// }
 					}
+					// if should_remove {
+					// 	fold_points.remove(&reg);
+					// }
 				}
-				_ => (),
 			}
+			_ => (),
 		}
 	}
 
-	for val in fold_points.iter() {
-		let reg = val.key();
-		let point = val.value();
+	for (reg, point) in fold_points.iter() {
 		if let Some(instr) = block.contents.get_mut(point.pos) {
 			instr.kind = create_set_instr(reg, point.value.clone());
 		} else {

@@ -1,4 +1,6 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
+
+use rustc_hash::FxHashMap;
 
 use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
 use crate::common::condition::Condition;
@@ -13,14 +15,14 @@ use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, R
 
 #[derive(Debug, Clone)]
 pub struct IR {
-	pub functions: HashMap<ResourceLocation, Function>,
+	pub functions: FxHashMap<ResourceLocation, Function>,
 	pub blocks: BlockAllocator<Block>,
 }
 
 impl IR {
 	pub fn new() -> Self {
 		Self {
-			functions: HashMap::new(),
+			functions: FxHashMap::default(),
 			blocks: BlockAllocator::new(),
 		}
 	}
@@ -31,11 +33,11 @@ impl IRType for IR {
 	type InstrType = Instruction;
 	type InstrKindType = InstrKind;
 
-	fn get_fns<'this>(&'this self) -> &'this HashMap<ResourceLocation, Function> {
+	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Function> {
 		&self.functions
 	}
 
-	fn get_fns_mut<'this>(&'this mut self) -> &'this mut HashMap<ResourceLocation, Function> {
+	fn get_fns_mut<'this>(&'this mut self) -> &'this mut FxHashMap<ResourceLocation, Function> {
 		&mut self.functions
 	}
 

@@ -3,7 +3,7 @@ use anyhow::anyhow;
 use crate::common::{condition::Condition, ty::DataTypeContents, val::Value};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::{remove_indices, DashSetEmptyTracker};
+use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct ConstConditionPass {
 	pub(super) made_changes: bool,
@@ -38,7 +38,7 @@ impl MIRPass for ConstConditionPass {
 				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
-			let mut instrs_to_remove = DashSetEmptyTracker::new();
+			let mut instrs_to_remove = HashSetEmptyTracker::new();
 			loop {
 				let run_again = run_const_condition_iter(block, &mut instrs_to_remove);
 				if run_again {
@@ -54,11 +54,11 @@ impl MIRPass for ConstConditionPass {
 	}
 }
 
-/// Runs an iteration of const prop. Returns true if another iteration
+/// Runs an iteration of constant condition. Returns true if another iteration
 /// should be run
 fn run_const_condition_iter(
 	block: &mut MIRBlock,
-	instrs_to_remove: &mut DashSetEmptyTracker<usize>,
+	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
 ) -> bool {
 	let mut run_again = false;
 

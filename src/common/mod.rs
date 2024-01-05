@@ -6,10 +6,9 @@ pub mod range;
 pub mod ty;
 pub mod val;
 
-use std::collections::HashMap;
 use std::{fmt::Debug, sync::Arc};
 
-use dashmap::DashMap;
+use rustc_hash::FxHashMap;
 
 use self::block::BlockAllocator;
 use self::function::{Function, FunctionSignature};
@@ -74,7 +73,7 @@ pub struct Register {
 	pub ty: DataType,
 }
 
-pub type RegisterList = DashMap<Identifier, Register>;
+pub type RegisterList = FxHashMap<Identifier, Register>;
 
 pub type ResourceLocation = Identifier;
 pub type ResourceLocationTag = Identifier;
@@ -87,8 +86,8 @@ pub trait IRType {
 	type InstrKindType;
 
 	// Interface functions for trait methods
-	fn get_fns<'this>(&'this self) -> &'this HashMap<ResourceLocation, Function>;
-	fn get_fns_mut<'this>(&'this mut self) -> &'this mut HashMap<ResourceLocation, Function>;
+	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Function>;
+	fn get_fns_mut<'this>(&'this mut self) -> &'this mut FxHashMap<ResourceLocation, Function>;
 	fn get_blocks<'this>(&'this self) -> &'this BlockAllocator<Self::BlockType>;
 	fn get_blocks_mut<'this>(&'this mut self) -> &'this mut BlockAllocator<Self::BlockType>;
 

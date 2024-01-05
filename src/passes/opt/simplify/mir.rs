@@ -6,10 +6,9 @@ use crate::common::val::MutableValue;
 use crate::common::{val::Value, DeclareBinding};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::remove_indices;
+use crate::util::{remove_indices, HashSetEmptyTracker};
 
 use anyhow::anyhow;
-use dashmap::DashSet;
 use num_traits::Zero;
 
 pub struct MIRSimplifyPass;
@@ -29,7 +28,7 @@ impl MIRPass for MIRSimplifyPass {
 				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
-			let mut instrs_to_remove = DashSet::new();
+			let mut instrs_to_remove = HashSetEmptyTracker::new();
 			loop {
 				let run_again = run_mir_simplify_iter(block, &mut instrs_to_remove);
 				if !run_again {
@@ -45,7 +44,10 @@ impl MIRPass for MIRSimplifyPass {
 
 /// Runs an iteration of the MIRSimplifyPass. Returns true if another iteration
 /// should be run
-fn run_mir_simplify_iter(block: &mut MIRBlock, instrs_to_remove: &mut DashSet<usize>) -> bool {
+fn run_mir_simplify_iter(
+	block: &mut MIRBlock,
+	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
+) -> bool {
 	let mut run_again = false;
 
 	for (i, instr) in block.contents.iter_mut().enumerate() {

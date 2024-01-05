@@ -3,7 +3,7 @@ pub mod fold;
 pub mod prop;
 
 use anyhow::Context;
-use dashmap::DashMap;
+use rustc_hash::FxHashMap;
 
 use crate::common::ty::{DataType, DataTypeContents};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier};
@@ -15,7 +15,7 @@ use self::cond::ConstConditionPass;
 use self::fold::ConstFoldPass;
 use self::prop::ConstPropPass;
 
-/// Combines the ConstProp and ConstFold passes and runs them both
+/// Combines all of the constant passes and runs them
 /// until no changes are made
 pub struct ConstComboPass;
 
@@ -27,7 +27,6 @@ impl Pass for ConstComboPass {
 
 impl MIRPass for ConstComboPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		// dbg!(&data.mir);
 		loop {
 			let mut prop = ConstPropPass::new();
 			prop.run_pass(data).context("Const Prop pass failed")?;
@@ -45,29 +44,24 @@ impl MIRPass for ConstComboPass {
 }
 
 struct ConstAnalyzer {
-	vals: DashMap<Identifier, ConstAnalyzerValue>,
-	store_self: bool,
 	regs: RegisterList,
 }
 
 impl ConstAnalyzer {
 	fn new() -> Self {
 		Self {
-			vals: DashMap::new(),
-			store_self: true,
-			regs: RegisterList::new(),
+			regs: RegisterList::default(),
 		}
 	}
 
-	fn new_dont_store() -> Self {
-		Self {
-			vals: DashMap::with_capacity(0),
-			store_self: false,
-			regs: RegisterList::new(),
-		}
+	fn reset(&mut self) {
+		self.regs.clear();
 	}
 
-	fn feed(&mut self, kind: &MIRInstrKind) -> anyhow::Result<ConstAnalyzerResult> {
+	fn feed<'reg>(
+		&mut self,
+		kind: &'reg MIRInstrKind,
+	) -> anyhow::Result<ConstAnalyzerResult<'reg>> {
 		let out = match kind {
 			MIRInstrKind::Declare { left, ty } => {
 				self.regs.insert(
@@ -82,28 +76,17 @@ impl ConstAnalyzer {
 			MIRInstrKind::Assign {
 				left: MutableValue::Register(reg),
 				right: DeclareBinding::Value(Value::Constant(val)),
-			} => {
-				if self.store_self {
-					self.vals
-						.insert(reg.clone(), ConstAnalyzerValue::Value(val.clone()));
-				}
-				ConstAnalyzerResult::Add(reg.clone(), ConstAnalyzerValue::Value(val.clone()))
-			}
+			} => ConstAnalyzerResult::Add(reg.clone(), ConstAnalyzerValue::Value(val.clone())),
 			MIRInstrKind::Assign { left, right, .. } => {
 				let mut out = Vec::new();
 				if let MutableValue::Register(reg) = left {
-					out.push(reg.clone());
+					out.push(reg);
 				}
 				if let DeclareBinding::Value(Value::Mutable(MutableValue::Register(reg))) = &right {
-					out.push(reg.clone());
+					out.push(reg);
 				} else {
 					let used = right.get_used_regs();
-					out.extend(used.into_iter().cloned())
-				}
-				if self.store_self {
-					for reg in &out {
-						self.vals.remove(reg);
-					}
+					out.extend(used)
 				}
 				ConstAnalyzerResult::Remove(out)
 			}
@@ -126,10 +109,7 @@ impl ConstAnalyzer {
 			| MIRInstrKind::PushFront { left, .. }
 			| MIRInstrKind::Insert { left, .. } => {
 				if let MutableValue::Register(reg) = left {
-					if self.store_self {
-						self.vals.remove(reg);
-					}
-					ConstAnalyzerResult::Remove(vec![reg.clone()])
+					ConstAnalyzerResult::Remove(vec![reg])
 				} else {
 					ConstAnalyzerResult::Other
 				}
@@ -137,32 +117,16 @@ impl ConstAnalyzer {
 			MIRInstrKind::Swap {
 				left: MutableValue::Register(left_reg),
 				right: MutableValue::Register(right_reg),
-			} => {
-				if self.store_self {
-					self.vals.remove(left_reg);
-					self.vals.remove(right_reg);
-				}
-				ConstAnalyzerResult::Remove(vec![left_reg.clone(), right_reg.clone()])
-			}
+			} => ConstAnalyzerResult::Remove(vec![left_reg, right_reg]),
 			MIRInstrKind::Abs {
 				val: MutableValue::Register(reg),
 			}
 			| MIRInstrKind::Use {
 				val: MutableValue::Register(reg),
-			} => {
-				if self.store_self {
-					self.vals.remove(reg);
-				}
-				ConstAnalyzerResult::Remove(vec![reg.clone()])
-			}
+			} => ConstAnalyzerResult::Remove(vec![reg]),
 			other => {
 				let used = other.get_used_regs();
-				if self.store_self {
-					for used in &used {
-						self.vals.remove(*used);
-					}
-				}
-				ConstAnalyzerResult::Remove(used.into_iter().cloned().collect())
+				ConstAnalyzerResult::Remove(used)
 			}
 		};
 
@@ -170,10 +134,10 @@ impl ConstAnalyzer {
 	}
 }
 
-enum ConstAnalyzerResult {
+enum ConstAnalyzerResult<'reg> {
 	Other,
 	Add(Identifier, ConstAnalyzerValue),
-	Remove(Vec<Identifier>),
+	Remove(Vec<&'reg Identifier>),
 }
 
 pub enum ConstAnalyzerValue {
@@ -181,4 +145,41 @@ pub enum ConstAnalyzerValue {
 	Value(DataTypeContents),
 	/// The value has been reset to not exist
 	Reset(DataType),
+}
+
+/// Wrapper around ConstAnalyzer that stores its values
+struct StoringConstAnalyzer {
+	an: ConstAnalyzer,
+	vals: FxHashMap<Identifier, ConstAnalyzerValue>,
+}
+
+impl StoringConstAnalyzer {
+	fn new() -> Self {
+		Self {
+			an: ConstAnalyzer::new(),
+			vals: FxHashMap::default(),
+		}
+	}
+
+	fn feed(&mut self, kind: &MIRInstrKind) -> anyhow::Result<()> {
+		let result = self.an.feed(kind)?;
+		match result {
+			ConstAnalyzerResult::Add(reg, val) => {
+				self.vals.insert(reg, val);
+			}
+			ConstAnalyzerResult::Remove(regs) => {
+				for reg in regs {
+					self.vals.remove(reg);
+				}
+			}
+			ConstAnalyzerResult::Other => {}
+		}
+
+		Ok(())
+	}
+
+	fn reset(&mut self) {
+		self.an.reset();
+		self.vals.clear();
+	}
 }

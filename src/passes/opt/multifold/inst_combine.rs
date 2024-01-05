@@ -1,12 +1,12 @@
 use anyhow::anyhow;
-use dashmap::DashMap;
+use rustc_hash::FxHashMap;
 use tinyvec::TinyVec;
 
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::{val::MutableValue, val::Value, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::{remove_indices, DashSetEmptyTracker};
+use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct InstCombinePass;
 
@@ -24,7 +24,7 @@ impl MIRPass for InstCombinePass {
 				.blocks
 				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
-			let mut removed_indices = DashSetEmptyTracker::new();
+			let mut removed_indices = HashSetEmptyTracker::new();
 			loop {
 				let run_again = run_instcombine_iter(block, &mut removed_indices);
 				if !run_again {
@@ -42,12 +42,12 @@ impl MIRPass for InstCombinePass {
 /// should be run
 fn run_instcombine_iter(
 	block: &mut MIRBlock,
-	removed_indices: &mut DashSetEmptyTracker<usize>,
+	removed_indices: &mut HashSetEmptyTracker<usize>,
 ) -> bool {
 	let mut run_again = false;
-	let add_subs = DashMap::new();
-	let muls = DashMap::new();
-	let mods = DashMap::new();
+	let mut add_subs = FxHashMap::default();
+	let mut muls = FxHashMap::default();
+	let mut mods = FxHashMap::default();
 
 	for (i, instr) in block.contents.iter().enumerate() {
 		// Even though this instruction hasn't actually been removed from the vec, we treat it
@@ -66,7 +66,7 @@ fn run_instcombine_iter(
 				left: MutableValue::Register(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if add_subs.contains_key(reg) => {
-				if let Some(mut combiner) = add_subs.get_mut(reg) {
+				if let Some(combiner) = add_subs.get_mut(reg) {
 					combiner.feed(i, score.get_i32());
 				}
 			}
@@ -80,7 +80,7 @@ fn run_instcombine_iter(
 				left: MutableValue::Register(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if add_subs.contains_key(reg) => {
-				if let Some(mut combiner) = add_subs.get_mut(reg) {
+				if let Some(combiner) = add_subs.get_mut(reg) {
 					combiner.feed(i, -score.get_i32());
 				}
 			}
@@ -94,7 +94,7 @@ fn run_instcombine_iter(
 				left: MutableValue::Register(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if muls.contains_key(reg) => {
-				if let Some(mut combiner) = muls.get_mut(reg) {
+				if let Some(combiner) = muls.get_mut(reg) {
 					combiner.feed(i, score.get_i32());
 				}
 			}
@@ -108,7 +108,7 @@ fn run_instcombine_iter(
 				left: MutableValue::Register(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if mods.contains_key(reg) => {
-				if let Some(mut combiner) = mods.get_mut(reg) {
+				if let Some(combiner) = mods.get_mut(reg) {
 					combiner.feed(i, score.get_i32());
 				}
 			}
@@ -116,9 +116,9 @@ fn run_instcombine_iter(
 				let used_regs = other.get_used_regs();
 				for reg in used_regs {
 					// Mark any combiners that are combining this register as finished
-					add_subs.get_mut(reg).map(|mut x| x.finished = true);
-					muls.get_mut(reg).map(|mut x| x.finished = true);
-					mods.get_mut(reg).map(|mut x| x.finished = true);
+					add_subs.get_mut(reg).map(|x| x.finished = true);
+					muls.get_mut(reg).map(|x| x.finished = true);
+					mods.get_mut(reg).map(|x| x.finished = true);
 				}
 			}
 		}

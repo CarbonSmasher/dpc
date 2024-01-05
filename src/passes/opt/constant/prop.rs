@@ -7,7 +7,7 @@ use crate::common::DeclareBinding;
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
-use super::{ConstAnalyzer, ConstAnalyzerValue};
+use super::{ConstAnalyzerValue, StoringConstAnalyzer};
 
 pub struct ConstPropPass {
 	pub(super) made_changes: bool,
@@ -39,14 +39,16 @@ impl Pass for ConstPropPass {
 
 impl MIRPass for ConstPropPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		let mut an = StoringConstAnalyzer::new();
 		for func in data.mir.functions.values_mut() {
 			let block = data
 				.mir
 				.blocks
 				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
+			an.reset();
 			loop {
-				let run_again = run_const_prop_iter(block)?;
+				let run_again = run_const_prop_iter(block, &mut an)?;
 				if run_again {
 					self.made_changes = true;
 				} else {
@@ -61,12 +63,14 @@ impl MIRPass for ConstPropPass {
 
 /// Runs an iteration of const prop. Returns true if another iteration
 /// should be run
-fn run_const_prop_iter(block: &mut MIRBlock) -> anyhow::Result<bool> {
+fn run_const_prop_iter(
+	block: &mut MIRBlock,
+	an: &mut StoringConstAnalyzer,
+) -> anyhow::Result<bool> {
 	let mut run_again = false;
 
-	let mut an = ConstAnalyzer::new();
 	for instr in &mut block.contents {
-		const_prop_instr(&mut instr.kind, &mut an, &mut run_again);
+		const_prop_instr(&mut instr.kind, an, &mut run_again);
 		an.feed(&instr.kind)?;
 	}
 
@@ -74,7 +78,7 @@ fn run_const_prop_iter(block: &mut MIRBlock) -> anyhow::Result<bool> {
 }
 
 // TODO: Remove assignments and operations with an uninitialized value on the rhs
-fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again: &mut bool) {
+fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run_again: &mut bool) {
 	match instr {
 		MIRInstrKind::Assign {
 			right: DeclareBinding::Value(right),
@@ -95,7 +99,7 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 		| MIRInstrKind::Or { right, .. } => {
 			if let Value::Mutable(MutableValue::Register(reg)) = right.clone() {
 				if let Some(val) = an.vals.get(&reg) {
-					if let ConstAnalyzerValue::Value(val) = val.value() {
+					if let ConstAnalyzerValue::Value(val) = val {
 						*right = Value::Constant(val.clone());
 						*run_again = true;
 					}
@@ -106,7 +110,7 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 		MIRInstrKind::Get { value, scale } => {
 			if let MutableValue::Register(reg) = value.clone() {
 				if let Some(val) = an.vals.get(&reg) {
-					if let ConstAnalyzerValue::Value(val) = val.value() {
+					if let ConstAnalyzerValue::Value(val) = val {
 						if let Some(val) = val.try_get_i32() {
 							let scaled = ((val as f64) * *scale) as i32;
 							*instr = MIRInstrKind::GetConst { value: scaled };
@@ -124,7 +128,7 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 				| Condition::LessThanOrEqual(l, r) => {
 					if let Value::Mutable(MutableValue::Register(reg)) = l.clone() {
 						if let Some(val) = an.vals.get(&reg) {
-							if let ConstAnalyzerValue::Value(val) = val.value() {
+							if let ConstAnalyzerValue::Value(val) = val {
 								*l = Value::Constant(val.clone());
 								*run_again = true;
 							}
@@ -132,7 +136,7 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 					}
 					if let Value::Mutable(MutableValue::Register(reg)) = r.clone() {
 						if let Some(val) = an.vals.get(&reg) {
-							if let ConstAnalyzerValue::Value(val) = val.value() {
+							if let ConstAnalyzerValue::Value(val) = val {
 								*r = Value::Constant(val.clone());
 								*run_again = true;
 							}
@@ -142,7 +146,7 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut ConstAnalyzer, run_again:
 				Condition::Exists(val) => {
 					if let Value::Mutable(MutableValue::Register(reg)) = val.clone() {
 						if let Some(val) = an.vals.get(&reg) {
-							match val.value() {
+							match val {
 								ConstAnalyzerValue::Reset(..) => {
 									*condition = Condition::Bool(Value::Constant(
 										DataTypeContents::Score(ScoreTypeContents::Bool(false)),

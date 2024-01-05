@@ -1,4 +1,7 @@
+use std::hash::BuildHasherDefault;
 use std::{collections::HashMap, fmt::Debug};
+
+use rustc_hash::FxHashMap;
 
 use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::Function;
@@ -10,21 +13,24 @@ use crate::common::{IRType, Identifier, RegisterList, ResourceLocation};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
-	pub functions: HashMap<ResourceLocation, Function>,
+	pub functions: FxHashMap<ResourceLocation, Function>,
 	pub blocks: BlockAllocator<LIRBlock>,
 }
 
 impl LIR {
 	pub fn new() -> Self {
 		Self {
-			functions: HashMap::new(),
+			functions: HashMap::default(),
 			blocks: BlockAllocator::new(),
 		}
 	}
 
 	pub fn with_capacity(function_capacity: usize, block_capacity: usize) -> Self {
 		Self {
-			functions: HashMap::with_capacity(function_capacity),
+			functions: FxHashMap::with_capacity_and_hasher(
+				function_capacity,
+				BuildHasherDefault::default(),
+			),
 			blocks: BlockAllocator::with_capacity(block_capacity),
 		}
 	}
@@ -35,11 +41,11 @@ impl IRType for LIR {
 	type InstrType = LIRInstruction;
 	type InstrKindType = LIRInstrKind;
 
-	fn get_fns<'this>(&'this self) -> &'this HashMap<ResourceLocation, Function> {
+	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Function> {
 		&self.functions
 	}
 
-	fn get_fns_mut<'this>(&'this mut self) -> &'this mut HashMap<ResourceLocation, Function> {
+	fn get_fns_mut<'this>(&'this mut self) -> &'this mut FxHashMap<ResourceLocation, Function> {
 		&mut self.functions
 	}
 

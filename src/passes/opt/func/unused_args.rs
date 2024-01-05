@@ -1,7 +1,8 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use anyhow::anyhow;
-use dashmap::{DashMap, DashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::function::CallInterface;
 use crate::common::val::MutableValue;
@@ -21,7 +22,7 @@ impl MIRPass for UnusedArgsPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		// First find unused arguments in the functions,
 		// and remove those arguments from the functions
-		let unused = DashMap::new();
+		let mut unused = FxHashMap::default();
 		for (func_id, func) in &mut data.mir.functions {
 			let block = data
 				.mir
@@ -29,15 +30,18 @@ impl MIRPass for UnusedArgsPass {
 				.get_mut(&func.block)
 				.ok_or(anyhow!("Block does not exist"))?;
 
-			let used_args = DashSet::new();
+			// Just a simple refcell for this closure
+			let used_args = RefCell::new(FxHashSet::default());
 
 			for instr in &mut block.contents {
 				instr.kind.replace_mut_vals(|x| {
 					if let MutableValue::Arg(a) = x {
-						used_args.insert(*a);
+						used_args.borrow_mut().insert(*a);
 					}
 				})
 			}
+
+			let used_args = used_args.take();
 
 			// Remove unused args. We also have to remap the args in the function to be
 			// correct
@@ -71,7 +75,7 @@ impl MIRPass for UnusedArgsPass {
 		// Remove unused args in calls
 		let modify_call = |call: &mut CallInterface| {
 			if let Some(unused) = unused.get(&call.function) {
-				remove_indices(&mut call.args, unused.value());
+				remove_indices(&mut call.args, unused);
 			}
 		};
 

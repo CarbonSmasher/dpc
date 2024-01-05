@@ -5,6 +5,7 @@ use std::{
 };
 
 use dashmap::DashSet;
+use rustc_hash::FxHashSet;
 
 /// A container that can hold values
 pub trait Container<T> {
@@ -117,39 +118,39 @@ pub fn replace_and_expand_indices<T: Clone>(v: Vec<T>, values: &[(usize, Vec<T>)
 
 /// Wrapper around a DashSet that keeps track of whether any elements were inserted or not.
 /// This allows an efficient empty() implementation
-pub struct DashSetEmptyTracker<T> {
-	inner: DashSet<T>,
+pub struct HashSetEmptyTracker<T> {
+	inner: FxHashSet<T>,
 	is_empty: bool,
 }
 
-impl<T> DashSetEmptyTracker<T>
+impl<T> HashSetEmptyTracker<T>
 where
 	T: Eq + Hash,
 {
 	pub fn new() -> Self {
 		Self {
-			inner: DashSet::new(),
+			inner: FxHashSet::default(),
 			is_empty: true,
 		}
 	}
 
 	/// Override of insert that marks the container as not empty
 	#[allow(dead_code)]
-	pub fn insert(&mut self, val: T) {
-		self.inner.insert(val);
+	pub fn insert(&mut self, val: T) -> bool {
 		self.is_empty = false;
+		self.inner.insert(val)
 	}
 }
 
-impl<T> Deref for DashSetEmptyTracker<T> {
-	type Target = DashSet<T>;
+impl<T> Deref for HashSetEmptyTracker<T> {
+	type Target = FxHashSet<T>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.inner
 	}
 }
 
-impl<T> DerefMut for DashSetEmptyTracker<T> {
+impl<T> DerefMut for HashSetEmptyTracker<T> {
 	fn deref_mut(&mut self) -> &mut Self::Target {
 		// Just to make sure
 		self.is_empty = false;
@@ -157,12 +158,12 @@ impl<T> DerefMut for DashSetEmptyTracker<T> {
 	}
 }
 
-impl<T> Container<T> for DashSetEmptyTracker<T>
+impl<T> Container<T> for HashSetEmptyTracker<T>
 where
 	T: Eq + Hash,
 {
 	fn contains_val(&self, val: &T) -> bool {
-		self.inner.contains_val(val)
+		self.inner.contains(val)
 	}
 
 	fn empty(&self) -> bool {

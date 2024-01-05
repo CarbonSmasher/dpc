@@ -4,10 +4,9 @@ use crate::common::ty::ScoreTypeContents;
 use crate::common::val::ScoreValue;
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
-use crate::util::remove_indices;
+use crate::util::{remove_indices, HashSetEmptyTracker};
 
 use anyhow::anyhow;
-use dashmap::DashSet;
 
 pub struct LIRSimplifyPass;
 
@@ -27,7 +26,7 @@ impl LIRPass for LIRSimplifyPass {
 
 			// We persist the same set of removed instructions across all iterations
 			// so that we only have to run the vec retain operation once, saving a lot of copies
-			let mut instrs_to_remove = DashSet::new();
+			let mut instrs_to_remove = HashSetEmptyTracker::new();
 			loop {
 				let run_again = run_lir_simplify_iter(block, &mut instrs_to_remove);
 				if !run_again {
@@ -43,7 +42,10 @@ impl LIRPass for LIRSimplifyPass {
 
 /// Runs an iteration of the LIRSimplifyPass. Returns true if another iteration
 /// should be run
-fn run_lir_simplify_iter(block: &mut LIRBlock, instrs_to_remove: &mut DashSet<usize>) -> bool {
+fn run_lir_simplify_iter(
+	block: &mut LIRBlock,
+	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
+) -> bool {
 	let mut run_again = false;
 
 	for (i, instr) in block.contents.iter().enumerate() {

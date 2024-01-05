@@ -1,11 +1,11 @@
 use anyhow::anyhow;
-use dashmap::DashMap;
+use rustc_hash::FxHashMap;
 
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
 use crate::common::{val::MutableScoreValue, val::ScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
-use crate::util::{remove_indices, DashSetEmptyTracker};
+use crate::util::{remove_indices, HashSetEmptyTracker};
 
 use super::OptimizableValue;
 
@@ -19,9 +19,9 @@ impl Pass for ScoreboardDataflowPass {
 
 impl LIRPass for ScoreboardDataflowPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		let mut flow_points = DashMap::new();
+		let mut flow_points = FxHashMap::default();
 		let mut finished_flow_points = Vec::new();
-		let mut instrs_to_remove = DashSetEmptyTracker::new();
+		let mut instrs_to_remove = HashSetEmptyTracker::new();
 
 		for func in lir.functions.values_mut() {
 			instrs_to_remove.clear();
@@ -54,8 +54,8 @@ impl LIRPass for ScoreboardDataflowPass {
 
 fn run_scoreboard_dataflow_iter(
 	block: &mut LIRBlock,
-	instrs_to_remove: &mut DashSetEmptyTracker<usize>,
-	flow_points: &mut DashMap<OptimizableValue, SBDataflowPoint>,
+	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
+	flow_points: &mut FxHashMap<OptimizableValue, SBDataflowPoint>,
 	finished_flow_points: &mut Vec<SBDataflowPoint>,
 ) -> bool {
 	let mut run_again = false;
@@ -69,14 +69,14 @@ fn run_scoreboard_dataflow_iter(
 				if let MutableScoreValue::Reg(left) = left {
 					if let ScoreValue::Mutable(right) = right {
 						if let Some(right) = right.to_optimizable_value() {
-							if let Some(mut point) = flow_points.get_mut(&right) {
+							if let Some(point) = flow_points.get_mut(&right) {
 								point.store_regs.push(left.clone());
 								instrs_to_remove.insert(i);
 							} else {
 								finished_flow_points.extend(
 									flow_points
 										.remove(&OptimizableValue::Reg(left.clone()))
-										.map(|x| x.1),
+										.map(|x| x),
 								);
 								flow_points.insert(
 									OptimizableValue::Reg(left.clone()),
@@ -85,8 +85,7 @@ fn run_scoreboard_dataflow_iter(
 										store_regs: Vec::new(),
 									},
 								);
-								finished_flow_points
-									.extend(flow_points.remove(&right).map(|x| x.1));
+								finished_flow_points.extend(flow_points.remove(&right).map(|x| x));
 								flow_points.insert(
 									right,
 									SBDataflowPoint {
@@ -100,7 +99,7 @@ fn run_scoreboard_dataflow_iter(
 						finished_flow_points.extend(
 							flow_points
 								.remove(&OptimizableValue::Reg(left.clone()))
-								.map(|x| x.1),
+								.map(|x| x),
 						);
 						flow_points.insert(
 							OptimizableValue::Reg(left.clone()),
@@ -122,7 +121,7 @@ fn run_scoreboard_dataflow_iter(
 				if let Some(left) = left.to_optimizable_value() {
 					if let ScoreValue::Mutable(right) = right {
 						if let Some(right) = right.to_optimizable_value() {
-							finished_flow_points.extend(flow_points.remove(&right).map(|x| x.1));
+							finished_flow_points.extend(flow_points.remove(&right).map(|x| x));
 						}
 					}
 
@@ -138,19 +137,19 @@ fn run_scoreboard_dataflow_iter(
 			LIRInstrKind::SwapScore(left, right) => {
 				if let Some(left) = left.to_optimizable_value() {
 					if let Some(right) = right.to_optimizable_value() {
-						finished_flow_points.extend(flow_points.remove(&left).map(|x| x.1));
-						finished_flow_points.extend(flow_points.remove(&right).map(|x| x.1));
+						finished_flow_points.extend(flow_points.remove(&left).map(|x| x));
+						finished_flow_points.extend(flow_points.remove(&right).map(|x| x));
 					}
 				}
 			}
 			LIRInstrKind::ConstIndexToScore { score: val, .. } => {
 				if let Some(val) = val.to_optimizable_value() {
-					finished_flow_points.extend(flow_points.remove(&val).map(|x| x.1));
+					finished_flow_points.extend(flow_points.remove(&val).map(|x| x));
 				}
 			}
 			LIRInstrKind::Use(val) => {
 				if let Some(val) = val.to_optimizable_value() {
-					finished_flow_points.extend(flow_points.remove(&val).map(|x| x.1));
+					finished_flow_points.extend(flow_points.remove(&val).map(|x| x));
 				}
 			}
 			_ => {
@@ -159,7 +158,7 @@ fn run_scoreboard_dataflow_iter(
 					finished_flow_points.extend(
 						flow_points
 							.remove(&OptimizableValue::Reg(reg.clone()))
-							.map(|x| x.1),
+							.map(|x| x),
 					);
 				}
 			}
@@ -168,7 +167,7 @@ fn run_scoreboard_dataflow_iter(
 
 	for point in flow_points
 		.iter()
-		.map(|x| x.value().clone())
+		.map(|x| x.1.clone())
 		.chain(finished_flow_points.iter().cloned())
 	{
 		if let Some(instr) = block.contents.get_mut(point.pos) {

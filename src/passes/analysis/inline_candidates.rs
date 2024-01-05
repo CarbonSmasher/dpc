@@ -1,11 +1,10 @@
-use std::collections::HashSet;
-
 use crate::common::ResourceLocation;
 use crate::mir::MIR;
 use crate::passes::opt::get_instr_call;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
 use anyhow::anyhow;
+use rustc_hash::FxHashSet;
 
 pub struct InlineCandidatesPass;
 
@@ -18,9 +17,9 @@ impl Pass for InlineCandidatesPass {
 impl MIRPass for InlineCandidatesPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut call_stack = CallStack {
-			set: HashSet::new(),
+			set: FxHashSet::default(),
 		};
-		let mut checked = HashSet::new();
+		let mut checked = FxHashSet::default();
 		for func in data.mir.functions.keys() {
 			checked.clear();
 			data.inline_candidates.insert(func.clone());
@@ -40,9 +39,9 @@ impl MIRPass for InlineCandidatesPass {
 fn check_recursion<'fun>(
 	func_id: &'fun ResourceLocation,
 	mir: &'fun MIR,
-	candidates: &mut HashSet<ResourceLocation>,
+	candidates: &mut FxHashSet<ResourceLocation>,
 	call_stack: &mut CallStack,
-	checked: &mut HashSet<&'fun ResourceLocation>,
+	checked: &mut FxHashSet<&'fun ResourceLocation>,
 ) -> anyhow::Result<()> {
 	checked.insert(func_id);
 	call_stack.set.insert(func_id.clone());
@@ -82,5 +81,5 @@ fn check_recursion<'fun>(
 }
 
 struct CallStack {
-	set: HashSet<ResourceLocation>,
+	set: FxHashSet<ResourceLocation>,
 }

@@ -1,6 +1,5 @@
-use std::collections::{HashMap, HashSet};
-
 use anyhow::{anyhow, Context};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::block::BlockAllocator;
 use crate::common::function::{Function, FunctionArgs, FunctionInterface, FunctionSignature};
@@ -22,7 +21,7 @@ impl Pass for SimpleInlinePass {
 impl MIRPass for SimpleInlinePass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut instrs_to_remove = Vec::new();
-		let mut instrs_to_remove_set = HashSet::new();
+		let mut instrs_to_remove_set = FxHashSet::default();
 		let cloned_funcs = data.mir.functions.clone();
 		let cloned_blocks = data.mir.blocks.clone();
 		for func in data.mir.functions.values_mut() {
@@ -60,14 +59,14 @@ fn run_simple_inline_iter(
 	interface: &FunctionInterface,
 	block: &mut MIRBlock,
 	instrs_to_remove: &mut Vec<(usize, Vec<MIRInstruction>)>,
-	instrs_to_remove_set: &mut HashSet<usize>,
-	inline_candidates: &HashSet<ResourceLocation>,
-	cloned_funcs: &HashMap<ResourceLocation, Function>,
+	instrs_to_remove_set: &mut FxHashSet<usize>,
+	inline_candidates: &FxHashSet<ResourceLocation>,
+	cloned_funcs: &FxHashMap<ResourceLocation, Function>,
 	cloned_blocks: &BlockAllocator<MIRBlock>,
 ) -> anyhow::Result<bool> {
 	let mut run_again = false;
 
-	let regs = RegisterList::new();
+	let mut regs = RegisterList::default();
 	for (i, instr) in block.contents.iter().enumerate() {
 		if instrs_to_remove_set.contains(&i) {
 			continue;
