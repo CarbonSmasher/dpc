@@ -45,9 +45,9 @@ fn run_instcombine_iter(
 	removed_indices: &mut HashSetEmptyTracker<usize>,
 ) -> bool {
 	let mut run_again = false;
-	let mut add_subs = FxHashMap::default();
-	let mut muls = FxHashMap::default();
-	let mut mods = FxHashMap::default();
+	let mut add_subs = FxHashMap::<Identifier, AddSubCombiner>::default();
+	let mut muls = FxHashMap::<Identifier, MulCombiner>::default();
+	let mut mods = FxHashMap::<Identifier, ModCombiner>::default();
 
 	for (i, instr) in block.contents.iter().enumerate() {
 		// Even though this instruction hasn't actually been removed from the vec, we treat it
@@ -59,57 +59,41 @@ fn run_instcombine_iter(
 			MIRInstrKind::Add {
 				left: MutableValue::Register(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
-			} if !add_subs.contains_key(reg) => {
-				add_subs.insert(reg.clone(), AddSubCombiner::new(score.get_i32(), i));
-			}
-			MIRInstrKind::Add {
-				left: MutableValue::Register(reg),
-				right: Value::Constant(DataTypeContents::Score(score)),
-			} if add_subs.contains_key(reg) => {
+			} => {
 				if let Some(combiner) = add_subs.get_mut(reg) {
 					combiner.feed(i, score.get_i32());
+				} else {
+					add_subs.insert(reg.clone(), AddSubCombiner::new(score.get_i32(), i));
 				}
 			}
 			MIRInstrKind::Sub {
 				left: MutableValue::Register(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
-			} if !add_subs.contains_key(reg) => {
-				add_subs.insert(reg.clone(), AddSubCombiner::new(-score.get_i32(), i));
-			}
-			MIRInstrKind::Sub {
-				left: MutableValue::Register(reg),
-				right: Value::Constant(DataTypeContents::Score(score)),
-			} if add_subs.contains_key(reg) => {
+			} => {
 				if let Some(combiner) = add_subs.get_mut(reg) {
 					combiner.feed(i, -score.get_i32());
+				} else {
+					add_subs.insert(reg.clone(), AddSubCombiner::new(-score.get_i32(), i));
 				}
 			}
 			MIRInstrKind::Mul {
 				left: MutableValue::Register(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
-			} if !muls.contains_key(reg) => {
-				muls.insert(reg.clone(), MulCombiner::new(score.get_i32(), i));
-			}
-			MIRInstrKind::Mul {
-				left: MutableValue::Register(reg),
-				right: Value::Constant(DataTypeContents::Score(score)),
-			} if muls.contains_key(reg) => {
+			} => {
 				if let Some(combiner) = muls.get_mut(reg) {
 					combiner.feed(i, score.get_i32());
+				} else {
+					muls.insert(reg.clone(), MulCombiner::new(score.get_i32(), i));
 				}
 			}
 			MIRInstrKind::Mod {
 				left: MutableValue::Register(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
-			} if !mods.contains_key(reg) => {
-				mods.insert(reg.clone(), ModCombiner::new(score.get_i32(), i));
-			}
-			MIRInstrKind::Mod {
-				left: MutableValue::Register(reg),
-				right: Value::Constant(DataTypeContents::Score(score)),
-			} if mods.contains_key(reg) => {
+			} => {
 				if let Some(combiner) = mods.get_mut(reg) {
 					combiner.feed(i, score.get_i32());
+				} else {
+					mods.insert(reg.clone(), ModCombiner::new(score.get_i32(), i));
 				}
 			}
 			other => {
