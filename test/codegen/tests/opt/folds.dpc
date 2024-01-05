@@ -41,6 +41,8 @@
 	or sco @s[] "foo", 1s;
 	and sco @s[] "foo", 0s;
 	and sco @s[] "foo", 1s;
+	and sco @s[] "foo", sco @s[] "foo";
+	or sco @s[] "foo", sco @s[] "foo";
 
 	# NBT folds
 	mrg ent @s[] "name", {};

@@ -95,6 +95,15 @@ fn run_mir_simplify_iter(
 				left: _,
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if score.get_i32() == 1 => true,
+			// And / or with self is identity		
+			MIRInstrKind::And {
+				left,
+				right: Value::Mutable(right),
+			}
+			| MIRInstrKind::Or {
+				left,
+				right: Value::Mutable(right),
+			} if left.is_same_val(right) => true,
 			// Different Minecraft add instructions with zero as the amount can be removed
 			MIRInstrKind::MC(MinecraftInstr::AddTime { time }) if time.amount.is_zero() => true,
 			MIRInstrKind::MC(
