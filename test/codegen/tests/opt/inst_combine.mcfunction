@@ -12,12 +12,8 @@ scoreboard players operation %rtest_func0 _r %= %l10 _l
 # No not here
 # Not after here
 execute store success score %rtest_func0 _r if score %rtest_func0 _r matches 0
+scoreboard players operation %rtest_func0 _r *= %rtest_func0 _r
 scoreboard players operation %rtest_func1 _r = %rtest_func0 _r
-scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
-scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
-scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
-scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
-scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
 scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
 scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
 scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r

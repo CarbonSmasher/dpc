@@ -193,59 +193,7 @@ fn lower_kind(
 		MIRInstrKind::CallExtern { func } => lower!(lir_instrs, Call, func),
 		MIRInstrKind::Remove { val } => lir_instrs.push(LIRInstruction::new(lower_rm(val, lbcx)?)),
 		MIRInstrKind::Pow { base, exp } => {
-			match exp {
-				// x ^ 0 == 1
-				0 => {
-					lower!(
-						lir_instrs,
-						SetScore,
-						base.clone().to_mutable_score_value()?,
-						ScoreValue::Constant(ScoreTypeContents::Score(1))
-					);
-				}
-				// x ^ 1 == x
-				1 => {}
-				// x ^ 2 == x * x
-				2 => {
-					let base = base.clone().to_mutable_score_value()?;
-					lower!(
-						lir_instrs,
-						MulScore,
-						base.clone(),
-						ScoreValue::Mutable(base)
-					);
-				}
-				// Now we have to use a temp register because just multiplying x by
-				// itself multiple times will yield incorrect results
-				exp => {
-					let base = base.clone().to_mutable_score_value()?;
-					let new_reg_id = lbcx.new_additional_reg();
-					let new_reg = MutableScoreValue::Reg(new_reg_id.clone());
-					// Declare the temp reg as the base
-					lbcx.registers.insert(
-						new_reg_id.clone(),
-						Register {
-							id: new_reg_id,
-							ty: DataType::Score(ScoreType::Score),
-						},
-					);
-					lower!(
-						lir_instrs,
-						SetScore,
-						new_reg.clone(),
-						ScoreValue::Mutable(base.clone())
-					);
-					// Do the multiplications
-					for _ in 0..exp - 1 {
-						lower!(
-							lir_instrs,
-							MulScore,
-							base.clone(),
-							ScoreValue::Mutable(new_reg.clone())
-						);
-					}
-				}
-			}
+			lower_pow(base, exp, lir_instrs, lbcx)?;
 		}
 		MIRInstrKind::If { condition, body } => {
 			let (prepend, condition, negate) =
@@ -739,6 +687,94 @@ fn lower_rm(val: MutableValue, lbcx: &LowerBlockCx) -> anyhow::Result<LIRInstrKi
 	};
 
 	Ok(kind)
+}
+
+fn lower_pow(
+	base: MutableValue,
+	exp: u8,
+	lir_instrs: &mut Vec<LIRInstruction>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<()> {
+	match exp {
+		// x ^ 0 == 1
+		0 => {
+			lower!(
+				lir_instrs,
+				SetScore,
+				base.clone().to_mutable_score_value()?,
+				ScoreValue::Constant(ScoreTypeContents::Score(1))
+			);
+		}
+		// x ^ 1 == x
+		1 => {}
+		// x ^ 2 == x * x
+		2 => {
+			let base = base.clone().to_mutable_score_value()?;
+			lower!(
+				lir_instrs,
+				MulScore,
+				base.clone(),
+				ScoreValue::Mutable(base)
+			);
+		}
+		// Now we have to use a temp register because just multiplying x by
+		// itself multiple times will yield incorrect results. However,
+		// we do a trick to reduce the number of instructions by splitting the exponent
+		// into a highest power of two factor, so that we can chain simple multiplications by self first
+		exp => {
+			let base = base.clone().to_mutable_score_value()?;
+
+			// First create the power of two section
+			let largest_factor = highest_power_of_2_factor(exp);
+			let two_power = (largest_factor as f32).log2() as u8;
+			let second_exponent = exp / largest_factor;
+			for _ in 0..two_power {
+				lower!(
+					lir_instrs,
+					MulScore,
+					base.clone(),
+					ScoreValue::Mutable(base.clone())
+				);
+			}
+			// Now create the section for the non-power of two, if it is needed
+			if second_exponent == 1 {
+				return Ok(());
+			}
+			let new_reg_id = lbcx.new_additional_reg();
+			let new_reg = MutableScoreValue::Reg(new_reg_id.clone());
+			// Declare the temp reg as the base
+			lbcx.registers.insert(
+				new_reg_id.clone(),
+				Register {
+					id: new_reg_id,
+					ty: DataType::Score(ScoreType::Score),
+				},
+			);
+			lower!(
+				lir_instrs,
+				SetScore,
+				new_reg.clone(),
+				ScoreValue::Mutable(base.clone())
+			);
+			// Do the multiplications
+			for _ in 0..second_exponent - 1 {
+				lower!(
+					lir_instrs,
+					MulScore,
+					base.clone(),
+					ScoreValue::Mutable(new_reg.clone())
+				);
+			}
+		}
+	}
+
+	Ok(())
+}
+
+/// Utility for pow lowering to get the highest power of two that is a factor
+/// of the given number
+fn highest_power_of_2_factor(num: u8) -> u8 {
+	num & (!(num - 1))
 }
 
 /// Returns a list of instructions to add before where the

@@ -23,3 +23,12 @@ scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
 scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
 scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
 scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
+scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
+# Should generate a couple self multiplications and some multiplications after that
+scoreboard players operation %rtest_main0 _r *= %rtest_main0 _r
+scoreboard players operation %rtest_main0 _r *= %rtest_main0 _r
+scoreboard players operation %rtest_main0 _r *= %rtest_main0 _r
+scoreboard players operation %rtest_main0 _r *= %rtest_main0 _r
+scoreboard players operation %rtest_main1 _r = %rtest_main0 _r
+scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
+scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r

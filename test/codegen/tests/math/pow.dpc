@@ -9,5 +9,7 @@
 	cmt " Should generate 3 instructions";
 	pow %x, 3;
 	cmt " Should generate many multiplications";
-	pow %x, 10;
+	pow %x, 11;
+	cmt " Should generate a couple self multiplications and some multiplications after that";
+	pow %x, 48;
 }
