@@ -48,6 +48,8 @@ fn run_instcombine_iter(
 	let mut add_subs = FxHashMap::<Identifier, AddSubCombiner>::default();
 	let mut muls = FxHashMap::<Identifier, MulCombiner>::default();
 	let mut mods = FxHashMap::<Identifier, ModCombiner>::default();
+	let mut pows = FxHashMap::<Identifier, PowCombiner>::default();
+	let mut nots = FxHashMap::<Identifier, NotCombiner>::default();
 
 	for (i, instr) in block.contents.iter().enumerate() {
 		// Even though this instruction hasn't actually been removed from the vec, we treat it
@@ -96,6 +98,25 @@ fn run_instcombine_iter(
 					mods.insert(reg.clone(), ModCombiner::new(score.get_i32(), i));
 				}
 			}
+			MIRInstrKind::Not {
+				value: MutableValue::Register(reg),
+			} => {
+				if let Some(combiner) = nots.get_mut(reg) {
+					combiner.feed(i, 0);
+				} else {
+					nots.insert(reg.clone(), NotCombiner::new(1, i));
+				}
+			}
+			MIRInstrKind::Pow {
+				base: MutableValue::Register(reg),
+				exp,
+			} => {
+				if let Some(combiner) = pows.get_mut(reg) {
+					combiner.feed(i, *exp as i32);
+				} else {
+					pows.insert(reg.clone(), PowCombiner::new(*exp as i32, i));
+				}
+			}
 			other => {
 				let used_regs = other.get_used_regs();
 				for reg in used_regs {
@@ -103,12 +124,19 @@ fn run_instcombine_iter(
 					add_subs.get_mut(reg).map(|x| x.finished = true);
 					muls.get_mut(reg).map(|x| x.finished = true);
 					mods.get_mut(reg).map(|x| x.finished = true);
+					nots.get_mut(reg).map(|x| x.finished = true);
+					pows.get_mut(reg).map(|x| x.finished = true);
 				}
 			}
 		}
 	}
 
-	if !add_subs.is_empty() || !muls.is_empty() || !mods.is_empty() {
+	if !add_subs.is_empty()
+		|| !muls.is_empty()
+		|| !mods.is_empty()
+		|| !pows.is_empty()
+		|| !nots.is_empty()
+	{
 		let mut positions_to_remove = Vec::new();
 		for (reg, combiner) in add_subs {
 			if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
@@ -143,6 +171,28 @@ fn run_instcombine_iter(
 			}
 		}
 
+		for (reg, combiner) in pows {
+			if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
+				block
+					.contents
+					.get_mut(pos)
+					.expect("Instr at pos does not exist")
+					.kind = instr;
+				positions_to_remove.extend(to_remove);
+			}
+		}
+
+		for (reg, combiner) in nots {
+			if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
+				block
+					.contents
+					.get_mut(pos)
+					.expect("Instr at pos does not exist")
+					.kind = instr;
+				positions_to_remove.extend(to_remove);
+			}
+		}
+
 		if !positions_to_remove.is_empty() {
 			run_again = true;
 		}
@@ -153,140 +203,151 @@ fn run_instcombine_iter(
 	run_again
 }
 
-#[derive(Debug)]
-struct AddSubCombiner {
-	total: i32,
-	pos: usize,
-	to_remove: TinyVec<[usize; 5]>,
-	finished: bool,
+macro_rules! combiner {
+	($name:ident, $self:ident, $pos:ident, $amt:ident, $feed:tt, $instr:ident) => {
+		combiner!($name, $self, $pos, $amt, $feed, reg, (|| {
+			if $self.to_remove.is_empty() {
+				None
+			} else {
+				Some((
+					$self.pos,
+					$self.to_remove,
+					MIRInstrKind::$instr {
+						left: MutableValue::Register(reg),
+						right: Value::Constant(DataTypeContents::Score(
+							ScoreTypeContents::Score($self.val),
+						)),
+					},
+				))
+			}
+		}));
+	};
+
+	($name:ident, $self:ident, $pos:ident, $amt:ident, $feed:tt, $reg:ident, $instr:tt) => {
+		#[derive(Debug)]
+		struct $name {
+			val: i32,
+			pos: usize,
+			to_remove: TinyVec<[usize; 5]>,
+			finished: bool,
+		}
+
+		impl $name {
+			fn new(start_amt: i32, pos: usize) -> Self {
+				Self {
+					val: start_amt,
+					pos,
+					to_remove: TinyVec::new(),
+					finished: false,
+				}
+			}
+
+			fn feed(&mut $self, $pos: usize, $amt: i32) {
+				if $self.finished {
+					return;
+				}
+				$feed()
+			}
+
+			fn finish($self, $reg: Identifier) -> Option<(usize, TinyVec<[usize; 5]>, MIRInstrKind)> {
+				$instr()
+			}
+		}
+	};
 }
 
-impl AddSubCombiner {
-	fn new(start_amt: i32, pos: usize) -> Self {
-		Self {
-			total: start_amt,
-			pos,
-			to_remove: TinyVec::new(),
-			finished: false,
-		}
-	}
-
-	fn feed(&mut self, pos: usize, amt: i32) {
-		if self.finished {
-			return;
-		}
+combiner!(
+	AddSubCombiner,
+	self,
+	pos,
+	amt,
+	(|| {
 		// We can in fact overflow this because it will wrap around to negative.
 		// This ends up having the same behavior when it is added to the register
-		self.total = self.total.wrapping_add(amt);
+		self.val = self.val.wrapping_add(amt);
 		self.to_remove.push(pos);
-	}
+	}),
+	Add
+);
 
-	fn finish(self, reg: Identifier) -> Option<(usize, TinyVec<[usize; 5]>, MIRInstrKind)> {
-		if self.to_remove.is_empty() {
-			None
-		} else {
-			Some((
-				self.pos,
-				self.to_remove,
-				MIRInstrKind::Add {
-					left: MutableValue::Register(reg),
-					right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
-						self.total,
-					))),
-				},
-			))
-		}
-	}
-}
-
-#[derive(Debug)]
-struct MulCombiner {
-	total: i32,
-	pos: usize,
-	to_remove: TinyVec<[usize; 5]>,
-	finished: bool,
-}
-
-impl MulCombiner {
-	fn new(start_amt: i32, pos: usize) -> Self {
-		Self {
-			total: start_amt,
-			pos,
-			to_remove: TinyVec::new(),
-			finished: false,
-		}
-	}
-
-	fn feed(&mut self, pos: usize, amt: i32) {
-		if self.finished {
-			return;
-		}
-		if let Some(total) = self.total.checked_mul(amt) {
-			self.total = total;
+combiner!(
+	MulCombiner,
+	self,
+	pos,
+	amt,
+	(|| {
+		if let Some(total) = self.val.checked_mul(amt) {
+			self.val = total;
 			self.to_remove.push(pos);
 		}
-	}
+	}),
+	Mul
+);
 
-	fn finish(self, reg: Identifier) -> Option<(usize, TinyVec<[usize; 5]>, MIRInstrKind)> {
-		if self.to_remove.is_empty() {
-			None
-		} else {
-			Some((
-				self.pos,
-				self.to_remove,
-				MIRInstrKind::Mul {
-					left: MutableValue::Register(reg),
-					right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
-						self.total,
-					))),
-				},
-			))
-		}
-	}
-}
-
-#[derive(Debug)]
-struct ModCombiner {
-	max: i32,
-	pos: usize,
-	to_remove: TinyVec<[usize; 5]>,
-	finished: bool,
-}
-
-impl ModCombiner {
-	fn new(start_amt: i32, pos: usize) -> Self {
-		Self {
-			max: start_amt,
-			pos,
-			to_remove: TinyVec::new(),
-			finished: false,
-		}
-	}
-
-	fn feed(&mut self, pos: usize, amt: i32) {
-		if self.finished {
-			return;
-		}
-		if amt > self.max {
-			self.max = amt;
+combiner!(
+	ModCombiner,
+	self,
+	pos,
+	amt,
+	(|| {
+		if amt > self.val {
+			self.val = amt;
 		}
 		self.to_remove.push(pos);
-	}
+	}),
+	Mod
+);
 
-	fn finish(self, reg: Identifier) -> Option<(usize, TinyVec<[usize; 5]>, MIRInstrKind)> {
+combiner!(
+	PowCombiner,
+	self,
+	pos,
+	amt,
+	(|| {
+		if let Some(total) = self.val.checked_mul(amt) {
+			self.val = total;
+			self.to_remove.push(pos);
+		}
+	}),
+	reg,
+	(|| {
 		if self.to_remove.is_empty() {
 			None
 		} else {
 			Some((
 				self.pos,
 				self.to_remove,
-				MIRInstrKind::Mod {
-					left: MutableValue::Register(reg),
-					right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
-						self.max,
-					))),
+				MIRInstrKind::Pow {
+					base: MutableValue::Register(reg),
+					exp: (self.val as u8),
 				},
 			))
 		}
-	}
-}
+	})
+);
+
+combiner!(
+	NotCombiner,
+	self,
+	pos,
+	amt,
+	(|| {
+		let _ = amt;
+		self.val += 1;
+		self.to_remove.push(pos);
+	}),
+	reg,
+	(|| {
+		if self.val % 2 == 0 {
+			Some((self.pos, self.to_remove, MIRInstrKind::NoOp))
+		} else {
+			Some((
+				self.pos,
+				self.to_remove,
+				MIRInstrKind::Not {
+					value: MutableValue::Register(reg),
+				},
+			))
+		}
+	})
+);

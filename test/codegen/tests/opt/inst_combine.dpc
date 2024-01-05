@@ -1,0 +1,38 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	call run "test:func", 5s;
+}
+
+@no_inline
+"test:func" score {
+	let x: score = val &0;
+
+	mul %x, 2s;
+	mul %x, 4s;
+
+	add %x, 10s;
+	sub %x, 10s;
+	add %x, -5s;
+
+	mod %x, 10s;
+	mod %x, 5s;
+	mod %x, 8s;
+
+	cmt " No not here";
+	not %x;
+	not %x;
+	not %x;
+	not %x;
+	use %x;
+	cmt " Not after here";
+	not %x;
+	not %x;
+	not %x;
+
+	pow %x, 2;
+	pow %x, 5;
+
+	use %x;
+}
