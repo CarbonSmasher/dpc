@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use rustc_hash::FxHashMap;
 use tinyvec::TinyVec;
 
+use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::{val::MutableValue, val::Value, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind};

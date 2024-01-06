@@ -97,8 +97,8 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 		| MIRInstrKind::Insert { right, .. }
 		| MIRInstrKind::And { right, .. }
 		| MIRInstrKind::Or { right, .. } => {
-			if let Value::Mutable(MutableValue::Register(reg)) = right.clone() {
-				if let Some(val) = an.vals.get(&reg) {
+			if let Value::Mutable(MutableValue::Register(reg)) = right {
+				if let Some(val) = an.vals.get(reg) {
 					if let ConstAnalyzerValue::Value(val) = val {
 						*right = Value::Constant(val.clone());
 						*run_again = true;
@@ -108,8 +108,8 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 		}
 		// Prop get to get const
 		MIRInstrKind::Get { value, scale } => {
-			if let MutableValue::Register(reg) = value.clone() {
-				if let Some(val) = an.vals.get(&reg) {
+			if let MutableValue::Register(reg) = value {
+				if let Some(val) = an.vals.get(reg) {
 					if let ConstAnalyzerValue::Value(val) = val {
 						if let Some(val) = val.try_get_i32() {
 							let scaled = ((val as f64) * *scale) as i32;
@@ -126,16 +126,16 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 				| Condition::GreaterThanOrEqual(l, r)
 				| Condition::LessThan(l, r)
 				| Condition::LessThanOrEqual(l, r) => {
-					if let Value::Mutable(MutableValue::Register(reg)) = l.clone() {
-						if let Some(val) = an.vals.get(&reg) {
+					if let Value::Mutable(MutableValue::Register(reg)) = l {
+						if let Some(val) = an.vals.get(reg) {
 							if let ConstAnalyzerValue::Value(val) = val {
 								*l = Value::Constant(val.clone());
 								*run_again = true;
 							}
 						}
 					}
-					if let Value::Mutable(MutableValue::Register(reg)) = r.clone() {
-						if let Some(val) = an.vals.get(&reg) {
+					if let Value::Mutable(MutableValue::Register(reg)) = r {
+						if let Some(val) = an.vals.get(reg) {
 							if let ConstAnalyzerValue::Value(val) = val {
 								*r = Value::Constant(val.clone());
 								*run_again = true;
@@ -144,8 +144,8 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 					}
 				}
 				Condition::Exists(val) => {
-					if let Value::Mutable(MutableValue::Register(reg)) = val.clone() {
-						if let Some(val) = an.vals.get(&reg) {
+					if let Value::Mutable(MutableValue::Register(reg)) = val {
+						if let Some(val) = an.vals.get(reg) {
 							match val {
 								ConstAnalyzerValue::Reset(..) => {
 									*condition = Condition::Bool(Value::Constant(

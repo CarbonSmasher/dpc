@@ -1,8 +1,8 @@
 use anyhow::{anyhow, bail};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::common::ty::DataType;
 use crate::common::Identifier;
+use crate::common::{reg::GetUsedRegs, ty::DataType};
 use crate::lir::LIRBlock;
 
 use super::text::{format_local_storage_entry, format_reg_fake_player};

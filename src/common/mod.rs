@@ -3,6 +3,7 @@ pub mod condition;
 pub mod function;
 pub mod mc;
 pub mod range;
+pub mod reg;
 pub mod ty;
 pub mod val;
 
@@ -12,6 +13,7 @@ use rustc_hash::FxHashMap;
 
 use self::block::BlockAllocator;
 use self::function::{Function, FunctionSignature};
+use self::reg::GetUsedRegs;
 use self::ty::DataType;
 use self::val::{MutableValue, Value};
 
@@ -42,13 +44,18 @@ impl DeclareBinding {
 
 		Ok(out)
 	}
+}
 
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+impl GetUsedRegs for DeclareBinding {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
 		match self {
-			Self::Null => Vec::new(),
-			Self::Value(val) => val.get_used_regs(),
-			Self::Cast(_, val) => val.get_used_regs(),
-			Self::Index { val, index, .. } => [val.get_used_regs(), index.get_used_regs()].concat(),
+			Self::Null => {}
+			Self::Value(val) => val.append_used_regs(regs),
+			Self::Cast(_, val) => val.append_used_regs(regs),
+			Self::Index { val, index, .. } => {
+				val.append_used_regs(regs);
+				index.append_used_regs(regs);
+			}
 		}
 	}
 }

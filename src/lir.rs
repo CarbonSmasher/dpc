@@ -1,5 +1,5 @@
+use std::fmt::Debug;
 use std::hash::BuildHasherDefault;
-use std::{collections::HashMap, fmt::Debug};
 
 use rustc_hash::FxHashMap;
 
@@ -7,6 +7,7 @@ use crate::common::block::{Block, BlockAllocator, BlockID};
 use crate::common::function::Function;
 use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::Modifier;
+use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{ArraySize, Double};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
 use crate::common::{IRType, Identifier, RegisterList, ResourceLocation};
@@ -20,7 +21,7 @@ pub struct LIR {
 impl LIR {
 	pub fn new() -> Self {
 		Self {
-			functions: HashMap::default(),
+			functions: FxHashMap::default(),
 			blocks: BlockAllocator::new(),
 		}
 	}
@@ -109,16 +110,14 @@ impl LIRInstruction {
 	pub fn with_modifiers(kind: LIRInstrKind, modifiers: Vec<Modifier>) -> Self {
 		Self { kind, modifiers }
 	}
+}
 
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		[
-			self.kind.get_used_regs(),
-			self.modifiers
-				.iter()
-				.flat_map(|x| x.get_used_regs().into_iter())
-				.collect(),
-		]
-		.concat()
+impl GetUsedRegs for LIRInstruction {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		self.kind.append_used_regs(regs);
+		for modi in &self.modifiers {
+			modi.append_used_regs(regs);
+		}
 	}
 }
 
@@ -175,50 +174,6 @@ pub enum LIRInstrKind {
 	MC(MinecraftInstr),
 }
 
-impl LIRInstrKind {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			LIRInstrKind::SetScore(left, right)
-			| LIRInstrKind::AddScore(left, right)
-			| LIRInstrKind::SubScore(left, right)
-			| LIRInstrKind::MulScore(left, right)
-			| LIRInstrKind::DivScore(left, right)
-			| LIRInstrKind::ModScore(left, right)
-			| LIRInstrKind::MinScore(left, right)
-			| LIRInstrKind::MaxScore(left, right) => [left.get_used_regs(), right.get_used_regs()].concat(),
-			LIRInstrKind::SetData(left, right)
-			| LIRInstrKind::MergeData(left, right)
-			| LIRInstrKind::PushData(left, right)
-			| LIRInstrKind::PushFrontData(left, right)
-			| LIRInstrKind::InsertData(left, right, ..) => {
-				[left.get_used_regs(), right.get_used_regs()].concat()
-			}
-			LIRInstrKind::SwapScore(left, right) => {
-				[left.get_used_regs(), right.get_used_regs()].concat()
-			}
-			LIRInstrKind::GetScore(score) | LIRInstrKind::ResetScore(score) => {
-				score.get_used_regs()
-			}
-			LIRInstrKind::GetData(data, ..) | LIRInstrKind::RemoveData(data) => {
-				data.get_used_regs()
-			}
-			LIRInstrKind::ConstIndexToScore { score, value, .. } => {
-				[score.get_used_regs(), value.get_used_regs()].concat()
-			}
-			LIRInstrKind::Use(val) => val.get_used_regs(),
-			LIRInstrKind::NoOp
-			| LIRInstrKind::GetConst(..)
-			| LIRInstrKind::Call(..)
-			| LIRInstrKind::ReturnValue(..)
-			| LIRInstrKind::ReturnFail
-			| LIRInstrKind::Command(..)
-			| LIRInstrKind::Comment(..)
-			| LIRInstrKind::MC(..) => Vec::new(),
-			LIRInstrKind::ReturnRun(body) => body.get_used_regs(),
-		}
-	}
-}
-
 impl Debug for LIRInstrKind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
@@ -257,5 +212,55 @@ impl Debug for LIRInstrKind {
 			Self::MC(instr) => format!("{instr:?}"),
 		};
 		write!(f, "{text}")
+	}
+}
+
+impl GetUsedRegs for LIRInstrKind {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			LIRInstrKind::SetScore(left, right)
+			| LIRInstrKind::AddScore(left, right)
+			| LIRInstrKind::SubScore(left, right)
+			| LIRInstrKind::MulScore(left, right)
+			| LIRInstrKind::DivScore(left, right)
+			| LIRInstrKind::ModScore(left, right)
+			| LIRInstrKind::MinScore(left, right)
+			| LIRInstrKind::MaxScore(left, right) => {
+				left.append_used_regs(regs);
+				right.append_used_regs(regs);
+			}
+			LIRInstrKind::SetData(left, right)
+			| LIRInstrKind::MergeData(left, right)
+			| LIRInstrKind::PushData(left, right)
+			| LIRInstrKind::PushFrontData(left, right)
+			| LIRInstrKind::InsertData(left, right, ..) => {
+				left.append_used_regs(regs);
+				right.append_used_regs(regs);
+			}
+			LIRInstrKind::SwapScore(left, right) => {
+				left.append_used_regs(regs);
+				right.append_used_regs(regs);
+			}
+			LIRInstrKind::GetScore(score) | LIRInstrKind::ResetScore(score) => {
+				score.append_used_regs(regs);
+			}
+			LIRInstrKind::GetData(data, ..) | LIRInstrKind::RemoveData(data) => {
+				data.append_used_regs(regs);
+			}
+			LIRInstrKind::ConstIndexToScore { score, value, .. } => {
+				score.append_used_regs(regs);
+				value.append_used_regs(regs);
+			}
+			LIRInstrKind::Use(val) => val.append_used_regs(regs),
+			LIRInstrKind::NoOp
+			| LIRInstrKind::GetConst(..)
+			| LIRInstrKind::Call(..)
+			| LIRInstrKind::ReturnValue(..)
+			| LIRInstrKind::ReturnFail
+			| LIRInstrKind::Command(..)
+			| LIRInstrKind::Comment(..)
+			| LIRInstrKind::MC(..) => {}
+			LIRInstrKind::ReturnRun(body) => body.append_used_regs(regs),
+		}
 	}
 }

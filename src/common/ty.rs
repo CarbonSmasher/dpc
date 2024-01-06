@@ -1,7 +1,8 @@
 use std::fmt::Write;
-use std::{collections::HashMap, fmt::Debug, sync::Arc};
+use std::{fmt::Debug, sync::Arc};
 
 use itertools::Itertools;
+use rustc_hash::FxHashMap;
 
 use crate::output::codegen::util::cg_float;
 
@@ -83,11 +84,11 @@ pub enum NBTType {
 	String,
 	Arr(NBTArrayType),
 	List(Box<NBTType>),
-	Compound(Arc<HashMap<String, NBTType>>),
+	Compound(NBTCompoundType),
 	Any,
 }
 
-pub type NBTCompoundType = Arc<HashMap<String, NBTType>>;
+pub type NBTCompoundType = Arc<FxHashMap<String, NBTType>>;
 
 impl NBTType {
 	pub fn is_trivially_castable(&self, other: &NBTType) -> bool {
@@ -333,7 +334,7 @@ pub enum NBTTypeContents {
 	String(Arc<str>),
 	Arr(NBTArrayTypeContents),
 	List(NBTType, Vec<NBTTypeContents>),
-	Compound(Arc<HashMap<String, NBTType>>, NBTCompoundTypeContents),
+	Compound(NBTCompoundType, NBTCompoundTypeContents),
 }
 
 impl NBTTypeContents {
@@ -490,11 +491,11 @@ impl Debug for NBTArrayTypeContents {
 }
 
 #[derive(Clone)]
-pub struct NBTCompoundTypeContents(pub Arc<HashMap<String, NBTTypeContents>>);
+pub struct NBTCompoundTypeContents(pub Arc<FxHashMap<String, NBTTypeContents>>);
 
 impl NBTCompoundTypeContents {
 	pub fn new() -> Self {
-		Self(Arc::new(HashMap::new()))
+		Self(Arc::new(FxHashMap::default()))
 	}
 
 	pub fn is_empty(&self) -> bool {
@@ -522,8 +523,8 @@ impl PartialEq for NBTCompoundTypeContents {
 
 impl Eq for NBTCompoundTypeContents {}
 
-impl From<Arc<HashMap<String, NBTTypeContents>>> for NBTCompoundTypeContents {
-	fn from(value: Arc<HashMap<String, NBTTypeContents>>) -> Self {
+impl From<Arc<FxHashMap<String, NBTTypeContents>>> for NBTCompoundTypeContents {
+	fn from(value: Arc<FxHashMap<String, NBTTypeContents>>) -> Self {
 		Self(value)
 	}
 }
@@ -580,7 +581,7 @@ fn fmt_arr<T: ToString>(arr: impl IntoIterator<Item = T>) -> String {
 
 fn fmt_compound_dbg<W: std::fmt::Write, I: Debug>(
 	f: &mut W,
-	vals: &HashMap<String, I>,
+	vals: &FxHashMap<String, I>,
 ) -> std::fmt::Result {
 	fmt_compound(f, vals, |f, i| {
 		write!(f, "{i:?}")?;
@@ -590,7 +591,7 @@ fn fmt_compound_dbg<W: std::fmt::Write, I: Debug>(
 
 fn fmt_compound<W: std::fmt::Write, I, F: Fn(&mut W, &I) -> std::fmt::Result>(
 	f: &mut W,
-	vals: &HashMap<String, I>,
+	vals: &FxHashMap<String, I>,
 	fun: F,
 ) -> std::fmt::Result {
 	write!(f, "{{")?;

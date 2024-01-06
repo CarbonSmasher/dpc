@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use rustc_hash::FxHashMap;
 
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
+use crate::common::reg::GetUsedRegs;
 use crate::common::{val::MutableScoreValue, val::ScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-
 use anyhow::anyhow;
+use rustc_hash::FxHashMap;
 
+use crate::common::reg::GetUsedRegs;
 use crate::common::val::MutableValue;
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
@@ -42,7 +42,7 @@ impl MIRPass for DSEPass {
 /// Runs an iteration of DSE and returns true if another iteration should be performed
 fn run_dse_iter(block: &mut MIRBlock, instrs_to_remove: &mut HashSetEmptyTracker<usize>) -> bool {
 	let mut run_again = false;
-	let mut elim_candidates = HashMap::new();
+	let mut elim_candidates = FxHashMap::default();
 	let mut dead_stores = Vec::new();
 
 	for (i, instr) in block.contents.iter().enumerate() {

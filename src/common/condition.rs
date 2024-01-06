@@ -1,5 +1,6 @@
 use super::mc::pos::IntCoordinates;
 use super::mc::EntityTarget;
+use super::reg::GetUsedRegs;
 use super::val::{MutableValue, Value};
 use super::{Identifier, ResourceLocation, ResourceLocationTag};
 use std::fmt::Debug;
@@ -24,23 +25,6 @@ pub enum Condition {
 }
 
 impl Condition {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Equal(l, r)
-			| Self::GreaterThan(l, r)
-			| Self::GreaterThanOrEqual(l, r)
-			| Self::LessThan(l, r)
-			| Self::LessThanOrEqual(l, r) => [l.get_used_regs(), r.get_used_regs()].concat(),
-			Self::Exists(val) | Self::Bool(val) => val.get_used_regs(),
-			Self::Not(condition) => condition.get_used_regs(),
-			Self::Entity(..)
-			| Self::Predicate(..)
-			| Self::Biome(..)
-			| Self::Loaded(..)
-			| Self::Dimension(..) => Vec::new(),
-		}
-	}
-
 	pub fn iter_used_regs_mut(&mut self) -> Box<dyn Iterator<Item = &mut Identifier> + '_> {
 		match self {
 			Self::Equal(l, r)
@@ -76,6 +60,32 @@ impl Condition {
 			| Self::Biome(..)
 			| Self::Loaded(..)
 			| Self::Dimension(..) => Box::new(iter::empty()),
+		}
+	}
+}
+
+impl GetUsedRegs for Condition {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Equal(l, r)
+			| Self::GreaterThan(l, r)
+			| Self::GreaterThanOrEqual(l, r)
+			| Self::LessThan(l, r)
+			| Self::LessThanOrEqual(l, r) => {
+				l.append_used_regs(regs);
+				r.append_used_regs(regs);
+			}
+			Self::Exists(val) | Self::Bool(val) => {
+				val.append_used_regs(regs);
+			}
+			Self::Not(condition) => {
+				condition.append_used_regs(regs);
+			}
+			Self::Entity(..)
+			| Self::Predicate(..)
+			| Self::Biome(..)
+			| Self::Loaded(..)
+			| Self::Dimension(..) => {}
 		}
 	}
 }

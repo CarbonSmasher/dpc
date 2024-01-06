@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use itertools::Itertools;
+use rustc_hash::FxHashMap;
 
 use crate::common::ResourceLocation;
 
@@ -11,11 +10,11 @@ use super::text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE};
 pub fn gen_fns(
 	ccx: &CodegenCx,
 ) -> anyhow::Result<(
-	HashMap<ResourceLocation, Function>,
-	HashMap<ResourceLocation, Tag>,
+	FxHashMap<ResourceLocation, Function>,
+	FxHashMap<ResourceLocation, Tag>,
 )> {
-	let mut fns = HashMap::new();
-	let mut tags = HashMap::new();
+	let mut fns = FxHashMap::default();
+	let mut tags = FxHashMap::default();
 
 	let init_fn = gen_init(ccx);
 	if let Some(init_fn) = init_fn {

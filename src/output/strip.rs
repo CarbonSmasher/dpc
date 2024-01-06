@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use itertools::Itertools;
+use rustc_hash::FxHashMap;
 
 use crate::common::ResourceLocation;
 use crate::lir::{LIRInstrKind, LIR};
@@ -19,7 +18,7 @@ pub enum StripMode {
 
 /// Mapping of original function names to new, stripped ones
 #[derive(Debug)]
-pub struct FunctionMapping(pub HashMap<ResourceLocation, ResourceLocation>);
+pub struct FunctionMapping(pub FxHashMap<ResourceLocation, ResourceLocation>);
 
 pub fn strip(lir: &LIR, project: &ProjectSettings) -> Option<FunctionMapping> {
 	match &project.strip_mode {
@@ -30,7 +29,7 @@ pub fn strip(lir: &LIR, project: &ProjectSettings) -> Option<FunctionMapping> {
 
 fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 	// Sort functions by how many times they are called
-	let mut counts = HashMap::new();
+	let mut counts = FxHashMap::default();
 
 	for func in lir.functions.values() {
 		let block = lir.blocks.get(&func.block).expect("Block does not exist");
@@ -42,7 +41,7 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 		}
 	}
 
-	let mut out = FunctionMapping(HashMap::new());
+	let mut out = FunctionMapping(FxHashMap::default());
 	let mut idx: u32 = 0;
 	// Sort by count, and then by function id, to ensure that the order between
 	// multiple functions with the same count is stable

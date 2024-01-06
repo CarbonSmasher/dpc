@@ -6,6 +6,7 @@ use crate::common::mc::DataPath;
 
 use super::function::{FunctionSignature, ReturnType};
 use super::mc::{FullDataLocation, Score};
+use super::reg::GetUsedRegs;
 use super::{ty, Identifier, RegisterList, ResourceLocation};
 
 use super::ty::{ArraySize, DataType, DataTypeContents, NBTTypeContents, ScoreTypeContents};
@@ -24,13 +25,6 @@ impl Value {
 		};
 
 		Ok(out)
-	}
-
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Mutable(val) => val.get_used_regs(),
-			_ => Vec::new(),
-		}
 	}
 
 	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
@@ -80,6 +74,15 @@ impl Value {
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Constant(l), Self::Constant(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::Mutable(l), Self::Mutable(r)) if l.is_same_val(r))
+	}
+}
+
+impl GetUsedRegs for Value {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Mutable(val) => val.append_used_regs(regs),
+			_ => {}
+		}
 	}
 }
 
@@ -136,14 +139,6 @@ impl MutableValue {
 		};
 
 		Ok(out)
-	}
-
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Register(reg) => vec![reg],
-			Self::Property(val, ..) | Self::Index(val, ..) => val.get_used_regs(),
-			_ => Vec::new(),
-		}
 	}
 
 	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
@@ -207,6 +202,16 @@ impl MutableValue {
 	}
 }
 
+impl GetUsedRegs for MutableValue {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Register(reg) => regs.push(reg),
+			Self::Property(val, ..) | Self::Index(val, ..) => val.append_used_regs(regs),
+			_ => {}
+		}
+	}
+}
+
 impl Debug for MutableValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
@@ -231,13 +236,6 @@ pub enum ScoreValue {
 }
 
 impl ScoreValue {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Constant(..) => Vec::new(),
-			Self::Mutable(val) => val.get_used_regs(),
-		}
-	}
-
 	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
 		match self {
 			Self::Constant(..) => Vec::new(),
@@ -248,6 +246,15 @@ impl ScoreValue {
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Constant(l), Self::Constant(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::Mutable(l), Self::Mutable(r)) if l.is_value_eq(r))
+	}
+}
+
+impl GetUsedRegs for ScoreValue {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Constant(..) => {}
+			Self::Mutable(val) => val.append_used_regs(regs),
+		}
 	}
 }
 
@@ -273,17 +280,6 @@ pub enum MutableScoreValue {
 }
 
 impl MutableScoreValue {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Score(..) => Vec::new(),
-			Self::Reg(reg) => vec![reg],
-			Self::Arg(..)
-			| Self::CallArg(..)
-			| Self::ReturnValue(..)
-			| Self::CallReturnValue(..) => Vec::new(),
-		}
-	}
-
 	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
 		match self {
 			Self::Score(..) => Vec::new(),
@@ -298,6 +294,19 @@ impl MutableScoreValue {
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Score(l), Self::Score(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::Reg(l), Self::Reg(r)) if l == r)
+	}
+}
+
+impl GetUsedRegs for MutableScoreValue {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Reg(reg) => regs.push(reg),
+			Self::Score(..)
+			| Self::Arg(..)
+			| Self::CallArg(..)
+			| Self::ReturnValue(..)
+			| Self::CallReturnValue(..) => {}
+		}
 	}
 }
 
@@ -322,16 +331,18 @@ pub enum NBTValue {
 }
 
 impl NBTValue {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Constant(..) => Vec::new(),
-			Self::Mutable(val) => val.get_used_regs(),
-		}
-	}
-
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Constant(l), Self::Constant(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::Mutable(l), Self::Mutable(r)) if l.is_value_eq(r))
+	}
+}
+
+impl GetUsedRegs for NBTValue {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Constant(..) => {}
+			Self::Mutable(val) => val.append_used_regs(regs),
+		}
 	}
 }
 
@@ -358,18 +369,6 @@ pub enum MutableNBTValue {
 }
 
 impl MutableNBTValue {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Data(..) => Vec::new(),
-			Self::Property(val, ..) | Self::Index(val, ..) => val.get_used_regs(),
-			Self::Reg(reg) => vec![reg],
-			Self::Arg(..)
-			| Self::CallArg(..)
-			| Self::ReturnValue(..)
-			| Self::CallReturnValue(..) => Vec::new(),
-		}
-	}
-
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Data(l), Self::Data(r)) if l.is_value_eq(r))
 			|| matches!((self, other), (Self::Reg(l), Self::Reg(r)) if l == r)
@@ -383,6 +382,20 @@ impl MutableNBTValue {
 				..
 			})
 		)
+	}
+}
+
+impl GetUsedRegs for MutableNBTValue {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Property(val, ..) | Self::Index(val, ..) => val.append_used_regs(regs),
+			Self::Reg(reg) => regs.push(reg),
+			Self::Arg(..)
+			| Self::CallArg(..)
+			| Self::ReturnValue(..)
+			| Self::CallReturnValue(..)
+			| Self::Data(..) => {}
+		}
 	}
 }
 

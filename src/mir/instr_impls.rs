@@ -1,6 +1,7 @@
 use std::iter;
 
 use crate::common::{
+	reg::GetUsedRegs,
 	val::{MutableValue, Value},
 	DeclareBinding, Identifier,
 };
@@ -8,51 +9,6 @@ use crate::common::{
 use super::MIRInstrKind;
 
 impl MIRInstrKind {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Assign { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
-			Self::Add { left, right }
-			| Self::Sub { left, right }
-			| Self::Mul { left, right }
-			| Self::Div { left, right }
-			| Self::Mod { left, right }
-			| Self::Min { left, right }
-			| Self::Max { left, right }
-			| Self::Merge { left, right }
-			| Self::Push { left, right }
-			| Self::PushFront { left, right }
-			| Self::Insert { left, right, .. }
-			| Self::And { left, right }
-			| Self::Or { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
-			Self::Swap { left, right } => [left.get_used_regs(), right.get_used_regs()].concat(),
-			Self::Abs { val } => val.get_used_regs(),
-			Self::Not { value } => value.get_used_regs(),
-			Self::Pow { base, .. } => base.get_used_regs(),
-			Self::Get { value, .. } => value.get_used_regs(),
-			Self::Use { val } => val.get_used_regs(),
-			Self::Call { call } => call.get_used_regs(),
-			Self::Remove { val } => val.get_used_regs(),
-			Self::ReturnValue { value, .. } | Self::Return { value } => value.get_used_regs(),
-			Self::If { condition, body } => {
-				[condition.get_used_regs(), body.get_used_regs()].concat()
-			}
-			Self::As { body, .. }
-			| Self::At { body, .. }
-			| Self::Positioned { body, .. }
-			| Self::ReturnRun { body } => body.get_used_regs(),
-			Self::StoreResult { location, body } | Self::StoreSuccess { location, body } => {
-				[location.get_used_regs(), body.get_used_regs()].concat()
-			}
-			Self::Declare { .. }
-			| Self::NoOp
-			| Self::GetConst { .. }
-			| Self::Command { .. }
-			| Self::Comment { .. }
-			| Self::CallExtern { .. }
-			| Self::MC(..) => Vec::new(),
-		}
-	}
-
 	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: F) {
 		match self {
 			Self::Declare { left, .. } => {
@@ -246,6 +202,66 @@ impl MIRInstrKind {
 			| Self::StoreSuccess { body, .. }
 			| Self::Positioned { body, .. } => Some(body),
 			_ => None,
+		}
+	}
+}
+
+impl GetUsedRegs for MIRInstrKind {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Assign { left, right } => {
+				left.append_used_regs(regs);
+				right.append_used_regs(regs);
+			}
+			Self::Add { left, right }
+			| Self::Sub { left, right }
+			| Self::Mul { left, right }
+			| Self::Div { left, right }
+			| Self::Mod { left, right }
+			| Self::Min { left, right }
+			| Self::Max { left, right }
+			| Self::Merge { left, right }
+			| Self::Push { left, right }
+			| Self::PushFront { left, right }
+			| Self::Insert { left, right, .. }
+			| Self::And { left, right }
+			| Self::Or { left, right } => {
+				left.append_used_regs(regs);
+				right.append_used_regs(regs);
+			}
+			Self::Swap { left, right } => {
+				left.append_used_regs(regs);
+				right.append_used_regs(regs);
+			}
+			Self::Abs { val } => val.append_used_regs(regs),
+			Self::Not { value } => value.append_used_regs(regs),
+			Self::Pow { base, .. } => base.append_used_regs(regs),
+			Self::Get { value, .. } => value.append_used_regs(regs),
+			Self::Use { val } => val.append_used_regs(regs),
+			Self::Call { call } => call.append_used_regs(regs),
+			Self::Remove { val } => val.append_used_regs(regs),
+			Self::ReturnValue { value, .. } | Self::Return { value } => {
+				value.append_used_regs(regs)
+			}
+			Self::If { condition, body } => {
+				condition.append_used_regs(regs);
+				body.append_used_regs(regs);
+			}
+			Self::As { body, .. }
+			| Self::At { body, .. }
+			| Self::Positioned { body, .. }
+			| Self::ReturnRun { body } => body.append_used_regs(regs),
+			Self::StoreResult { location, body } | Self::StoreSuccess { location, body } => {
+				location.append_used_regs(regs);
+				body.append_used_regs(regs);
+			}
+			Self::Declare { .. }
+			| Self::NoOp
+			| Self::GetConst { .. }
+			| Self::Command { .. }
+			| Self::Comment { .. }
+			| Self::CallExtern { .. }
+			| Self::MC(..) => {}
 		}
 	}
 }

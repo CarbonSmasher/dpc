@@ -1,4 +1,5 @@
 use super::block::BlockID;
+use super::reg::GetUsedRegs;
 use super::val::MutableValue;
 use super::{ty::DataType, ResourceLocation};
 use super::{Identifier, Value};
@@ -137,17 +138,6 @@ pub struct CallInterface {
 }
 
 impl CallInterface {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		let mut out = Vec::new();
-		for arg in &self.args {
-			out.extend(arg.get_used_regs());
-		}
-		for ret in &self.ret {
-			out.extend(ret.get_used_regs());
-		}
-		out
-	}
-
 	pub fn iter_used_regs_mut(&mut self) -> impl Iterator<Item = &mut Identifier> {
 		let args = self
 			.args
@@ -158,6 +148,17 @@ impl CallInterface {
 			.iter_mut()
 			.flat_map(|x| x.get_used_regs_mut().into_iter());
 		args.chain(ret)
+	}
+}
+
+impl GetUsedRegs for CallInterface {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		for arg in &self.args {
+			arg.append_used_regs(regs);
+		}
+		for ret in &self.ret {
+			ret.append_used_regs(regs);
+		}
 	}
 }
 

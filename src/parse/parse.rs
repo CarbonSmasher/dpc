@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{bail, Context};
+use rustc_hash::FxHashMap;
 
 use crate::common::condition::Condition;
 use crate::common::function::CallInterface;
@@ -19,7 +19,8 @@ use crate::common::mc::{
 };
 use crate::common::ty::{
 	ArraySize, DataType, DataTypeContents, Double, NBTArrayType, NBTArrayTypeContents,
-	NBTCompoundTypeContents, NBTType, NBTTypeContents, ScoreType, ScoreTypeContents,
+	NBTCompoundType, NBTCompoundTypeContents, NBTType, NBTTypeContents, ScoreType,
+	ScoreTypeContents,
 };
 use crate::common::val::{MutableValue, Value};
 use crate::common::DeclareBinding;
@@ -985,7 +986,7 @@ pub fn parse_simple_ty(ty: &str) -> anyhow::Result<DataType> {
 fn parse_compound_ty<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<NBTType> {
-	let mut out = HashMap::new();
+	let mut out = FxHashMap::default();
 
 	loop {
 		let first_tok = consume_optional!(toks);
@@ -1414,9 +1415,9 @@ fn parse_list_lit<'t>(
 // Does the rest of the compound lit parsing after the first bracket
 fn parse_compound_lit<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
-) -> anyhow::Result<(Arc<HashMap<String, NBTType>>, NBTCompoundTypeContents)> {
-	let mut ty_out = HashMap::new();
-	let mut out = HashMap::new();
+) -> anyhow::Result<(NBTCompoundType, NBTCompoundTypeContents)> {
+	let mut ty_out = FxHashMap::default();
+	let mut out = FxHashMap::default();
 
 	loop {
 		let first_tok = consume_optional!(toks);

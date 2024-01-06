@@ -1,5 +1,6 @@
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::common::ResourceLocation;
@@ -10,15 +11,15 @@ mod files;
 
 #[derive(Debug, Clone)]
 pub struct Datapack {
-	pub functions: HashMap<ResourceLocation, Function>,
-	pub function_tags: HashMap<ResourceLocation, Tag>,
+	pub functions: FxHashMap<ResourceLocation, Function>,
+	pub function_tags: FxHashMap<ResourceLocation, Tag>,
 }
 
 impl Datapack {
 	pub fn new() -> Self {
 		Self {
-			functions: HashMap::new(),
-			function_tags: HashMap::new(),
+			functions: FxHashMap::default(),
+			function_tags: FxHashMap::default(),
 		}
 	}
 

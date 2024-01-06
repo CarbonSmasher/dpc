@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! def_compound {
 	($($id:ident: $item:expr),*$(,)?) => {{
-		let mut out = std::collections::HashMap::new();
+		let mut out = rustc_hash::FxHashMap::default();
 		$(
 			out.insert(stringify!($id).to_string(), $item);
 		)*

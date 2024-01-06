@@ -177,7 +177,6 @@ fn cleanup_fn(
 }
 
 fn fmt_inlined_reg(func_id: &str, reg: &Identifier) -> Identifier {
-	let reg = reg.to_string();
 	let reg = format!("in_{func_id}_{reg}");
 	reg.into()
 }

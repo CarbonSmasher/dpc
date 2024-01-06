@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use anyhow::{bail, Context};
 
 use crate::common::function::FunctionSignature;
+use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{DataType, Double, NBTType, NBTTypeContents};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, ScoreValue};
 use crate::common::{RegisterList, ResourceLocationTag};
@@ -39,14 +40,6 @@ pub enum Modifier {
 }
 
 impl Modifier {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Modifier::StoreResult(loc) | Modifier::StoreSuccess(loc) => loc.get_used_regs(),
-			Modifier::If { condition, .. } => condition.get_used_regs(),
-			_ => Vec::new(),
-		}
-	}
-
 	/// Checks if this modifier has any side effects that aren't applied to
 	/// the command it is modifying
 	pub fn has_extra_side_efects(&self) -> bool {
@@ -54,6 +47,16 @@ impl Modifier {
 			self,
 			Self::StoreResult(..) | Self::StoreSuccess(..) | Self::Summon(..)
 		)
+	}
+}
+
+impl GetUsedRegs for Modifier {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Modifier::StoreResult(loc) | Modifier::StoreSuccess(loc) => loc.append_used_regs(regs),
+			Modifier::If { condition, .. } => condition.append_used_regs(regs),
+			_ => {}
+		}
 	}
 }
 
@@ -131,17 +134,19 @@ impl StoreModLocation {
 		}
 	}
 
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
-		match self {
-			Self::Reg(reg, ..) => vec![reg],
-			Self::Score(..) | Self::Data(..) | Self::Bossbar(..) => Vec::new(),
-		}
-	}
-
 	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: F) {
 		match self {
 			Self::Reg(reg, ..) => f(reg),
 			_ => {}
+		}
+	}
+}
+
+impl GetUsedRegs for StoreModLocation {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::Reg(reg, ..) => regs.push(reg),
+			Self::Score(..) | Self::Data(..) | Self::Bossbar(..) => {}
 		}
 	}
 }
@@ -274,21 +279,21 @@ pub enum IfModCondition {
 	Const(bool),
 }
 
-impl IfModCondition {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+impl GetUsedRegs for IfModCondition {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
 		match self {
 			Self::Score(cond) => match cond {
 				IfScoreCondition::Single { left, right } => {
-					[left.get_used_regs(), right.get_used_regs()].concat()
+					left.append_used_regs(regs);
+					right.append_used_regs(regs);
 				}
-				IfScoreCondition::Range { score, left, right } => [
-					score.get_used_regs(),
-					left.get_used_regs(),
-					right.get_used_regs(),
-				]
-				.concat(),
+				IfScoreCondition::Range { score, left, right } => {
+					score.append_used_regs(regs);
+					left.append_used_regs(regs);
+					right.append_used_regs(regs);
+				}
 			},
-			Self::DataExists(val) | Self::DataEquals(val, ..) => val.get_used_regs(),
+			Self::DataExists(val) | Self::DataEquals(val, ..) => val.append_used_regs(regs),
 			Self::Entity(..)
 			| Self::Predicate(..)
 			| Self::Function(..)
@@ -296,7 +301,7 @@ impl IfModCondition {
 			| Self::Dimension(..)
 			| Self::Loaded(..)
 			| Self::Block(..)
-			| Self::Const(..) => Vec::new(),
+			| Self::Const(..) => {}
 		}
 	}
 }
@@ -347,11 +352,11 @@ pub enum IfScoreRangeEnd {
 	Fixed { value: ScoreValue, inclusive: bool },
 }
 
-impl IfScoreRangeEnd {
-	pub fn get_used_regs(&self) -> Vec<&Identifier> {
+impl GetUsedRegs for IfScoreRangeEnd {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
 		match self {
-			Self::Infinite => Vec::new(),
-			Self::Fixed { value, .. } => value.get_used_regs(),
+			Self::Infinite => {}
+			Self::Fixed { value, .. } => value.append_used_regs(regs),
 		}
 	}
 }

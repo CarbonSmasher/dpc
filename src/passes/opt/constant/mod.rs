@@ -5,6 +5,7 @@ pub mod prop;
 use anyhow::Context;
 use rustc_hash::FxHashMap;
 
+use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{DataType, DataTypeContents};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier};
 use crate::common::{Register, RegisterList};
