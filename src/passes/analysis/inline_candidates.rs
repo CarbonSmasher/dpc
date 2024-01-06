@@ -24,7 +24,7 @@ impl MIRPass for InlineCandidatesPass {
 			checked.clear();
 			data.inline_candidates.insert(func.clone());
 			check_recursion(
-				&func,
+				func,
 				data.mir,
 				&mut data.inline_candidates,
 				&mut call_stack,

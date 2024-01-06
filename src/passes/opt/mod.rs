@@ -21,7 +21,7 @@ pub enum OptimizableValue {
 impl MutableValue {
 	pub(self) fn to_optimizable_value(&self) -> Option<OptimizableValue> {
 		match self {
-			Self::Register(reg) => Some(OptimizableValue::Reg(reg.clone())),
+			Self::Reg(reg) => Some(OptimizableValue::Reg(reg.clone())),
 			Self::Arg(arg) => Some(OptimizableValue::Arg(*arg)),
 			_ => None,
 		}
@@ -42,5 +42,12 @@ pub fn get_instr_call(instr: &MIRInstrKind) -> Option<&CallInterface> {
 	match instr {
 		MIRInstrKind::Call { call } => Some(call),
 		other => other.get_body().and_then(get_instr_call),
+	}
+}
+
+pub fn get_instr_call_mut(instr: &mut MIRInstrKind) -> Option<&mut CallInterface> {
+	match instr {
+		MIRInstrKind::Call { call } => Some(call),
+		other => other.get_body_mut().and_then(get_instr_call_mut),
 	}
 }

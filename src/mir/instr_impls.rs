@@ -204,6 +204,18 @@ impl MIRInstrKind {
 			_ => None,
 		}
 	}
+
+	pub fn get_body_mut(&mut self) -> Option<&mut MIRInstrKind> {
+		match self {
+			Self::As { body, .. }
+			| Self::At { body, .. }
+			| Self::If { body, .. }
+			| Self::StoreResult { body, .. }
+			| Self::StoreSuccess { body, .. }
+			| Self::Positioned { body, .. } => Some(body),
+			_ => None,
+		}
+	}
 }
 
 impl GetUsedRegs for MIRInstrKind {

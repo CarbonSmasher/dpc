@@ -47,7 +47,7 @@ fn run_dse_iter(block: &mut MIRBlock, instrs_to_remove: &mut HashSetEmptyTracker
 
 	for (i, instr) in block.contents.iter().enumerate() {
 		if let MIRInstrKind::Assign {
-			left: MutableValue::Register(id),
+			left: MutableValue::Reg(id),
 			..
 		} = &instr.kind
 		{

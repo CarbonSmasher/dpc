@@ -98,7 +98,7 @@ impl Debug for Value {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum MutableValue {
-	Register(Identifier),
+	Reg(Identifier),
 	Score(Score),
 	Data(FullDataLocation),
 	Property(Box<MutableValue>, String),
@@ -112,7 +112,7 @@ pub enum MutableValue {
 impl MutableValue {
 	pub fn get_ty(&self, regs: &RegisterList, sig: &FunctionSignature) -> anyhow::Result<DataType> {
 		let out = match self {
-			Self::Register(id) => {
+			Self::Reg(id) => {
 				let reg = regs
 					.get(id)
 					.with_context(|| format!("Failed to get register ${id}"))?;
@@ -143,14 +143,14 @@ impl MutableValue {
 
 	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
 		match self {
-			Self::Register(reg) => vec![reg],
+			Self::Reg(reg) => vec![reg],
 			Self::Property(val, ..) | Self::Index(val, ..) => val.get_used_regs_mut(),
 			_ => Vec::new(),
 		}
 	}
 
 	pub fn is_same_val(&self, other: &Self) -> bool {
-		matches!((self, other), (Self::Register(left), Self::Register(right)) if left == right)
+		matches!((self, other), (Self::Reg(left), Self::Reg(right)) if left == right)
 			|| matches!((self, other), (Self::Score(left), Self::Score(right)) if left.is_value_eq(right))
 			|| matches!((self, other), (Self::Data(left), Self::Data(right)) if left.is_value_eq(right))
 			|| matches!((self, other), (Self::Arg(left), Self::Arg(right)) if left == right)
@@ -163,7 +163,7 @@ impl MutableValue {
 
 	pub fn to_mutable_score_value(self) -> anyhow::Result<MutableScoreValue> {
 		match self {
-			Self::Register(reg) => Ok(MutableScoreValue::Reg(reg)),
+			Self::Reg(reg) => Ok(MutableScoreValue::Reg(reg)),
 			Self::Score(score) => Ok(MutableScoreValue::Score(score)),
 			Self::Arg(arg) => Ok(MutableScoreValue::Arg(arg)),
 			Self::CallArg(arg, func, ty @ DataType::Score(..)) => {
@@ -179,7 +179,7 @@ impl MutableValue {
 
 	pub fn to_mutable_nbt_value(self) -> anyhow::Result<MutableNBTValue> {
 		match self {
-			Self::Register(reg) => Ok(MutableNBTValue::Reg(reg)),
+			Self::Reg(reg) => Ok(MutableNBTValue::Reg(reg)),
 			Self::Data(data) => Ok(MutableNBTValue::Data(data)),
 			Self::Property(val, prop) => Ok(MutableNBTValue::Property(
 				Box::new(val.to_mutable_nbt_value()?),
@@ -205,7 +205,7 @@ impl MutableValue {
 impl GetUsedRegs for MutableValue {
 	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
 		match self {
-			Self::Register(reg) => regs.push(reg),
+			Self::Reg(reg) => regs.push(reg),
 			Self::Property(val, ..) | Self::Index(val, ..) => val.append_used_regs(regs),
 			_ => {}
 		}
@@ -215,7 +215,7 @@ impl GetUsedRegs for MutableValue {
 impl Debug for MutableValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
-			Self::Register(reg) => format!("%{reg}"),
+			Self::Reg(reg) => format!("%{reg}"),
 			Self::Score(score) => format!("sco {score:?}"),
 			Self::Data(data) => format!("{data:?}"),
 			Self::Property(val, prop) => format!("{val:?}.{prop}"),

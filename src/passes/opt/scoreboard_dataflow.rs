@@ -75,9 +75,7 @@ fn run_scoreboard_dataflow_iter(
 								instrs_to_remove.insert(i);
 							} else {
 								finished_flow_points.extend(
-									flow_points
-										.remove(&OptimizableValue::Reg(left.clone()))
-										.map(|x| x),
+									flow_points.remove(&OptimizableValue::Reg(left.clone())),
 								);
 								flow_points.insert(
 									OptimizableValue::Reg(left.clone()),
@@ -86,7 +84,7 @@ fn run_scoreboard_dataflow_iter(
 										store_regs: Vec::new(),
 									},
 								);
-								finished_flow_points.extend(flow_points.remove(&right).map(|x| x));
+								finished_flow_points.extend(flow_points.remove(&right));
 								flow_points.insert(
 									right,
 									SBDataflowPoint {
@@ -97,11 +95,8 @@ fn run_scoreboard_dataflow_iter(
 							}
 						}
 					} else {
-						finished_flow_points.extend(
-							flow_points
-								.remove(&OptimizableValue::Reg(left.clone()))
-								.map(|x| x),
-						);
+						finished_flow_points
+							.extend(flow_points.remove(&OptimizableValue::Reg(left.clone())));
 						flow_points.insert(
 							OptimizableValue::Reg(left.clone()),
 							SBDataflowPoint {
@@ -122,7 +117,7 @@ fn run_scoreboard_dataflow_iter(
 				if let Some(left) = left.to_optimizable_value() {
 					if let ScoreValue::Mutable(right) = right {
 						if let Some(right) = right.to_optimizable_value() {
-							finished_flow_points.extend(flow_points.remove(&right).map(|x| x));
+							finished_flow_points.extend(flow_points.remove(&right));
 						}
 					}
 
@@ -138,29 +133,26 @@ fn run_scoreboard_dataflow_iter(
 			LIRInstrKind::SwapScore(left, right) => {
 				if let Some(left) = left.to_optimizable_value() {
 					if let Some(right) = right.to_optimizable_value() {
-						finished_flow_points.extend(flow_points.remove(&left).map(|x| x));
-						finished_flow_points.extend(flow_points.remove(&right).map(|x| x));
+						finished_flow_points.extend(flow_points.remove(&left));
+						finished_flow_points.extend(flow_points.remove(&right));
 					}
 				}
 			}
 			LIRInstrKind::ConstIndexToScore { score: val, .. } => {
 				if let Some(val) = val.to_optimizable_value() {
-					finished_flow_points.extend(flow_points.remove(&val).map(|x| x));
+					finished_flow_points.extend(flow_points.remove(&val));
 				}
 			}
 			LIRInstrKind::Use(val) => {
 				if let Some(val) = val.to_optimizable_value() {
-					finished_flow_points.extend(flow_points.remove(&val).map(|x| x));
+					finished_flow_points.extend(flow_points.remove(&val));
 				}
 			}
 			_ => {
 				let regs = instr.get_used_regs();
 				for reg in regs {
-					finished_flow_points.extend(
-						flow_points
-							.remove(&OptimizableValue::Reg(reg.clone()))
-							.map(|x| x),
-					);
+					finished_flow_points
+						.extend(flow_points.remove(&OptimizableValue::Reg(reg.clone())));
 				}
 			}
 		};

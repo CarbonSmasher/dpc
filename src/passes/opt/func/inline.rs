@@ -134,7 +134,7 @@ fn cleanup_fn(
 		}));
 
 		prelude.push(MIRInstruction::new(MIRInstrKind::Assign {
-			left: MutableValue::Register(reg.clone()),
+			left: MutableValue::Reg(reg.clone()),
 			right: DeclareBinding::Value(arg.clone()),
 		}));
 	}
@@ -147,7 +147,7 @@ fn cleanup_fn(
 
 		instr.kind.replace_mut_vals(|val| {
 			if let MutableValue::Arg(idx) = val {
-				*val = MutableValue::Register(fmt_lowered_arg(func_id, *idx));
+				*val = MutableValue::Reg(fmt_lowered_arg(func_id, *idx));
 			}
 		});
 
@@ -157,7 +157,7 @@ fn cleanup_fn(
 				// the destination since its part of the calling function
 				let mut value = value.clone();
 				if let Value::Mutable(MutableValue::Arg(idx)) = &mut value {
-					value = Value::Mutable(MutableValue::Register(fmt_lowered_arg(func_id, *idx)));
+					value = Value::Mutable(MutableValue::Reg(fmt_lowered_arg(func_id, *idx)));
 				}
 				instr.kind = MIRInstrKind::Assign {
 					left: dest.clone(),

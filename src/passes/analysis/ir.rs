@@ -43,7 +43,7 @@ fn validate_instr_kind(
 			if regs.contains_key(left) {
 				bail!("Redefinition of register {left} at {i}");
 			}
-			let right_ty = right.get_ty(&regs, &func.interface.sig)?;
+			let right_ty = right.get_ty(regs, &func.interface.sig)?;
 			if let Some(right_ty) = right_ty {
 				if !right_ty.is_trivially_castable(ty) {
 					bail!("Register type does not match value type at {i}");
@@ -63,7 +63,7 @@ fn validate_instr_kind(
 		| InstrKind::Mod { left, right }
 		| InstrKind::Min { left, right }
 		| InstrKind::Max { left, right } => {
-			let (left_ty, right_ty) = get_op_tys(left, right, &regs, &func.interface.sig)?;
+			let (left_ty, right_ty) = get_op_tys(left, right, regs, &func.interface.sig)?;
 			if !right_ty.is_trivially_castable(&left_ty) {
 				bail!("Incompatible types in instruction at {i}");
 			}
@@ -71,7 +71,7 @@ fn validate_instr_kind(
 		InstrKind::Push { left, right }
 		| InstrKind::PushFront { left, right }
 		| InstrKind::Insert { left, right, .. } => {
-			let (left, right) = get_op_tys(left, right, &regs, &func.interface.sig)?;
+			let (left, right) = get_op_tys(left, right, regs, &func.interface.sig)?;
 			let (DataType::NBT(left), DataType::NBT(right)) = (left, right) else {
 				bail!("Incompatible types in instruction at {i}");
 			};
@@ -81,13 +81,13 @@ fn validate_instr_kind(
 		}
 		InstrKind::Swap { left, right } => {
 			if !right
-				.get_ty(&regs, &func.interface.sig)?
-				.is_trivially_castable(&left.get_ty(&regs, &func.interface.sig)?)
+				.get_ty(regs, &func.interface.sig)?
+				.is_trivially_castable(&left.get_ty(regs, &func.interface.sig)?)
 			{
 				bail!("Incompatible types in instruction at {i}");
 			}
 		}
-		InstrKind::Get { value, scale } => match value.get_ty(&regs, &func.interface.sig)? {
+		InstrKind::Get { value, scale } => match value.get_ty(regs, &func.interface.sig)? {
 			DataType::Score(..) => {
 				if *scale != 1.0 {
 					bail!("Scale that is not 1.0 cannot be used for getting a value of score type");

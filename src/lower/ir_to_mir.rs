@@ -57,7 +57,7 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 			let left_clone = left.clone();
 			prelude.push(MIRInstruction::new(lower!(Declare, left, ty)));
 			lower!(MIRInstrKind::Assign {
-				left: MutableValue::Register(left_clone),
+				left: MutableValue::Reg(left_clone),
 				right,
 			})
 		}

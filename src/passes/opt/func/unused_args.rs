@@ -6,7 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::function::CallInterface;
 use crate::common::val::MutableValue;
-use crate::mir::MIRInstrKind;
+use crate::passes::opt::get_instr_call_mut;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::remove_indices;
 
@@ -61,7 +61,7 @@ impl MIRPass for UnusedArgsPass {
 				instr.kind.replace_mut_vals(|x| {
 					if let MutableValue::Arg(a) = x {
 						*a = *new_mapping
-							.get(&a)
+							.get(a)
 							.expect("New argument mapping should exist");
 					}
 				})
@@ -87,19 +87,8 @@ impl MIRPass for UnusedArgsPass {
 				.ok_or(anyhow!("Block does not exist"))?;
 
 			for instr in &mut block.contents {
-				match &mut instr.kind {
-					// TODO: Make some sort of get_body function
-					MIRInstrKind::Call { call } => modify_call(call),
-					MIRInstrKind::If { body, .. }
-					| MIRInstrKind::As { body, .. }
-					| MIRInstrKind::At { body, .. }
-					| MIRInstrKind::StoreResult { body, .. }
-					| MIRInstrKind::StoreSuccess { body, .. }
-					| MIRInstrKind::ReturnRun { body, .. } => match body.as_mut() {
-						MIRInstrKind::Call { call } => modify_call(call),
-						_ => {}
-					},
-					_ => {}
+				if let Some(call) = get_instr_call_mut(&mut instr.kind) {
+					modify_call(call);
 				}
 			}
 		}

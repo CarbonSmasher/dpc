@@ -101,7 +101,7 @@ fn known() {
 			))),
 		};
 		InstrKind::Assign {
-			left: MutableValue::Register(reg_id.clone()),
+			left: MutableValue::Reg(reg_id.clone()),
 			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(93))),
 		};
 		InstrKind::Declare {
@@ -112,19 +112,19 @@ fn known() {
 			))),
 		};
 		InstrKind::Add {
-			left: MutableValue::Register(reg_id.clone()),
-			right: Value::Mutable(MutableValue::Register(reg2_id.clone())),
+			left: MutableValue::Reg(reg_id.clone()),
+			right: Value::Mutable(MutableValue::Reg(reg2_id.clone())),
 		};
 		InstrKind::Add {
-			left: MutableValue::Register(reg_id.clone()),
+			left: MutableValue::Reg(reg_id.clone()),
 			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(7))),
 		};
 		InstrKind::Add {
-			left: MutableValue::Register(reg_id.clone()),
+			left: MutableValue::Reg(reg_id.clone()),
 			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-15))),
 		};
 		InstrKind::Sub {
-			left: MutableValue::Register(reg_id.clone()),
+			left: MutableValue::Reg(reg_id.clone()),
 			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(-1290))),
 		};
 		InstrKind::Declare {
@@ -142,14 +142,14 @@ fn known() {
 			))),
 		};
 		InstrKind::Assign {
-			left: MutableValue::Register(reg4_id.clone()),
+			left: MutableValue::Reg(reg4_id.clone()),
 			right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Long(1289))),
 		};
 		InstrKind::Abs {
-			val: MutableValue::Register(reg2_id.clone()),
+			val: MutableValue::Reg(reg2_id.clone()),
 		};
 		InstrKind::Div {
-			left: MutableValue::Register(reg_id.clone()),
+			left: MutableValue::Reg(reg_id.clone()),
 			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Bool(true))),
 		};
 		InstrKind::Declare {
@@ -157,16 +157,16 @@ fn known() {
 			ty: DataType::Score(ScoreType::Score),
 			right: DeclareBinding::Cast(
 				DataType::Score(ScoreType::Score),
-				MutableValue::Register(reg4_id.clone()),
+				MutableValue::Reg(reg4_id.clone()),
 			),
 		};
 		InstrKind::Mul {
-			left: MutableValue::Register(reg2_id.clone()),
+			left: MutableValue::Reg(reg2_id.clone()),
 			right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(2))),
 		};
 		InstrKind::Swap {
-			left: MutableValue::Register(reg5_id.clone()),
-			right: MutableValue::Register(reg2_id.clone()),
+			left: MutableValue::Reg(reg5_id.clone()),
+			right: MutableValue::Reg(reg2_id.clone()),
 		};
 		InstrKind::Declare {
 			left: reg6_id.clone(),
@@ -183,8 +183,8 @@ fn known() {
 			))),
 		};
 		InstrKind::Swap {
-			left: MutableValue::Register(reg6_id.clone()),
-			right: MutableValue::Register(reg7_id.clone()),
+			left: MutableValue::Reg(reg6_id.clone()),
+			right: MutableValue::Reg(reg7_id.clone()),
 		};
 		InstrKind::Declare {
 			left: reg8_id.clone(),
@@ -198,7 +198,7 @@ fn known() {
 			ty: DataType::NBT(NBTType::Byte),
 			right: DeclareBinding::Index {
 				ty: DataType::NBT(NBTType::Byte),
-				val: Value::Mutable(MutableValue::Register(reg8_id.clone())),
+				val: Value::Mutable(MutableValue::Reg(reg8_id.clone())),
 				index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(3))),
 			},
 		};
@@ -238,7 +238,7 @@ fn known() {
 			))),
 		};
 		InstrKind::Use {
-			val: MutableValue::Register(reg2_id.clone()),
+			val: MutableValue::Reg(reg2_id.clone()),
 		};
 		InstrKind::Call {
 			call: CallInterface {
@@ -302,7 +302,7 @@ fn fuzz() {
 				0 => {
 					let reg = rng.gen_range(0..reg_count);
 					let reg = Identifier::from(format!("reg{reg}"));
-					Value::Mutable(MutableValue::Register(reg))
+					Value::Mutable(MutableValue::Reg(reg))
 				}
 				1 => {
 					let val = rng.gen_range(-128..128);
@@ -323,39 +323,39 @@ fn fuzz() {
 					}
 				}
 				1 => InstrKind::Assign {
-					left: MutableValue::Register(left_reg),
+					left: MutableValue::Reg(left_reg),
 					right: right_val,
 				},
 				2 => InstrKind::Add {
-					left: MutableValue::Register(left_reg),
+					left: MutableValue::Reg(left_reg),
 					right: right_val,
 				},
 				3 => InstrKind::Sub {
-					left: MutableValue::Register(left_reg),
+					left: MutableValue::Reg(left_reg),
 					right: right_val,
 				},
 				4 => InstrKind::Mul {
-					left: MutableValue::Register(left_reg),
+					left: MutableValue::Reg(left_reg),
 					right: right_val,
 				},
 				5 => InstrKind::Div {
-					left: MutableValue::Register(left_reg),
+					left: MutableValue::Reg(left_reg),
 					right: right_val,
 				},
 				6 => InstrKind::Mod {
-					left: MutableValue::Register(left_reg),
+					left: MutableValue::Reg(left_reg),
 					right: right_val,
 				},
 				7 => InstrKind::Min {
-					left: MutableValue::Register(left_reg),
+					left: MutableValue::Reg(left_reg),
 					right: right_val,
 				},
 				8 => InstrKind::Max {
-					left: MutableValue::Register(left_reg),
+					left: MutableValue::Reg(left_reg),
 					right: right_val,
 				},
 				9 => InstrKind::Abs {
-					val: MutableValue::Register(left_reg),
+					val: MutableValue::Reg(left_reg),
 				},
 				10 => {
 					let amount = rng.gen_range(0..1024);

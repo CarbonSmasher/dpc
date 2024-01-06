@@ -43,10 +43,8 @@ impl MIRPass for CleanupReturnPass {
 					value: Value::Constant(val),
 				} = &last.kind
 				{
-					if let Some(val) = val.try_get_i32() {
-						if val == 1 {
-							rem_last = true;
-						}
+					if let Some(1) = val.try_get_i32() {
+						rem_last = true;
 					}
 				}
 			}

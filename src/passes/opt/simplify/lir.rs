@@ -40,8 +40,6 @@ impl LIRPass for LIRSimplifyPass {
 	}
 }
 
-/// Runs an iteration of the LIRSimplifyPass. Returns true if another iteration
-/// should be run
 fn run_lir_simplify_iter(
 	block: &mut LIRBlock,
 	instrs_to_remove: &mut HashSetEmptyTracker<usize>,

@@ -91,7 +91,7 @@ fn run_const_fold_iter(
 
 		match &instr.kind {
 			MIRInstrKind::Assign {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: DeclareBinding::Value(Value::Constant(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -154,7 +154,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Add {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -169,7 +169,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Sub {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -184,7 +184,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Mul {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -199,7 +199,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Div {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -218,7 +218,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Mod {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -237,7 +237,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Min {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -250,7 +250,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Max {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -265,7 +265,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Abs {
-				val: MutableValue::Register(left),
+				val: MutableValue::Reg(left),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
 					if !left.finished {
@@ -279,7 +279,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Not {
-				value: MutableValue::Register(left),
+				value: MutableValue::Reg(left),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
 					if !left.finished {
@@ -293,7 +293,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::And {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -308,7 +308,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Or {
-				left: MutableValue::Register(left),
+				left: MutableValue::Reg(left),
 				right: Value::Constant(DataTypeContents::Score(right)),
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -323,7 +323,7 @@ fn run_const_fold_iter(
 				}
 			}
 			MIRInstrKind::Pow {
-				base: MutableValue::Register(left),
+				base: MutableValue::Reg(left),
 				exp,
 			} => {
 				if let Some(left) = fold_points.get_mut(left) {
@@ -408,7 +408,7 @@ fn run_const_fold_iter(
 						// 	instrs_to_replace.push((
 						// 		point.pos,
 						// 		MIRInstrKind::Assign {
-						// 			left: MutableValue::Register(reg.clone()),
+						// 			left: MutableValue::Reg(reg.clone()),
 						// 			right: DeclareBinding::Value(Value::Constant(
 						// 				DataTypeContents::Score(ScoreTypeContents::Score(
 						// 					point.value,
@@ -450,12 +450,12 @@ fn run_const_fold_iter(
 fn create_set_instr(reg: &Identifier, val: FoldValue) -> MIRInstrKind {
 	if let Some(data) = val.to_contents() {
 		MIRInstrKind::Assign {
-			left: MutableValue::Register(reg.clone()),
+			left: MutableValue::Reg(reg.clone()),
 			right: DeclareBinding::Value(Value::Constant(data)),
 		}
 	} else {
 		MIRInstrKind::Remove {
-			val: MutableValue::Register(reg.clone()),
+			val: MutableValue::Reg(reg.clone()),
 		}
 	}
 }

@@ -75,15 +75,15 @@ impl ConstAnalyzer {
 				ConstAnalyzerResult::Other
 			}
 			MIRInstrKind::Assign {
-				left: MutableValue::Register(reg),
+				left: MutableValue::Reg(reg),
 				right: DeclareBinding::Value(Value::Constant(val)),
 			} => ConstAnalyzerResult::Add(reg.clone(), ConstAnalyzerValue::Value(val.clone())),
 			MIRInstrKind::Assign { left, right, .. } => {
 				let mut out = Vec::new();
-				if let MutableValue::Register(reg) = left {
+				if let MutableValue::Reg(reg) = left {
 					out.push(reg);
 				}
-				if let DeclareBinding::Value(Value::Mutable(MutableValue::Register(reg))) = &right {
+				if let DeclareBinding::Value(Value::Mutable(MutableValue::Reg(reg))) = &right {
 					out.push(reg);
 				} else {
 					let used = right.get_used_regs();
@@ -92,7 +92,7 @@ impl ConstAnalyzer {
 				ConstAnalyzerResult::Remove(out)
 			}
 			MIRInstrKind::Remove {
-				val: MutableValue::Register(reg),
+				val: MutableValue::Reg(reg),
 			} => {
 				let ty = &self.regs.get(reg).context("Register does not exist")?.ty;
 				ConstAnalyzerResult::Add(reg.clone(), ConstAnalyzerValue::Reset(ty.clone()))
@@ -109,21 +109,21 @@ impl ConstAnalyzer {
 			| MIRInstrKind::Push { left, .. }
 			| MIRInstrKind::PushFront { left, .. }
 			| MIRInstrKind::Insert { left, .. } => {
-				if let MutableValue::Register(reg) = left {
+				if let MutableValue::Reg(reg) = left {
 					ConstAnalyzerResult::Remove(vec![reg])
 				} else {
 					ConstAnalyzerResult::Other
 				}
 			}
 			MIRInstrKind::Swap {
-				left: MutableValue::Register(left_reg),
-				right: MutableValue::Register(right_reg),
+				left: MutableValue::Reg(left_reg),
+				right: MutableValue::Reg(right_reg),
 			} => ConstAnalyzerResult::Remove(vec![left_reg, right_reg]),
 			MIRInstrKind::Abs {
-				val: MutableValue::Register(reg),
+				val: MutableValue::Reg(reg),
 			}
 			| MIRInstrKind::Use {
-				val: MutableValue::Register(reg),
+				val: MutableValue::Reg(reg),
 			} => ConstAnalyzerResult::Remove(vec![reg]),
 			other => {
 				let used = other.get_used_regs();

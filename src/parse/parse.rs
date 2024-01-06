@@ -1082,7 +1082,7 @@ fn parse_mut_val_impl<'t>(
 	let out = match tok {
 		Token::Percent => {
 			let reg_name = consume_extract!(toks, Ident, { bail!("Missing register name token") });
-			MutableValue::Register(reg_name.clone().into())
+			MutableValue::Reg(reg_name.clone().into())
 		}
 		Token::Ampersand => {
 			let index = consume_extract!(toks, Num, { bail!("Missing argument index") });

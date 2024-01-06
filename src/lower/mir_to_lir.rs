@@ -394,7 +394,7 @@ fn lower_assign(
 				}
 				_ => bail!("Cannot use index declaration with these types"),
 			}
-			Some(Value::Mutable(MutableValue::Register(new_reg)))
+			Some(Value::Mutable(MutableValue::Reg(new_reg)))
 		}
 	};
 

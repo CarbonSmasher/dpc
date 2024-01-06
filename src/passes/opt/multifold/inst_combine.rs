@@ -60,7 +60,7 @@ fn run_instcombine_iter(
 		}
 		match &instr.kind {
 			MIRInstrKind::Add {
-				left: MutableValue::Register(reg),
+				left: MutableValue::Reg(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} => {
 				if let Some(combiner) = add_subs.get_mut(reg) {
@@ -70,7 +70,7 @@ fn run_instcombine_iter(
 				}
 			}
 			MIRInstrKind::Sub {
-				left: MutableValue::Register(reg),
+				left: MutableValue::Reg(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} => {
 				if let Some(combiner) = add_subs.get_mut(reg) {
@@ -80,7 +80,7 @@ fn run_instcombine_iter(
 				}
 			}
 			MIRInstrKind::Mul {
-				left: MutableValue::Register(reg),
+				left: MutableValue::Reg(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} => {
 				if let Some(combiner) = muls.get_mut(reg) {
@@ -90,7 +90,7 @@ fn run_instcombine_iter(
 				}
 			}
 			MIRInstrKind::Mod {
-				left: MutableValue::Register(reg),
+				left: MutableValue::Reg(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} => {
 				if let Some(combiner) = mods.get_mut(reg) {
@@ -100,7 +100,7 @@ fn run_instcombine_iter(
 				}
 			}
 			MIRInstrKind::Not {
-				value: MutableValue::Register(reg),
+				value: MutableValue::Reg(reg),
 			} => {
 				if let Some(combiner) = nots.get_mut(reg) {
 					combiner.feed(i, 0);
@@ -109,7 +109,7 @@ fn run_instcombine_iter(
 				}
 			}
 			MIRInstrKind::Pow {
-				base: MutableValue::Register(reg),
+				base: MutableValue::Reg(reg),
 				exp,
 			} => {
 				if let Some(combiner) = pows.get_mut(reg) {
@@ -214,7 +214,7 @@ macro_rules! combiner {
 					$self.pos,
 					$self.to_remove,
 					MIRInstrKind::$instr {
-						left: MutableValue::Register(reg),
+						left: MutableValue::Reg(reg),
 						right: Value::Constant(DataTypeContents::Score(
 							ScoreTypeContents::Score($self.val),
 						)),
@@ -319,7 +319,7 @@ combiner!(
 				self.pos,
 				self.to_remove,
 				MIRInstrKind::Pow {
-					base: MutableValue::Register(reg),
+					base: MutableValue::Reg(reg),
 					exp: (self.val as u8),
 				},
 			))
@@ -346,7 +346,7 @@ combiner!(
 				self.pos,
 				self.to_remove,
 				MIRInstrKind::Not {
-					value: MutableValue::Register(reg),
+					value: MutableValue::Reg(reg),
 				},
 			))
 		}

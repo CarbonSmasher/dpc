@@ -318,7 +318,7 @@ fn run_mir_simplify_iter(
 				{
 					if left_scale * right_scale == 1.0 {
 						Some(MIRInstrKind::Assign {
-							left: MutableValue::Register(left.clone()),
+							left: MutableValue::Reg(left.clone()),
 							right: DeclareBinding::Value(Value::Mutable(right.clone())),
 						})
 					} else {
