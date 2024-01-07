@@ -1114,6 +1114,30 @@ pub fn codegen_instr(
 			MinecraftInstr::WorldBorderWarningTime { time } => {
 				Some(cgformat!(cbcx, "worldborder warning time ", time)?)
 			}
+			MinecraftInstr::PlaySound {
+				sound,
+				source,
+				target,
+				pos,
+				volume,
+				pitch,
+				min_volume,
+			} => {
+				let mut out = cgformat!(cbcx, "playsound ", sound, " ", source, " ", target)?;
+				if !pos.are_zero() || *volume != 1.0 || *pitch != 1.0 || *min_volume != 0.0 {
+					cgwrite!(&mut out, cbcx, " ", pos)?;
+				}
+				if *volume != 1.0 || *pitch != 1.0 || *min_volume != 0.0 {
+					cgwrite!(&mut out, cbcx, " ", volume)?;
+				}
+				if *pitch != 1.0 || *min_volume != 0.0 {
+					cgwrite!(&mut out, cbcx, " ", pitch)?;
+				}
+				if *min_volume != 0.0 {
+					cgwrite!(&mut out, cbcx, " ", min_volume)?;
+				}
+				Some(out)
+			}
 		},
 		LIRInstrKind::Command(cmd) => Some(cmd.clone()),
 		LIRInstrKind::Comment(cmt) => Some(format!("#{cmt}")),

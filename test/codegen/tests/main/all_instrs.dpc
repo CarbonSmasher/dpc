@@ -89,7 +89,7 @@
 	grsb "doFireTick", true;
 	grsi "randomTickSpeed", 2345;
 	grg "doDaylightCycle";
-	loc bio "minecraft:taiga";
+	loc bio, "minecraft:taiga";
 	wba 0.5, 0;
 	wbs 0.0, 64;
 	wbg;
@@ -98,6 +98,7 @@
 	wbb 24.0;
 	wbwd 0.8;
 	wbwt 3;
+	ply "entity.ender_dragon.roar", master, @s[], ~0.0 ~0.0 ~0.0, 1.0, 2.0, 0.0;
 
 	retr:
 		say "hello";

@@ -317,3 +317,56 @@ impl Debug for Location {
 		)
 	}
 }
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum SoundSource {
+	Master,
+	Music,
+	Record,
+	Weather,
+	Block,
+	Hostile,
+	Neutral,
+	Player,
+	Ambient,
+	Voice,
+}
+
+impl SoundSource {
+	pub fn parse(string: &str) -> Option<Self> {
+		match string {
+			"master" => Some(Self::Master),
+			"music" => Some(Self::Music),
+			"record" => Some(Self::Record),
+			"weather" => Some(Self::Weather),
+			"block" => Some(Self::Block),
+			"hostile" => Some(Self::Hostile),
+			"neutral" => Some(Self::Neutral),
+			"player" => Some(Self::Player),
+			"ambient" => Some(Self::Ambient),
+			"voice" => Some(Self::Voice),
+			_ => None,
+		}
+	}
+}
+
+impl Debug for SoundSource {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Self::Master => "master",
+				Self::Music => "music",
+				Self::Record => "record",
+				Self::Weather => "weather",
+				Self::Block => "block",
+				Self::Hostile => "hostile",
+				Self::Neutral => "neutral",
+				Self::Player => "player",
+				Self::Ambient => "ambient",
+				Self::Voice => "voice",
+			}
+		)
+	}
+}

@@ -15,7 +15,8 @@ use crate::common::mc::pos::{
 use crate::common::mc::scoreboard_and_teams::{Criterion, SingleCriterion};
 use crate::common::mc::time::{Time, TimeUnit};
 use crate::common::mc::{
-	DataLocation, DataPath, Difficulty, EntityTarget, FullDataLocation, Location, Score, XPValue,
+	DataLocation, DataPath, Difficulty, EntityTarget, FullDataLocation, Location, Score,
+	SoundSource, XPValue,
 };
 use crate::common::ty::{
 	ArraySize, DataType, DataTypeContents, Double, NBTArrayType, NBTArrayTypeContents,
@@ -798,11 +799,38 @@ fn parse_instr<'t>(
 		"loc" => {
 			let ty = consume_extract!(toks, Ident, { bail!("Missing location type") });
 			let ty = Location::parse(ty).context("Invalid location type")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let location = consume_extract!(toks, Str, { bail!("Missing location") });
 
 			Ok(InstrKind::MC(MinecraftInstr::Locate {
 				location_type: ty,
 				location: location.clone().into(),
+			}))
+		}
+		"ply" => {
+			let sound = consume_extract!(toks, Str, { bail!("Missing location") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let src = consume_extract!(toks, Ident, { bail!("Missing sound source") });
+			let src = SoundSource::parse(src).context("Invalid sound source")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let pos = parse_double_coords(toks).context("Failed to parse position")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let volume = consume_extract!(toks, Decimal, { bail!("Missing volume") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let pitch = consume_extract!(toks, Decimal, { bail!("Missing pitch") });
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let min_volume = consume_extract!(toks, Decimal, { bail!("Missing min volume") });
+
+			Ok(InstrKind::MC(MinecraftInstr::PlaySound {
+				sound: sound.clone().into(),
+				source: src,
+				target,
+				pos,
+				volume: *volume as f32,
+				pitch: *pitch as f32,
+				min_volume: *min_volume as f32,
 			}))
 		}
 		"as" => {

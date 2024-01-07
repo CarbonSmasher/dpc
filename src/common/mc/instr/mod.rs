@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use crate::common::ty::Float;
 use crate::common::{ty::NBTCompoundTypeContents, Identifier, ResourceLocation};
 
 use super::block::{CloneData, FillBiomeData, FillData, SetBlockData};
@@ -11,7 +12,7 @@ use super::scoreboard_and_teams::Criterion;
 use super::time::{Time, TimePreset, TimeQuery};
 use super::{
 	DatapackListMode, DatapackOrder, DatapackPriority, Difficulty, EntityTarget, Gamemode,
-	Location, Weather, XPValue,
+	Location, SoundSource, Weather, XPValue,
 };
 
 #[derive(Clone, PartialEq)]
@@ -383,6 +384,15 @@ pub enum MinecraftInstr {
 	WorldBorderWarningTime {
 		time: i32,
 	},
+	PlaySound {
+		sound: ResourceLocation,
+		source: SoundSource,
+		target: EntityTarget,
+		pos: DoubleCoordinates,
+		volume: Float,
+		pitch: Float,
+		min_volume: Float,
+	},
 }
 
 impl Debug for MinecraftInstr {
@@ -596,6 +606,17 @@ impl Debug for MinecraftInstr {
 			Self::WorldBorderBuffer { buffer } => format!("wbb {buffer}"),
 			Self::WorldBorderWarningDistance { dist } => format!("wbwd {dist}"),
 			Self::WorldBorderWarningTime { time } => format!("wbwt {time}"),
+			Self::PlaySound {
+				sound,
+				source,
+				target,
+				pos,
+				volume,
+				pitch,
+				min_volume
+			 } => {
+				format!("ply {sound} {source:?} {target:?} {pos:?} {volume} {pitch} {min_volume}")
+			}
 		};
 		write!(f, "{text}")
 	}

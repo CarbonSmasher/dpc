@@ -15,7 +15,7 @@ use crate::common::mc::pos::{
 use crate::common::mc::scoreboard_and_teams::SingleCriterion;
 use crate::common::mc::{
 	DataLocation, DataPath, DatapackListMode, DatapackOrder, DatapackPriority, Difficulty,
-	FullDataLocation, Gamemode, Heightmap, Weather, XPValue,
+	FullDataLocation, Gamemode, Heightmap, SoundSource, Weather, XPValue,
 };
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 
@@ -195,6 +195,7 @@ impl_dbg!(DatapackOrder);
 impl_dbg!(DatapackListMode);
 impl_dbg!(EffectDuration);
 impl_dbg!(StoreDataType);
+impl_dbg!(SoundSource);
 
 // Selectors
 impl_disp!(SelectorSort);

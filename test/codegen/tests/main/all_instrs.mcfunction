@@ -111,4 +111,5 @@ worldborder damage amount .4
 worldborder damage buffer 24
 worldborder warning distance .8
 worldborder warning time 3
+playsound entity.ender_dragon.roar master @s ~ ~ ~ 1 2
 return run say hello
