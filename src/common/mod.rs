@@ -12,6 +12,7 @@ use std::{fmt::Debug, sync::Arc};
 use rustc_hash::FxHashMap;
 
 use self::block::BlockAllocator;
+use self::condition::Condition;
 use self::function::{Function, FunctionSignature};
 use self::reg::GetUsedRegs;
 use self::ty::DataType;
@@ -27,6 +28,7 @@ pub enum DeclareBinding {
 		val: Value,
 		index: Value,
 	},
+	Condition(Condition),
 }
 
 impl DeclareBinding {
@@ -40,6 +42,7 @@ impl DeclareBinding {
 			Self::Value(val) => Some(val.get_ty(regs, sig)?),
 			Self::Cast(ty, ..) => Some(ty.clone()),
 			Self::Index { ty, .. } => Some(ty.clone()),
+			Self::Condition(..) => Some(DataType::Score(ty::ScoreType::Bool)),
 		};
 
 		Ok(out)
@@ -56,6 +59,7 @@ impl GetUsedRegs for DeclareBinding {
 				val.append_used_regs(regs);
 				index.append_used_regs(regs);
 			}
+			Self::Condition(cond) => cond.append_used_regs(regs),
 		}
 	}
 }
@@ -67,6 +71,7 @@ impl Debug for DeclareBinding {
 			Self::Value(val) => format!("{val:?}"),
 			Self::Cast(ty, val) => format!("cast {ty:?} {val:?}"),
 			Self::Index { val, index, ty } => format!("idx {ty:?} {val:?} {index:?}"),
+			Self::Condition(cond) => format!("cond {cond:?}"),
 		};
 		write!(f, "{text}")
 	}

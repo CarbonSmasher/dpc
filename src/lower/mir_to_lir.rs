@@ -396,6 +396,26 @@ fn lower_assign(
 			}
 			Some(Value::Mutable(MutableValue::Reg(new_reg)))
 		}
+		// Condition just becomes a simple execute store success {lhs} if {condition}
+		DeclareBinding::Condition(cond) => {
+			let store_loc = match left.get_ty(&lbcx.registers, &lbcx.sig)? {
+				DataType::Score(..) => {
+					StoreModLocation::from_mut_score_val(&left.clone().to_mutable_score_value()?)?
+				}
+				_ => bail!("Invalid type"),
+			};
+			let mut instr = LIRInstruction::new(LIRInstrKind::NoOp);
+			instr.modifiers.push(Modifier::StoreSuccess(store_loc));
+			let (prelude, condition, negate) = lower_condition(cond.clone(), lbcx)?;
+			out.extend(prelude);
+			instr.modifiers.push(Modifier::If {
+				condition: Box::new(condition),
+				negate,
+			});
+			out.push(instr);
+
+			None
+		}
 	};
 
 	if let Some(right_val) = right_val {

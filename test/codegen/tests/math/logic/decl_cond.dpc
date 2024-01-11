@@ -1,0 +1,6 @@
+"test:main" {
+	let x: score = val 120s;
+	let y: score = val 991s;
+	let cond: bool = cond eq %x, %y;
+	use %cond;
+}

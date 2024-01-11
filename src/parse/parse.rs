@@ -1071,6 +1071,10 @@ fn parse_decl_binding<'t>(
 			let val = parse_mut_val(toks).context("Failed to parse cast value")?;
 			Ok(DeclareBinding::Cast(ty, val))
 		}
+		"cond" => {
+			let cond = parse_condition(toks).context("Failed to parse condition")?;
+			Ok(DeclareBinding::Condition(cond))
+		}
 		other => bail!("Unknown type {other}"),
 	}
 }
