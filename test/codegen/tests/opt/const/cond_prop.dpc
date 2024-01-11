@@ -19,4 +19,12 @@
 	# Make sure that the value propagated inside the if doesn't
 	# leak out afterwards
 	add %add, %y;
+
+	# Let cond pattern
+	let left: score = val 100s;
+	let right: score = val 100s;
+	let equal: bool = cond eq %left, %right;
+	use %equal;
+	let nequal: bool = cond not eq %left, %right;
+	use %nequal;
 }

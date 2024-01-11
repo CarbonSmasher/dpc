@@ -1,5 +1,7 @@
 use anyhow::anyhow;
 
+use crate::common::ty::ScoreTypeContents;
+use crate::common::DeclareBinding;
 use crate::common::{condition::Condition, ty::DataTypeContents, val::Value};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
@@ -67,16 +69,33 @@ fn run_const_condition_iter(
 			continue;
 		}
 
-		if let MIRInstrKind::If { condition, body } = &mut instr.kind {
-			let result = const_eval_condition(condition);
-			if let Some(result) = result {
-				if result {
-					instr.kind = *body.clone();
-				} else {
-					instrs_to_remove.insert(i);
+		match &mut instr.kind {
+			MIRInstrKind::If { condition, body } => {
+				let result = const_eval_condition(condition);
+				if let Some(result) = result {
+					if result {
+						instr.kind = *body.clone();
+					} else {
+						instrs_to_remove.insert(i);
+					}
+					run_again = true;
 				}
-				run_again = true;
 			}
+			MIRInstrKind::Assign {
+				left,
+				right: DeclareBinding::Condition(condition),
+			} => {
+				let result = const_eval_condition(condition);
+				if let Some(result) = result {
+					instr.kind = MIRInstrKind::Assign {
+						left: left.clone(),
+						right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(
+							ScoreTypeContents::Bool(result),
+						))),
+					};
+				}
+			}
+			_ => {}
 		}
 	}
 

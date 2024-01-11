@@ -120,50 +120,7 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 			}
 		}
 		MIRInstrKind::If { condition, body } => {
-			match condition {
-				Condition::Equal(l, r)
-				| Condition::GreaterThan(l, r)
-				| Condition::GreaterThanOrEqual(l, r)
-				| Condition::LessThan(l, r)
-				| Condition::LessThanOrEqual(l, r) => {
-					if let Value::Mutable(MutableValue::Reg(reg)) = l {
-						if let Some(val) = an.vals.get(reg) {
-							if let ConstAnalyzerValue::Value(val) = val {
-								*l = Value::Constant(val.clone());
-								*run_again = true;
-							}
-						}
-					}
-					if let Value::Mutable(MutableValue::Reg(reg)) = r {
-						if let Some(val) = an.vals.get(reg) {
-							if let ConstAnalyzerValue::Value(val) = val {
-								*r = Value::Constant(val.clone());
-								*run_again = true;
-							}
-						}
-					}
-				}
-				Condition::Exists(val) => {
-					if let Value::Mutable(MutableValue::Reg(reg)) = val {
-						if let Some(val) = an.vals.get(reg) {
-							match val {
-								ConstAnalyzerValue::Reset(..) => {
-									*condition = Condition::Bool(Value::Constant(
-										DataTypeContents::Score(ScoreTypeContents::Bool(false)),
-									));
-								}
-								ConstAnalyzerValue::Value(..) => {
-									*condition = Condition::Bool(Value::Constant(
-										DataTypeContents::Score(ScoreTypeContents::Bool(true)),
-									));
-								}
-							}
-							*run_again = true;
-						}
-					}
-				}
-				_ => {}
-			}
+			const_prop_condition(condition, an, run_again);
 			// Since eq and bool both check if a value is equal to something,
 			// that value is then guaranteed to be the value it is equal to
 			// in the body of the if
@@ -197,6 +154,10 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 				}
 			}
 		}
+		MIRInstrKind::Assign {
+			right: DeclareBinding::Condition(cond),
+			..
+		} => const_prop_condition(cond, an, run_again),
 		MIRInstrKind::As { body, .. }
 		| MIRInstrKind::At { body, .. }
 		| MIRInstrKind::StoreResult { body, .. }
@@ -207,4 +168,56 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 		}
 		_ => {}
 	};
+}
+
+fn const_prop_condition(
+	condition: &mut Condition,
+	an: &mut StoringConstAnalyzer,
+	run_again: &mut bool,
+) {
+	match condition {
+		Condition::Equal(l, r)
+		| Condition::GreaterThan(l, r)
+		| Condition::GreaterThanOrEqual(l, r)
+		| Condition::LessThan(l, r)
+		| Condition::LessThanOrEqual(l, r) => {
+			if let Value::Mutable(MutableValue::Reg(reg)) = l {
+				if let Some(val) = an.vals.get(reg) {
+					if let ConstAnalyzerValue::Value(val) = val {
+						*l = Value::Constant(val.clone());
+						*run_again = true;
+					}
+				}
+			}
+			if let Value::Mutable(MutableValue::Reg(reg)) = r {
+				if let Some(val) = an.vals.get(reg) {
+					if let ConstAnalyzerValue::Value(val) = val {
+						*r = Value::Constant(val.clone());
+						*run_again = true;
+					}
+				}
+			}
+		}
+		Condition::Exists(val) => {
+			if let Value::Mutable(MutableValue::Reg(reg)) = val {
+				if let Some(val) = an.vals.get(reg) {
+					match val {
+						ConstAnalyzerValue::Reset(..) => {
+							*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+								ScoreTypeContents::Bool(false),
+							)));
+						}
+						ConstAnalyzerValue::Value(..) => {
+							*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+								ScoreTypeContents::Bool(true),
+							)));
+						}
+					}
+					*run_again = true;
+				}
+			}
+		}
+		Condition::Not(cond) => const_prop_condition(cond, an, run_again),
+		_ => {}
+	}
 }
