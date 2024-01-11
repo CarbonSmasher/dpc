@@ -46,3 +46,10 @@
 	set %y, %out;
 	use %y;
 }
+
+@preserve
+"test:zero_mul" {
+	let x: score = val 0s;
+	mul %x, sco @s[] "foo";
+	use %x;
+}

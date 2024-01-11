@@ -1,8 +1,10 @@
 # mir_passes
 
 @preserve
-"test:main" {
-	# If cond assign
+"test:main" {}
+
+@preserve
+"fold:if_cond_assign" {
 	let a: score = val 0s;
 	if bio ~0 ~0 ~0, "forest":
 		set %a, 1s;
@@ -11,4 +13,17 @@
 	if pred "foo":
 		set %b, 0s;
 	use %b;
+}
+
+@preserve
+"fold:assign_const_add" {
+	let a: score = val sco @s[] "foo";
+	let b: score = val 0s;
+	add %b, %a;
+	use %b;
+
+	let c: score = val sco @s[] "foo";
+	let d: score = val 10s;
+	add %d, %c;
+	use %d;
 }

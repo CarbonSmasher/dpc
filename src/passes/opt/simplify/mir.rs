@@ -67,6 +67,15 @@ fn run_mir_simplify_iter(
 				left,
 				right: Value::Mutable(right),
 			} if left.is_same_val(right) => true,
+			// Adds and subs by 0
+			MIRInstrKind::Add {
+				right: Value::Constant(DataTypeContents::Score(val)),
+				..
+			}
+			| MIRInstrKind::Sub {
+				right: Value::Constant(DataTypeContents::Score(val)),
+				..
+			} if val.get_i32() == 0 => true,
 			// Multiplies and divides by 1
 			MIRInstrKind::Mul {
 				left: _,
@@ -123,6 +132,7 @@ fn run_mir_simplify_iter(
 					false
 				}
 			}
+			MIRInstrKind::NoOp => true,
 			_ => false,
 		};
 

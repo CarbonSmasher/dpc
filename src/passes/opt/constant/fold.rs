@@ -337,6 +337,27 @@ fn run_const_fold_iter(
 					}
 				}
 			}
+			// Mul or div a value that is const as zero
+			MIRInstrKind::Mul {
+				left: MutableValue::Reg(left),
+				right: Value::Mutable(..),
+			}
+			| MIRInstrKind::Div {
+				left: MutableValue::Reg(left),
+				right: Value::Mutable(..),
+			} => {
+				if let Some(left) = fold_points.get_mut(left) {
+					if !left.finished {
+						if let FoldValue::Score(Some(value)) = &mut left.value {
+							if value == &0 {
+								instrs_to_remove.insert(i);
+								left.has_folded = true;
+								run_again = true;
+							}
+						}
+					}
+				}
+			}
 			_ => {}
 		};
 		let an_result = an.feed(&instr.kind)?;

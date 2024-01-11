@@ -9,3 +9,6 @@ scoreboard players set %rtest_main0 _r 10
 scoreboard players operation %rtest_main0 _r *= %l6 _l
 scoreboard players set %rtest_main0 _r 18
 scoreboard players set %rtest_main0 _r 18
+
+# === test:zero_mul === #
+scoreboard players set %rtest_zero_mul0 _r 0
