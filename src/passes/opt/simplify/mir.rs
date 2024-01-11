@@ -95,7 +95,7 @@ fn run_mir_simplify_iter(
 				left: _,
 				right: Value::Constant(DataTypeContents::Score(score)),
 			} if score.get_i32() == 1 => true,
-			// And / or with self is identity		
+			// And / or with self is identity
 			MIRInstrKind::And {
 				left,
 				right: Value::Mutable(right),
@@ -115,6 +115,14 @@ fn run_mir_simplify_iter(
 				right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Compound(_, comp))),
 				..
 			} if comp.is_empty() => true,
+			// Noop inside of an if can be removed
+			MIRInstrKind::If { body, .. } => {
+				if let MIRInstrKind::NoOp = body.as_ref() {
+					true
+				} else {
+					false
+				}
+			}
 			_ => false,
 		};
 

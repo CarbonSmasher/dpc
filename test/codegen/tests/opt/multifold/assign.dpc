@@ -1,0 +1,14 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	# If cond assign
+	let a: score = val 0s;
+	if bio ~0 ~0 ~0, "forest":
+		set %a, 1s;
+	use %a;
+	let b: score = val 1s;
+	if pred "foo":
+		set %b, 0s;
+	use %b;
+}

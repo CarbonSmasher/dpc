@@ -18,6 +18,7 @@ use self::opt::func::inline::SimpleInlinePass;
 use self::opt::func::unused_args::UnusedArgsPass;
 use self::opt::modifiers::merge::MergeModifiersPass;
 use self::opt::modifiers::simplify::SimplifyModifiersPass;
+use self::opt::multifold::assign::MultifoldAssignPass;
 use self::opt::multifold::inst_combine::InstCombinePass;
 use self::opt::scoreboard_dataflow::ScoreboardDataflowPass;
 use self::opt::simplify::{lir::LIRSimplifyPass, mir::MIRSimplifyPass};
@@ -68,6 +69,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(MIRSimplifyPass),
 		Box::new(DSEPass),
 		Box::new(InstCombinePass),
+		Box::new(MultifoldAssignPass),
 		Box::new(ConstPropPass::new()),
 		Box::new(MIRSimplifyPass),
 		Box::new(ConstFoldPass::new()),
@@ -75,6 +77,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(CleanupReturnPass),
 		Box::new(InlineCandidatesPass),
 		Box::new(SimpleInlinePass),
+		Box::new(MultifoldAssignPass),
 		Box::new(ConstComboPass),
 		Box::new(DSEPass),
 		Box::new(MIRSimplifyPass),
