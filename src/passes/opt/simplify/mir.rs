@@ -124,6 +124,18 @@ fn run_mir_simplify_iter(
 				right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Compound(_, comp))),
 				..
 			} if comp.is_empty() => true,
+			// Get instructions without their results stored don't do anything
+			MIRInstrKind::GetConst { .. }
+			| MIRInstrKind::Get { .. }
+			| MIRInstrKind::MC(
+				MinecraftInstr::GetAttribute { .. }
+				| MinecraftInstr::GetAttributeBase { .. }
+				| MinecraftInstr::GetAttributeModifier { .. }
+				| MinecraftInstr::GetDifficulty
+				| MinecraftInstr::GetGamerule { .. }
+				| MinecraftInstr::GetTime { .. }
+				| MinecraftInstr::GetXP { .. },
+			) => true,
 			// Noop inside of an if can be removed
 			MIRInstrKind::If { body, .. } => {
 				if let MIRInstrKind::NoOp = body.as_ref() {

@@ -21,6 +21,7 @@ use self::opt::modifiers::simplify::SimplifyModifiersPass;
 use self::opt::multifold::assign::MultifoldAssignPass;
 use self::opt::multifold::inst_combine::InstCombinePass;
 use self::opt::scoreboard_dataflow::ScoreboardDataflowPass;
+use self::opt::simplify::cleanup::CleanupPass;
 use self::opt::simplify::{lir::LIRSimplifyPass, mir::MIRSimplifyPass};
 
 pub mod analysis;
@@ -58,6 +59,7 @@ pub struct MIRPassData<'mir> {
 pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn MIRPass>,
+		Box::new(CleanupPass),
 		Box::new(CleanupReturnPass),
 		Box::new(DCEPass),
 		Box::new(InlineCandidatesPass),
@@ -77,6 +79,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(CleanupReturnPass),
 		Box::new(InlineCandidatesPass),
 		Box::new(SimpleInlinePass),
+		Box::new(CleanupPass),
 		Box::new(MultifoldAssignPass),
 		Box::new(ConstComboPass),
 		Box::new(DSEPass),
