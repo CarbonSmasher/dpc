@@ -1,4 +1,4 @@
-# lir_passes mir_passes
+# split
 
 @preserve
 "test:main" {

@@ -2,8 +2,8 @@ mod common;
 
 use std::{fs::File, io::Write, path::PathBuf};
 
-use common::{create_output, get_control_comment, TEST_ENTRYPOINT};
-use dpc::{codegen_ir, parse::Parser};
+use common::{create_output, generate_datapacks, get_control_comment};
+use dpc::parse::Parser;
 
 fn main() {
 	let test_dir = PathBuf::from("./test/codegen/tests");
@@ -17,17 +17,13 @@ fn main() {
 	let ir = parse.finish();
 
 	// Run the codegen
-	let (settings, project) = get_control_comment(&input).expect("Failed to get control comment");
-	let datapack = codegen_ir(ir, &project, settings).expect("Failed to codegen input");
-
-	// Check the test function
-	datapack
-		.functions
-		.get(TEST_ENTRYPOINT)
-		.expect("Test function does not exist");
+	let (settings, project, split) =
+		get_control_comment(&input).expect("Failed to get control comment");
+	let datapacks =
+		generate_datapacks(ir, project, settings, split).expect("Failed to codegen input");
 
 	let mut out_file = File::create(test_dir.join(format!("{test_name}.mcfunction")))
 		.expect("Failed to create output file");
-	let output = create_output(datapack).expect("Failed to output generated test");
+	let output = create_output(datapacks).expect("Failed to output generated test");
 	write!(&mut out_file, "{output}").expect("Failed to write");
 }

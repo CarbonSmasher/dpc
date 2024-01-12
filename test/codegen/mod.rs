@@ -4,7 +4,8 @@ use std::{fmt::Debug, io::Write, panic::catch_unwind, path::PathBuf, time::Insta
 
 use anyhow::{bail, Context};
 use color_print::cprintln;
-use dpc::{codegen_ir, parse::Parser};
+use common::generate_datapacks;
+use dpc::parse::Parser;
 use include_dir::{include_dir, Dir, DirEntry, File};
 
 use crate::common::{create_output, get_control_comment, TEST_ENTRYPOINT};
@@ -110,9 +111,10 @@ fn run_test(test_name: &str, generate: bool) -> anyhow::Result<()> {
 	ir.functions.insert(actual.0, actual.1);
 
 	// Run the codegen
-	let (settings, project) =
+	let (settings, project, split) =
 		get_control_comment(input_contents).expect("Failed to get control comment");
-	let datapack = codegen_ir(ir, &project, settings).context("Failed to codegen input")?;
+	let datapacks =
+		generate_datapacks(ir, project, settings, split).context("Failed to codegen input")?;
 
 	// Generate if we need to
 	if generate {
@@ -121,14 +123,10 @@ fn run_test(test_name: &str, generate: bool) -> anyhow::Result<()> {
 			.join(format!("{test_name}.mcfunction"));
 		println!("Regenerating...");
 		let mut out_file = std::fs::File::create(test_path).expect("Failed to create output file");
-		let output = create_output(datapack).expect("Failed to output generated test");
+		let output = create_output(datapacks).expect("Failed to output generated test");
 		write!(&mut out_file, "{output}").expect("Failed to write");
 	} else {
-		// Check the test function
-		let Some(..) = datapack.functions.get(TEST_ENTRYPOINT) else {
-			bail!("Test function does not exist")
-		};
-		let actual = create_output(datapack).expect("Failed to create actual test output");
+		let actual = create_output(datapacks).expect("Failed to create actual test output");
 		assert_eq!(
 			actual.lines().count(),
 			output_contents.lines().count(),
