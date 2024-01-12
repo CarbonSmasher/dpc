@@ -51,6 +51,7 @@ fn run_iter(
 	let mut run_again = false;
 	let mut if_cond_assign = FxHashMap::<Identifier, IfCondAssign>::default();
 	let mut assign_const_add = FxHashMap::<Identifier, AssignConstAdd>::default();
+	let mut overwrite_op = FxHashMap::<Identifier, OverwriteOp>::default();
 
 	for (i, instr) in block.contents.iter().enumerate() {
 		// Even though this instruction hasn't actually been removed from the vec, we treat it
@@ -58,7 +59,27 @@ fn run_iter(
 		if removed.contains(&i) {
 			continue;
 		}
+
 		let mut regs_to_keep = FxHashSet::default();
+		let mut dont_create_new_overwrite_op = false;
+
+		match &instr.kind {
+			MIRInstrKind::Assign {
+				left: MutableValue::Reg(left),
+				right,
+			} => {
+				if let Some(fold) = overwrite_op.get_mut(left) {
+					if !fold.finished {
+						fold.right = Some(right.clone());
+						fold.end_pos = i;
+						fold.finished = true;
+						dont_create_new_overwrite_op = true;
+					}
+				}
+			}
+			_ => {}
+		}
+
 		match &instr.kind {
 			MIRInstrKind::Assign {
 				left: MutableValue::Reg(left),
@@ -138,6 +159,21 @@ fn run_iter(
 			_ => {}
 		}
 
+		if let Some(MutableValue::Reg(left)) = instr.kind.get_op_lhs() {
+			if !dont_create_new_overwrite_op {
+				overwrite_op.insert(
+					left.clone(),
+					OverwriteOp {
+						finished: false,
+						start_pos: i,
+						end_pos: i,
+						right: None,
+					},
+				);
+			}
+			regs_to_keep.insert(left.clone());
+		}
+
 		let used_regs = instr.kind.get_used_regs();
 		for reg in used_regs.into_iter().filter(|x| !regs_to_keep.contains(*x)) {
 			if_cond_assign.get_mut(reg).map(|x| x.finished = true);
@@ -149,11 +185,11 @@ fn run_iter(
 					}
 				}
 			}
+			overwrite_op.get_mut(reg).map(|x| x.finished = true);
 		}
 	}
 
 	// Finish the folds
-
 	for (reg, fold) in if_cond_assign {
 		if let Some(condition) = fold.condition {
 			run_again = true;
@@ -189,6 +225,21 @@ fn run_iter(
 				right: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(
 					fold.const_val,
 				))),
+			};
+		}
+	}
+
+	for (reg, fold) in overwrite_op {
+		if let Some(right) = fold.right {
+			run_again = true;
+			removed.insert(fold.start_pos);
+			block
+				.contents
+				.get_mut(fold.end_pos)
+				.expect("Instr at pos does not exist")
+				.kind = MIRInstrKind::Assign {
+				left: MutableValue::Reg(reg),
+				right,
 			};
 		}
 	}
@@ -234,4 +285,16 @@ struct ManualSwap {
 	pos3: usize,
 	left: Option<Identifier>,
 	right: Option<Identifier>,
+}
+
+/// Simplifies:
+/// x o= ..; x = y
+/// to:
+/// x = y
+#[derive(Debug)]
+struct OverwriteOp {
+	finished: bool,
+	start_pos: usize,
+	end_pos: usize,
+	right: Option<DeclareBinding>,
 }

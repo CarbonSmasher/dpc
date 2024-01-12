@@ -12,6 +12,7 @@
 	use %y;
 }
 
+@preserve
 "test:sine" score : score {
 	# Init
 	let in: score = val &0;

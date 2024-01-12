@@ -27,3 +27,11 @@
 	add %d, %c;
 	use %d;
 }
+
+@preserve
+"fold:overwrite_op" {
+	let a: score = val sco @s[] "foo";
+	mul %a, 7s;
+	set %a, 6s;
+	use %a;
+}

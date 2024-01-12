@@ -1,6 +1,7 @@
 # === dpc:init === #
 scoreboard objectives add _r dummy
 scoreboard objectives add _l dummy
+scoreboard players set %l1 _l 1
 scoreboard players set %l2 _l 2
 
 # === test:main === #
@@ -15,6 +16,7 @@ scoreboard players operation %rtest_main0 _r *= foo bar
 say Guaranteed
 scoreboard players operation %rtest_main0 _r *= %l2 _l
 scoreboard players set %rtest_main0 _r 0
+scoreboard players operation %rtest_main0 _r %= %l1 _l
 scoreboard players set @s foo 1
 scoreboard players set @s foo 0
 data modify entity @s name.bar set value 7b

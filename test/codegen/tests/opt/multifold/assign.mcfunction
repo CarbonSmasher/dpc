@@ -12,4 +12,7 @@ scoreboard players add %rfold_assign_const_add0 _r 10
 execute store success score %rfold_if_cond_assign0 _r if biome ~ ~ ~ forest
 execute store success score %rfold_if_cond_assign0 _r unless predicate foo
 
+# === fold:overwrite_op === #
+scoreboard players set %rfold_overwrite_op0 _r 6
+
 # === test:main === #

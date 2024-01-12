@@ -218,6 +218,29 @@ impl MIRInstrKind {
 			_ => None,
 		}
 	}
+
+	pub fn get_op_lhs(&self) -> Option<&MutableValue> {
+		match self {
+			Self::Assign { left, .. }
+			| Self::Add { left, .. }
+			| Self::Sub { left, .. }
+			| Self::Mul { left, .. }
+			| Self::Div { left, .. }
+			| Self::Mod { left, .. }
+			| Self::Min { left, .. }
+			| Self::Max { left, .. }
+			| Self::Merge { left, .. }
+			| Self::Insert { left, .. }
+			| Self::Push { left, .. }
+			| Self::PushFront { left, .. }
+			| Self::Remove { val: left, .. }
+			| Self::And { left, .. }
+			| Self::Or { left, .. }
+			| Self::Not { value: left, .. }
+			| Self::Abs { val: left, .. } => Some(left),
+			_ => None,
+		}
+	}
 }
 
 impl GetUsedRegs for MIRInstrKind {

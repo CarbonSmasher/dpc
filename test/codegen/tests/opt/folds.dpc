@@ -32,9 +32,13 @@
 	
 	# Math folds
 	add %x, %x;
+	use %x;
 	sub %x, %x;
+	use %x;
 	div %x, 1s;
+	use %x;
 	mod %x, 1s;
+	use %x;
 
 	# Boolean folds
 	or sco @s[] "foo", 0s;
