@@ -1,5 +1,7 @@
 # === dpc:init === #
 scoreboard objectives add _r dummy
+scoreboard objectives add _l dummy
+scoreboard players set %l3 _l 3
 
 # === fold:assign_const_add === #
 scoreboard players operation %rfold_assign_const_add0 _r = @s foo
@@ -14,5 +16,12 @@ execute store success score %rfold_if_cond_assign0 _r unless predicate foo
 
 # === fold:overwrite_op === #
 scoreboard players set %rfold_overwrite_op0 _r 6
+
+# === fold:stack_peak === #
+scoreboard players operation %rfold_stack_peak0 _r = @s foo
+scoreboard players operation %rfold_stack_peak0 _r *= %l3 _l
+scoreboard players remove %rfold_stack_peak0 _r 4
+scoreboard players operation %rfold_stack_peak0 _r /= @s bar
+scoreboard players add %rfold_stack_peak0 _r 1
 
 # === test:main === #

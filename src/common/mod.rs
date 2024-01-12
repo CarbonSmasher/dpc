@@ -2,6 +2,7 @@ pub mod block;
 pub mod condition;
 pub mod function;
 pub mod mc;
+pub mod op;
 pub mod range;
 pub mod reg;
 pub mod ty;

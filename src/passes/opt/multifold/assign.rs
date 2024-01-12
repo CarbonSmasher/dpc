@@ -1,7 +1,8 @@
 use anyhow::anyhow;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::common::condition::Condition;
+use crate::common::op::Operation;
 use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::DeclareBinding;
@@ -52,6 +53,15 @@ fn run_iter(
 	let mut if_cond_assign = FxHashMap::<Identifier, IfCondAssign>::default();
 	let mut assign_const_add = FxHashMap::<Identifier, AssignConstAdd>::default();
 	let mut overwrite_op = FxHashMap::<Identifier, OverwriteOp>::default();
+	let mut stack_peak = FxHashMap::<Identifier, StackPeak>::default();
+
+	#[derive(Default)]
+	struct RegsToKeep {
+		if_cond_assign: bool,
+		assign_const_add: bool,
+		overwrite_op: bool,
+		stack_peak: bool,
+	}
 
 	for (i, instr) in block.contents.iter().enumerate() {
 		// Even though this instruction hasn't actually been removed from the vec, we treat it
@@ -60,7 +70,7 @@ fn run_iter(
 			continue;
 		}
 
-		let mut regs_to_keep = FxHashSet::default();
+		let mut regs_to_keep = RegsToKeep::default();
 		let mut dont_create_new_overwrite_op = false;
 
 		match &instr.kind {
@@ -74,6 +84,33 @@ fn run_iter(
 						fold.end_pos = i;
 						fold.finished = true;
 						dont_create_new_overwrite_op = true;
+					}
+				}
+
+				if let DeclareBinding::Value(Value::Mutable(MutableValue::Reg(right))) = right {
+					if let Some(fold) = stack_peak.get_mut(right) {
+						if &fold.original_reg == left {
+							if !fold.finished {
+								fold.end_pos = i;
+								fold.finished = true;
+								regs_to_keep.stack_peak = true;
+							}
+						} else {
+							fold.finished = true;
+						}
+					} else {
+						stack_peak.insert(
+							left.clone(),
+							StackPeak {
+								finished: false,
+								start_pos: i,
+								end_pos: i,
+								original_reg: right.clone(),
+								op_poses: Vec::new(),
+								ops: Vec::new(),
+							},
+						);
+						regs_to_keep.stack_peak = true;
 					}
 				}
 			}
@@ -104,6 +141,7 @@ fn run_iter(
 							condition: None,
 						},
 					);
+					regs_to_keep.if_cond_assign = true;
 				}
 
 				assign_const_add.insert(
@@ -117,7 +155,7 @@ fn run_iter(
 					},
 				);
 
-				regs_to_keep.insert(left.clone());
+				regs_to_keep.assign_const_add = true;
 			}
 			MIRInstrKind::Add {
 				left: MutableValue::Reg(left),
@@ -128,7 +166,7 @@ fn run_iter(
 						fold.end_pos = i;
 						fold.right = Some(right.clone());
 						fold.finished = true;
-						regs_to_keep.insert(right.clone());
+						regs_to_keep.assign_const_add = true;
 					}
 				}
 			}
@@ -170,22 +208,68 @@ fn run_iter(
 						right: None,
 					},
 				);
+				regs_to_keep.overwrite_op = true;
 			}
-			regs_to_keep.insert(left.clone());
-		}
 
-		let used_regs = instr.kind.get_used_regs();
-		for reg in used_regs.into_iter().filter(|x| !regs_to_keep.contains(*x)) {
-			if_cond_assign.get_mut(reg).map(|x| x.finished = true);
-			assign_const_add.get_mut(reg).map(|x| x.finished = true);
-			for fold in assign_const_add.values_mut() {
-				if let Some(right) = &fold.right {
-					if right == reg {
-						fold.finished = true;
+			let mut remove_stack_peak = false;
+			// Remove stack peaks with the original reg as the lhs
+			for fold in stack_peak.values_mut() {
+				if &fold.original_reg == left {
+					remove_stack_peak = true;
+				}
+			}
+			if let Some(fold) = stack_peak.get_mut(left) {
+				if !fold.finished {
+					let op = Operation::from_instr(instr.kind.clone());
+					if let Some(op) = op {
+						// If the rhs is the same reg as the original reg, we have to invalidate
+						if let Some(Value::Mutable(MutableValue::Reg(rhs))) = op.get_rhs() {
+							if rhs == &fold.original_reg {
+								fold.finished = true;
+								// We have to totally remove it
+								remove_stack_peak = true;
+							}
+						}
+						if !fold.finished {
+							fold.op_poses.push(i);
+							fold.ops.push(op);
+							regs_to_keep.stack_peak = true;
+						}
 					}
 				}
 			}
-			overwrite_op.get_mut(reg).map(|x| x.finished = true);
+			if remove_stack_peak {
+				stack_peak.remove(left);
+			}
+		}
+
+		let used_regs = instr.kind.get_used_regs();
+		for reg in used_regs.into_iter() {
+			if !regs_to_keep.if_cond_assign {
+				if_cond_assign.get_mut(reg).map(|x| x.finished = true);
+			}
+			if !regs_to_keep.assign_const_add {
+				assign_const_add.get_mut(reg).map(|x| x.finished = true);
+				for fold in assign_const_add.values_mut() {
+					if let Some(right) = &fold.right {
+						if right == reg {
+							fold.finished = true;
+						}
+					}
+				}
+			}
+			if !regs_to_keep.overwrite_op {
+				overwrite_op.get_mut(reg).map(|x| x.finished = true);
+			}
+			if !regs_to_keep.stack_peak {
+				stack_peak.retain(|fold_reg, fold| {
+					if fold.finished {
+						true
+					} else {
+						fold_reg != reg && &fold.original_reg != reg
+					}
+				});
+			}
 		}
 	}
 
@@ -244,6 +328,22 @@ fn run_iter(
 		}
 	}
 
+	for (_, fold) in stack_peak {
+		if fold.finished && !fold.ops.is_empty() {
+			run_again = true;
+			removed.insert(fold.start_pos);
+			removed.insert(fold.end_pos);
+			for (mut op, pos) in fold.ops.into_iter().zip(fold.op_poses) {
+				op.set_lhs(MutableValue::Reg(fold.original_reg.clone()));
+				block
+					.contents
+					.get_mut(pos)
+					.expect("Instr at pos does not exist")
+					.kind = op.to_instr();
+			}
+		}
+	}
+
 	run_again
 }
 
@@ -291,10 +391,23 @@ struct ManualSwap {
 /// x o= ..; x = y
 /// to:
 /// x = y
-#[derive(Debug)]
 struct OverwriteOp {
 	finished: bool,
 	start_pos: usize,
 	end_pos: usize,
 	right: Option<DeclareBinding>,
+}
+
+/// Simplifies:
+/// x = y; x o= ..; ...; y = x
+/// to:
+/// y o= ..; ...
+#[derive(Debug)]
+struct StackPeak {
+	finished: bool,
+	start_pos: usize,
+	end_pos: usize,
+	original_reg: Identifier,
+	op_poses: Vec<usize>,
+	ops: Vec<Operation>,
 }

@@ -35,3 +35,15 @@
 	set %a, 6s;
 	use %a;
 }
+
+@preserve
+"fold:stack_peak" {
+	let a: score = val sco @s[] "foo";
+	mul %a, 3s;
+	let b: score = val %a;
+	sub %b, 4s;
+	div %b, sco @s[] "bar";
+	set %a, %b;
+	add %a, 1s;
+	use %a;
+}
