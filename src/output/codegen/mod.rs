@@ -56,7 +56,10 @@ impl<'proj> CodegenCx<'proj> {
 /// Different requirements that can be imposed on the output so that it generates
 /// certain functions only when necessary
 #[derive(Hash, PartialEq, Eq, Clone, Copy)]
-pub enum CodegenRequirement {}
+pub enum CodegenRequirement {
+	UseRegObjective,
+	UseRegStorage,
+}
 
 pub struct CodegenBlockCx<'ccx, 'proj> {
 	pub ccx: &'ccx mut CodegenCx<'proj>,
@@ -191,7 +194,7 @@ pub fn codegen_instr(
 			// one register objective, we can reset the whole player for
 			// a performance and code size gain
 			if let MutableScoreValue::Reg(..) = val {
-				let score = get_mut_score_val_score(val, &cbcx.ra, &cbcx.func_id)?;
+				let score = get_mut_score_val_score(val, cbcx)?;
 				Some(cgformat!(cbcx, "scoreboard players reset ", score.holder)?)
 			} else {
 				Some(cgformat!(cbcx, "scoreboard players reset ", val)?)

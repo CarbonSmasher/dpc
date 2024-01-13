@@ -1,3 +1,6 @@
+# === dpc:init === #
+scoreboard objectives add _r dummy
+
 # === test:main === #
 scoreboard players set atest_uses_all0 _r 0
 scoreboard players set atest_uses_all1 _r 1

@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 
 use crate::common::ResourceLocation;
 
-use super::codegen::CodegenCx;
+use super::codegen::{CodegenCx, CodegenRequirement};
 use super::datapack::{Function, Tag, TagInner};
 use super::text::{format_lit_fake_player, LIT_OBJECTIVE, REG_OBJECTIVE};
 
@@ -38,7 +38,11 @@ fn gen_init(ccx: &CodegenCx) -> Option<Function> {
 	let mut out = Function::new();
 	let mut function_needed = false;
 
-	if ccx.racx.has_allocated_reg() {
+	if ccx.racx.has_allocated_reg()
+		|| ccx
+			.requirements
+			.contains(&CodegenRequirement::UseRegObjective)
+	{
 		let cmd = format!("scoreboard objectives add {REG_OBJECTIVE} dummy");
 		out.contents.push(cmd);
 		function_needed = true;

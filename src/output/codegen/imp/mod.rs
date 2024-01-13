@@ -111,7 +111,7 @@ impl Codegen for ScoreValue {
 	where
 		F: std::fmt::Write,
 	{
-		let (score, lit) = get_score_val_score(self, &cbcx.ra, &cbcx.func_id)?;
+		let (score, lit) = get_score_val_score(self, cbcx)?;
 		cbcx.ccx.score_literals.extend(lit);
 		score.gen_writer(f, cbcx)
 	}
@@ -122,7 +122,7 @@ impl Codegen for MutableScoreValue {
 	where
 		F: std::fmt::Write,
 	{
-		let score = get_mut_score_val_score(self, &cbcx.ra, &cbcx.func_id)?;
+		let score = get_mut_score_val_score(self, cbcx)?;
 		score.gen_writer(f, cbcx)
 	}
 }
@@ -145,7 +145,7 @@ impl Codegen for MutableNBTValue {
 	where
 		F: std::fmt::Write,
 	{
-		let loc = get_mut_nbt_val_loc(self, &cbcx.ra, &cbcx.func_id)?;
+		let loc = get_mut_nbt_val_loc(self, cbcx)?;
 		loc.gen_writer(f, cbcx)?;
 
 		Ok(())

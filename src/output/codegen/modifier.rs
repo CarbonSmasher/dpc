@@ -31,7 +31,7 @@ pub fn codegen_modifier(
 							Some(cgformat!(cbcx, keyword, " score ", left, " matches ", lit)?)
 						}
 						ScoreValue::Mutable(val) => {
-							let val = get_mut_score_val_score(&val, &cbcx.ra, &cbcx.func_id)?;
+							let val = get_mut_score_val_score(&val, cbcx)?;
 							Some(cgformat!(cbcx, keyword, " score ", left, " = ", val)?)
 						}
 					},
@@ -232,7 +232,7 @@ fn codegen_if_score_range_side(
 			}
 		}
 		ScoreValue::Mutable(val) => {
-			let val = get_mut_score_val_score(&val, &cbcx.ra, &cbcx.func_id)?.gen_str(cbcx)?;
+			let val = get_mut_score_val_score(&val, cbcx)?.gen_str(cbcx)?;
 			let sign = if lt {
 				codegen_score_lt(inclusive)
 			} else {
