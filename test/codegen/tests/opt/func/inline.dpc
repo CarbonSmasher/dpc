@@ -1,0 +1,32 @@
+# mir_passes
+
+@preserve
+"test:main" {
+	call run "test:inline";
+	call run "test:dont_inline";
+	if pred "test:test":
+		call run "test:modifier_inline";
+	if pred "test:test":
+		call run "test:modifier_dont_inline";
+	as @s[]:
+		at @s[]:
+			call run "test:modifier_inline";
+}
+
+"test:inline" {
+	say "Inline me";
+}
+
+@no_inline
+"test:dont_inline" {
+	say "Don't inline me";
+}
+
+"test:modifier_inline" {
+	say "Inline me";
+}
+
+"test:modifier_dont_inline" {
+	say "Foo";
+	say "Bar";
+}
