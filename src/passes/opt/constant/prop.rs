@@ -198,6 +198,16 @@ fn const_prop_condition(
 				}
 			}
 		}
+		Condition::Bool(b) => {
+			if let Value::Mutable(MutableValue::Reg(reg)) = b {
+				if let Some(val) = an.vals.get(reg) {
+					if let ConstAnalyzerValue::Value(val) = val {
+						*b = Value::Constant(val.clone());
+						*run_again = true;
+					}
+				}
+			}
+		}
 		Condition::Exists(val) => {
 			if let Value::Mutable(MutableValue::Reg(reg)) = val {
 				if let Some(val) = an.vals.get(reg) {

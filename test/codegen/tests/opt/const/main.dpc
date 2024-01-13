@@ -53,3 +53,15 @@
 	mul %x, sco @s[] "foo";
 	use %x;
 }
+
+@preserve
+"test:setblock" {
+	call run "test:setblock_fn", false;
+}
+
+"test:setblock_fn" bool {
+	if bool &0:
+		cmd "setblock ~ ~ ~ stone";
+	if not bool &0:
+		cmd "setblock ~ ~ ~ smooth_stone";
+}
