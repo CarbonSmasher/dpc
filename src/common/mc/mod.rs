@@ -17,7 +17,7 @@ use self::entity::TargetSelector;
 use super::ty::ArraySize;
 use super::ResourceLocation;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub enum EntityTarget {
 	Player(String),
 	Selector(TargetSelector),
@@ -43,7 +43,7 @@ impl Debug for EntityTarget {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub struct Score {
 	pub holder: EntityTarget,
 	pub objective: Identifier,
@@ -85,7 +85,7 @@ impl Debug for DataPath {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DataLocation {
 	Block(IntCoordinates),
 	Entity(EntityTarget),
@@ -100,7 +100,7 @@ impl DataLocation {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FullDataLocation {
 	pub loc: DataLocation,
 	pub path: DataPath,

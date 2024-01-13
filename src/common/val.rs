@@ -96,7 +96,7 @@ impl Debug for Value {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub enum MutableValue {
 	Reg(Identifier),
 	Score(Score),

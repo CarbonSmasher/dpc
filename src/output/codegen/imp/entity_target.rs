@@ -29,6 +29,9 @@ impl Codegen for TargetSelector {
 			write!(f, "[")?;
 			for (i, param) in self.params.iter().enumerate() {
 				match param {
+					SelectorParameter::Distance { range } => {
+						cgwrite!(f, cbcx, "distance=", range)?;
+					}
 					SelectorParameter::Type { ty, invert } => {
 						let invert = gen_invert_char(*invert);
 						write!(f, "type={invert}{ty}")?;

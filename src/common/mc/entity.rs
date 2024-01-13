@@ -1,8 +1,10 @@
 use std::fmt::{Debug, Display};
 
+use crate::common::range::FloatRange;
+
 use super::{super::ty::NBTCompoundTypeContents, Gamemode};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub struct TargetSelector {
 	pub selector: SelectorType,
 	pub params: Vec<SelectorParameter>,
@@ -89,8 +91,11 @@ impl SelectorType {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SelectorParameter {
+	Distance {
+		range: FloatRange,
+	},
 	Type {
 		ty: String,
 		invert: bool,

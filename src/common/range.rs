@@ -4,9 +4,14 @@ use num_traits::{Bounded, NumOps, One, PrimInt, Signed};
 
 use crate::output::codegen::Codegen;
 
+use super::ty::{Int, Float};
+
 // I love traits
-pub trait Rangeable: Sized + NumOps + Bounded + Eq + Ord + Signed + Display + Copy {}
-impl<S> Rangeable for S where S: Sized + NumOps + Bounded + Eq + Ord + Signed + Display + Copy {}
+pub trait Rangeable: Sized + NumOps + Bounded + PartialEq + PartialOrd + Signed + Display + Copy {}
+impl<S> Rangeable for S where S: Sized + NumOps + Bounded + PartialEq + PartialOrd + Signed + Display + Copy {}
+
+pub type IntRange = Range<Int>;
+pub type FloatRange = Range<Float>;
 
 /// An inclusive integer range with the ability to have
 /// an infinite value on both sides
