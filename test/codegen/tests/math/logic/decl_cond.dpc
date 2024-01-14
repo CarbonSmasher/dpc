@@ -3,4 +3,6 @@
 	let y: score = val 991s;
 	let cond: bool = cond eq %x, %y;
 	use %cond;
+	let cond2: bool = cond not eq %x, %y;
+	use %cond2;
 }

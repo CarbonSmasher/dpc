@@ -1,0 +1,11 @@
+#
+
+@preserve
+"test:main" {}
+
+@preserve
+"fold:assign_if_bool" {
+	let x: bool = cond eq sco @s[] "foo", 7s;
+	if not bool %x:
+		say "hello";
+}

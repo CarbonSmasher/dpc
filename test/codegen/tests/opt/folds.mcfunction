@@ -4,6 +4,9 @@ scoreboard objectives add _l dummy
 scoreboard players set %l1 _l 1
 scoreboard players set %l2 _l 2
 
+# === test:let_cond === #
+scoreboard players operation %rtest_let_cond0 _r = @s foo
+
 # === test:main === #
 scoreboard players operation %rtest_main0 _r = foo bar
 scoreboard players operation %rtest_main0 _r = foo bar

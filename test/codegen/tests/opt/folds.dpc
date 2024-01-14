@@ -68,3 +68,9 @@
 
 	use %x;
 }
+
+@preserve
+"test:let_cond" {
+	let cond: bool = cond bool sco @s[] "foo";
+	use %cond;
+}

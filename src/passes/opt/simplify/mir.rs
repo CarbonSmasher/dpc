@@ -159,6 +159,14 @@ fn run_mir_simplify_iter(
 
 		// Instructions to replace
 		let kind_repl = match &instr.kind {
+			// x = cond bool y is same as x = y
+			MIRInstrKind::Assign {
+				left,
+				right: DeclareBinding::Condition(Condition::Bool(right)),
+			} => Some(MIRInstrKind::Assign {
+				left: left.clone(),
+				right: DeclareBinding::Value(right.clone()),
+			}),
 			// Div by -1 is same as mul by -1
 			MIRInstrKind::Div {
 				left,
@@ -340,22 +348,38 @@ fn run_mir_simplify_iter(
 				location: StoreModLocation::Reg(left, left_scale),
 				body,
 			} => {
-				// str x: get y -> x = y (essentially)
-				if let MIRInstrKind::Get {
-					value: right,
-					scale: right_scale,
-				} = body.as_ref()
-				{
-					if left_scale * right_scale == 1.0 {
-						Some(MIRInstrKind::Assign {
-							left: MutableValue::Reg(left.clone()),
-							right: DeclareBinding::Value(Value::Mutable(right.clone())),
-						})
-					} else {
-						None
+				match body.as_ref() {
+					// str x: get y -> x = y (essentially)
+					MIRInstrKind::Get {
+						value: right,
+						scale: right_scale,
+					} => {
+						if left_scale * right_scale == 1.0 {
+							Some(MIRInstrKind::Assign {
+								left: MutableValue::Reg(left.clone()),
+								right: DeclareBinding::Value(Value::Mutable(right.clone())),
+							})
+						} else {
+							None
+						}
 					}
-				} else {
-					None
+					_ => None,
+				}
+			}
+			MIRInstrKind::StoreSuccess {
+				location: StoreModLocation::Reg(left, left_scale),
+				body,
+			} if left_scale == &1.0 => {
+				match body.as_ref() {
+					// Canonicalize to let cond
+					MIRInstrKind::If { condition, body } => match body.as_ref() {
+						MIRInstrKind::NoOp => Some(MIRInstrKind::Assign {
+							left: MutableValue::Reg(left.clone()),
+							right: DeclareBinding::Condition(condition.clone()),
+						}),
+						_ => None,
+					},
+					_ => None,
 				}
 			}
 			_ => None,
