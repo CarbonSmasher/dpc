@@ -96,24 +96,55 @@ fn run_simple_inline_iter(
 				run_again = true;
 			}
 		}
-		if let Some(body) = instr.kind.get_body_mut() {
-			if let MIRInstrKind::Call { call } = body {
-				let block = get_inlined_block(
-					call,
-					inline_candidates,
-					interface,
-					cloned_funcs,
-					cloned_blocks,
-					&regs,
-				)?;
-				if let Some(block) = block {
-					// We can only inline blocks that are one instruction long
-					if block.len() == 1 {
-						let instr = block.first().expect("Length is 1");
-						*body = instr.kind.clone();
+		if instr.kind.get_body().is_some() {
+			fn inner(
+				instr: &mut MIRInstrKind,
+				inline_candidates: &FxHashSet<ResourceLocation>,
+				interface: &FunctionInterface,
+				cloned_funcs: &FxHashMap<ResourceLocation, Function>,
+				cloned_blocks: &BlockAllocator<MIRBlock>,
+				regs: &RegisterList,
+			) -> anyhow::Result<()> {
+				if let MIRInstrKind::Call { call } = instr {
+					let block = get_inlined_block(
+						call,
+						inline_candidates,
+						interface,
+						cloned_funcs,
+						cloned_blocks,
+						&regs,
+					)?;
+					if let Some(block) = block {
+						// We can only inline blocks that are one instruction long
+						if block.len() == 1 {
+							let body_instr = block.first().expect("Length is 1");
+							*instr = body_instr.kind.clone();
+						}
+					}
+				} else {
+					if let Some(body) = instr.get_body_mut() {
+						inner(
+							body,
+							inline_candidates,
+							interface,
+							cloned_funcs,
+							cloned_blocks,
+							regs,
+						)?;
 					}
 				}
+
+				Ok(())
 			}
+
+			inner(
+				&mut instr.kind,
+				inline_candidates,
+				interface,
+				cloned_funcs,
+				cloned_blocks,
+				&regs,
+			)?;
 		}
 	}
 

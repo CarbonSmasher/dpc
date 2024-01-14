@@ -207,7 +207,7 @@ impl MIRInstrKind {
 		}
 	}
 
-	pub fn get_body_mut(&mut self) -> Option<&mut MIRInstrKind> {
+	pub fn get_body_mut<'a>(&'a mut self) -> Option<&'a mut MIRInstrKind> {
 		match self {
 			Self::As { body, .. }
 			| Self::At { body, .. }
@@ -218,6 +218,23 @@ impl MIRInstrKind {
 			_ => None,
 		}
 	}
+
+	/// Gets the final body in a chain of multiple instructions with bodies
+	// pub fn get_final_body_mut<'a>(&'a mut self) -> Option<&'a mut MIRInstrKind> {
+	// 	fn inner<'a>(instr: &'a mut MIRInstrKind, first: bool) -> Option<&'a mut MIRInstrKind> {
+	// 		if let Some(body) = instr.get_body_mut() {
+	// 			inner(body, false)
+	// 		} else {
+	// 			if first {
+	// 				None
+	// 			} else {
+	// 				Some(instr)
+	// 			}
+	// 		}
+	// 	}
+
+	// 	inner(self, true)
+	// }
 
 	pub fn get_op_lhs(&self) -> Option<&MutableValue> {
 		match self {
@@ -302,3 +319,17 @@ impl GetUsedRegs for MIRInstrKind {
 		}
 	}
 }
+
+// pub struct MIRInstrBodyIter<'instr> {
+// 	instr: &'instr mut MIRInstrKind,
+// }
+
+// impl<'instr> Iterator for MIRInstrBodyIter<'instr> {
+// 	type Item = &'instr mut MIRInstrKind;
+// 	fn next(&mut self) -> Option<Self::Item> {
+// 		self.instr.get_body_mut().take().map(|node| {
+// 				self.instr = node.as_deref_mut();
+// 				&mut node.elem
+// 		})
+// 	}
+// }
