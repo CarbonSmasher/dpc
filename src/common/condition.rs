@@ -17,6 +17,7 @@ pub enum Condition {
 	LessThan(Value, Value),
 	LessThanOrEqual(Value, Value),
 	Bool(Value),
+	NotBool(Value),
 	Entity(EntityTarget),
 	Predicate(ResourceLocation),
 	Biome(IntCoordinates, ResourceLocationTag),
@@ -36,7 +37,9 @@ impl Condition {
 					.into_iter()
 					.chain(r.get_used_regs_mut()),
 			),
-			Self::Exists(val) | Self::Bool(val) => Box::new(val.get_used_regs_mut().into_iter()),
+			Self::Exists(val) | Self::Bool(val) | Self::NotBool(val) => {
+				Box::new(val.get_used_regs_mut().into_iter())
+			}
 			Self::Not(condition) => condition.iter_used_regs_mut(),
 			Self::Entity(..)
 			| Self::Predicate(..)
@@ -53,7 +56,9 @@ impl Condition {
 			| Self::GreaterThanOrEqual(l, r)
 			| Self::LessThan(l, r)
 			| Self::LessThanOrEqual(l, r) => Box::new(l.iter_mut_val().into_iter().chain(r.iter_mut_val())),
-			Self::Exists(val) | Self::Bool(val) => Box::new(val.iter_mut_val().into_iter()),
+			Self::Exists(val) | Self::Bool(val) | Self::NotBool(val) => {
+				Box::new(val.iter_mut_val().into_iter())
+			}
 			Self::Not(condition) => condition.iter_mut_vals(),
 			Self::Entity(..)
 			| Self::Predicate(..)
@@ -75,7 +80,7 @@ impl GetUsedRegs for Condition {
 				l.append_used_regs(regs);
 				r.append_used_regs(regs);
 			}
-			Self::Exists(val) | Self::Bool(val) => {
+			Self::Exists(val) | Self::Bool(val) | Self::NotBool(val) => {
 				val.append_used_regs(regs);
 			}
 			Self::Not(condition) => {
@@ -101,6 +106,7 @@ impl Debug for Condition {
 			Self::LessThan(l, r) => write!(f, "{l:?} < {r:?}"),
 			Self::LessThanOrEqual(l, r) => write!(f, "{l:?} <= {r:?}"),
 			Self::Bool(val) => write!(f, "bool {val:?}"),
+			Self::NotBool(val) => write!(f, "nbool {val:?}"),
 			Self::Entity(ent) => write!(f, "ent {ent:?}"),
 			Self::Predicate(pred) => write!(f, "pred {pred:?}"),
 			Self::Biome(loc, biome) => write!(f, "bio {loc:?} {biome}"),

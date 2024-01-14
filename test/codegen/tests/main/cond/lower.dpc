@@ -1,0 +1,12 @@
+# mir_passes
+
+@preserve
+"test:main" {}
+
+@preserve
+"test:bool_cond" {
+	if bool sco @s[] "foo":
+		say "hello";
+	if not bool sco @s[] "foo":
+		say "goodbye";
+}

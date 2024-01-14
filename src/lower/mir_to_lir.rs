@@ -890,19 +890,8 @@ fn lower_condition(
 				},
 			}),
 		),
-		Condition::Bool(val) => {
-			let ty = val.get_ty(&lbcx.registers, &lbcx.sig)?;
-			match ty {
-				DataType::Score(ScoreType::Bool) => (
-					Vec::new(),
-					IfModCondition::Score(IfScoreCondition::Single {
-						left: val.to_score_value()?,
-						right: ScoreValue::Constant(ScoreTypeContents::Bool(true)),
-					}),
-				),
-				_ => bail!("Condition does not allow this type"),
-			}
-		}
+		Condition::Bool(val) => (Vec::new(), lower_bool_cond(val, true, lbcx)?),
+		Condition::NotBool(val) => (Vec::new(), lower_bool_cond(val, false, lbcx)?),
 		Condition::Entity(ent) => (Vec::new(), IfModCondition::Entity(ent)),
 		Condition::Predicate(pred) => (Vec::new(), IfModCondition::Predicate(pred)),
 		Condition::Biome(loc, biome) => (Vec::new(), IfModCondition::Biome(loc, biome)),
@@ -911,6 +900,17 @@ fn lower_condition(
 	};
 
 	Ok((out.0, out.1, negate))
+}
+
+fn lower_bool_cond(val: Value, check: bool, lbcx: &LowerBlockCx) -> anyhow::Result<IfModCondition> {
+	let ty = val.get_ty(&lbcx.registers, &lbcx.sig)?;
+	match ty {
+		DataType::Score(..) => Ok(IfModCondition::Score(IfScoreCondition::Single {
+			left: val.to_score_value()?,
+			right: ScoreValue::Constant(ScoreTypeContents::Bool(check)),
+		})),
+		_ => bail!("Condition does not allow this type"),
+	}
 }
 
 fn lower_subinstr(instr: MIRInstrKind, lbcx: &mut LowerBlockCx) -> anyhow::Result<LIRInstruction> {

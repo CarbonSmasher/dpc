@@ -365,7 +365,27 @@ fn run_mir_simplify_iter(
 			instr.kind = kind_repl;
 			run_again = true;
 		}
+
+		if let MIRInstrKind::If { condition, .. }
+		| MIRInstrKind::Assign {
+			right: DeclareBinding::Condition(condition),
+			..
+		} = &mut instr.kind
+		{
+			simplify_condition(condition, &mut run_again);
+		}
 	}
 
 	run_again
+}
+
+fn simplify_condition(condition: &mut Condition, run_again: &mut bool) {
+	match condition {
+		Condition::Not(inner) => match inner.as_ref() {
+			// not bool -> nbool for better lowering
+			Condition::Bool(b) => *condition = Condition::NotBool(b.clone()),
+			_ => simplify_condition(inner, run_again),
+		},
+		_ => {}
+	}
 }

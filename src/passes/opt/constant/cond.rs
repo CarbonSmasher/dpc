@@ -125,6 +125,9 @@ fn const_eval_condition(condition: &Condition) -> Option<bool> {
 			Value::Constant(DataTypeContents::Score(r)),
 		) => Some(l.get_i32() <= r.get_i32()),
 		Condition::Bool(Value::Constant(DataTypeContents::Score(val))) => Some(val.get_i32() == 1),
+		Condition::NotBool(Value::Constant(DataTypeContents::Score(val))) => {
+			Some(val.get_i32() == 0)
+		}
 		Condition::Exists(Value::Constant(..)) => Some(true),
 		Condition::Not(condition) => const_eval_condition(condition).map(|x| !x),
 		_ => None,

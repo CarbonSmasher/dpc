@@ -198,7 +198,7 @@ fn const_prop_condition(
 				}
 			}
 		}
-		Condition::Bool(b) => {
+		Condition::Bool(b) | Condition::NotBool(b) => {
 			if let Value::Mutable(MutableValue::Reg(reg)) = b {
 				if let Some(val) = an.vals.get(reg) {
 					if let ConstAnalyzerValue::Value(val) = val {
