@@ -23,6 +23,10 @@
 	if not not not bool true:
 		say "hi";
 
+	# And
+	if and pred "foo:bar", pred "bar:foo":
+		say "hi";
+
 	# Game-related conditions
 	if ent @s[]:
 		say "hi";

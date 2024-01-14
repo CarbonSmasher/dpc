@@ -10,6 +10,7 @@ use std::iter;
 #[derive(Clone, PartialEq)]
 pub enum Condition {
 	Not(Box<Condition>),
+	And(Box<Condition>, Box<Condition>),
 	Equal(Value, Value),
 	Exists(Value),
 	GreaterThan(Value, Value),
@@ -41,6 +42,7 @@ impl Condition {
 				Box::new(val.get_used_regs_mut().into_iter())
 			}
 			Self::Not(condition) => condition.iter_used_regs_mut(),
+			Self::And(l, r) => Box::new(l.iter_used_regs_mut().chain(r.iter_used_regs_mut())),
 			Self::Entity(..)
 			| Self::Predicate(..)
 			| Self::Biome(..)
@@ -60,6 +62,7 @@ impl Condition {
 				Box::new(val.iter_mut_val().into_iter())
 			}
 			Self::Not(condition) => condition.iter_mut_vals(),
+			Self::And(l, r) => Box::new(l.iter_mut_vals().chain(r.iter_mut_vals())),
 			Self::Entity(..)
 			| Self::Predicate(..)
 			| Self::Biome(..)
@@ -86,6 +89,10 @@ impl GetUsedRegs for Condition {
 			Self::Not(condition) => {
 				condition.append_used_regs(regs);
 			}
+			Self::And(l, r) => {
+				l.append_used_regs(regs);
+				r.append_used_regs(regs);
+			}
 			Self::Entity(..)
 			| Self::Predicate(..)
 			| Self::Biome(..)
@@ -101,6 +108,7 @@ impl Debug for Condition {
 			Self::Equal(l, r) => write!(f, "{l:?} == {r:?}"),
 			Self::Exists(val) => write!(f, "exi {val:?}"),
 			Self::Not(condition) => write!(f, "not {condition:?}"),
+			Self::And(l, r) => write!(f, "and {l:?} {r:?}"),
 			Self::GreaterThan(l, r) => write!(f, "{l:?} > {r:?}"),
 			Self::GreaterThanOrEqual(l, r) => write!(f, "{l:?} >= {r:?}"),
 			Self::LessThan(l, r) => write!(f, "{l:?} < {r:?}"),

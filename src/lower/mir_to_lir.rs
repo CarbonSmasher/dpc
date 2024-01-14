@@ -196,19 +196,21 @@ fn lower_kind(
 			lower_pow(base, exp, lir_instrs, lbcx)?;
 		}
 		MIRInstrKind::If { condition, body } => {
-			let (prepend, condition, negate) =
+			let (prepend, conditions) =
 				lower_condition(condition, lbcx).context("Failed to lower condition")?;
 			lir_instrs.extend(prepend);
 
 			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower if body")?;
 
-			instr.modifiers.insert(
-				0,
-				Modifier::If {
-					condition: Box::new(condition),
-					negate,
-				},
-			);
+			for (condition, negate) in conditions {
+				instr.modifiers.insert(
+					0,
+					Modifier::If {
+						condition: Box::new(condition),
+						negate,
+					},
+				);
+			}
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::As { target, body } => {
@@ -406,12 +408,14 @@ fn lower_assign(
 			};
 			let mut instr = LIRInstruction::new(LIRInstrKind::NoOp);
 			instr.modifiers.push(Modifier::StoreSuccess(store_loc));
-			let (prelude, condition, negate) = lower_condition(cond.clone(), lbcx)?;
+			let (prelude, conditions) = lower_condition(cond.clone(), lbcx)?;
 			out.extend(prelude);
-			instr.modifiers.push(Modifier::If {
-				condition: Box::new(condition),
-				negate,
-			});
+			for (condition, negate) in conditions {
+				instr.modifiers.push(Modifier::If {
+					condition: Box::new(condition),
+					negate,
+				});
+			}
 			out.push(instr);
 
 			None
@@ -798,15 +802,16 @@ fn highest_power_of_2_factor(num: u8) -> u8 {
 }
 
 /// Returns a list of instructions to add before where the
-/// condition is used, the condition to use for the if
-/// modifier, and whether to negate it
+/// condition is used, the conditions to use for one or more if
+/// modifiers, and whether to negate each of those modifiers
 fn lower_condition(
 	condition: Condition,
 	lbcx: &LowerBlockCx,
-) -> anyhow::Result<(Vec<LIRInstruction>, IfModCondition, bool)> {
-	let mut negate = false;
+) -> anyhow::Result<(Vec<LIRInstruction>, Vec<(IfModCondition, bool)>)> {
+	let mut prelude = Vec::new();
+	let mut out = Vec::new();
 	// Make this account for ScoreValue changes
-	let out = match condition {
+	match condition {
 		Condition::Equal(l, r) => {
 			let lty = l.get_ty(&lbcx.registers, &lbcx.sig)?;
 			let rty = r.get_ty(&lbcx.registers, &lbcx.sig)?;
@@ -819,7 +824,7 @@ fn lower_condition(
 				}
 				_ => bail!("Condition does not allow these types"),
 			};
-			(Vec::new(), cond)
+			out.push((cond, false));
 		}
 		Condition::Exists(val) => {
 			let cond = match val.get_ty(&lbcx.registers, &lbcx.sig)? {
@@ -837,69 +842,104 @@ fn lower_condition(
 				},
 				_ => bail!("Type not supported"),
 			};
-
-			(Vec::new(), cond)
+			out.push((cond, false));
 		}
 		Condition::Not(condition) => {
-			let (prelude, condition, other_negate) =
+			let (other_prelude, condition) =
 				lower_condition(*condition, lbcx).context("Failed to lower not condition")?;
-			negate = !other_negate;
-			(prelude, condition)
+			// We can't do !(x and y) yet because the only way to do it is to do !x or !y,
+			// and or is not supported yet
+			if condition.len() != 1 {
+				bail!("not and is not supported");
+			}
+			let (condition, negate) = condition.first().expect("Length is 1");
+			prelude.extend(other_prelude);
+			out.push((condition.clone(), !negate));
 		}
-		Condition::GreaterThan(l, r) => (
-			Vec::new(),
-			IfModCondition::Score(IfScoreCondition::Range {
-				score: l.to_score_value()?,
-				left: IfScoreRangeEnd::Fixed {
-					value: r.to_score_value()?,
-					inclusive: false,
-				},
-				right: IfScoreRangeEnd::Infinite,
-			}),
-		),
-		Condition::GreaterThanOrEqual(l, r) => (
-			Vec::new(),
-			IfModCondition::Score(IfScoreCondition::Range {
-				score: l.to_score_value()?,
-				left: IfScoreRangeEnd::Fixed {
-					value: r.to_score_value()?,
-					inclusive: true,
-				},
-				right: IfScoreRangeEnd::Infinite,
-			}),
-		),
-		Condition::LessThan(l, r) => (
-			Vec::new(),
-			IfModCondition::Score(IfScoreCondition::Range {
-				score: l.to_score_value()?,
-				left: IfScoreRangeEnd::Infinite,
-				right: IfScoreRangeEnd::Fixed {
-					value: r.to_score_value()?,
-					inclusive: false,
-				},
-			}),
-		),
-		Condition::LessThanOrEqual(l, r) => (
-			Vec::new(),
-			IfModCondition::Score(IfScoreCondition::Range {
-				score: l.to_score_value()?,
-				left: IfScoreRangeEnd::Infinite,
-				right: IfScoreRangeEnd::Fixed {
-					value: r.to_score_value()?,
-					inclusive: true,
-				},
-			}),
-		),
-		Condition::Bool(val) => (Vec::new(), lower_bool_cond(val, true, lbcx)?),
-		Condition::NotBool(val) => (Vec::new(), lower_bool_cond(val, false, lbcx)?),
-		Condition::Entity(ent) => (Vec::new(), IfModCondition::Entity(ent)),
-		Condition::Predicate(pred) => (Vec::new(), IfModCondition::Predicate(pred)),
-		Condition::Biome(loc, biome) => (Vec::new(), IfModCondition::Biome(loc, biome)),
-		Condition::Loaded(loc) => (Vec::new(), IfModCondition::Loaded(loc)),
-		Condition::Dimension(dim) => (Vec::new(), IfModCondition::Dimension(dim)),
+		Condition::And(l, r) => {
+			let (lp, lc) = lower_condition(*l, lbcx).context("Failed to lower and lhs")?;
+			let (rp, rc) = lower_condition(*r, lbcx).context("Failed to lower and rhs")?;
+			prelude.extend(lp);
+			prelude.extend(rp);
+			out.extend(lc);
+			out.extend(rc);
+		}
+		Condition::GreaterThan(l, r) => {
+			out.push((
+				IfModCondition::Score(IfScoreCondition::Range {
+					score: l.to_score_value()?,
+					left: IfScoreRangeEnd::Fixed {
+						value: r.to_score_value()?,
+						inclusive: false,
+					},
+					right: IfScoreRangeEnd::Infinite,
+				}),
+				false,
+			));
+		}
+		Condition::GreaterThanOrEqual(l, r) => {
+			out.push((
+				IfModCondition::Score(IfScoreCondition::Range {
+					score: l.to_score_value()?,
+					left: IfScoreRangeEnd::Fixed {
+						value: r.to_score_value()?,
+						inclusive: true,
+					},
+					right: IfScoreRangeEnd::Infinite,
+				}),
+				false,
+			));
+		}
+		Condition::LessThan(l, r) => {
+			out.push((
+				IfModCondition::Score(IfScoreCondition::Range {
+					score: l.to_score_value()?,
+					left: IfScoreRangeEnd::Infinite,
+					right: IfScoreRangeEnd::Fixed {
+						value: r.to_score_value()?,
+						inclusive: false,
+					},
+				}),
+				false,
+			));
+		}
+		Condition::LessThanOrEqual(l, r) => {
+			out.push((
+				IfModCondition::Score(IfScoreCondition::Range {
+					score: l.to_score_value()?,
+					left: IfScoreRangeEnd::Infinite,
+					right: IfScoreRangeEnd::Fixed {
+						value: r.to_score_value()?,
+						inclusive: true,
+					},
+				}),
+				false,
+			));
+		}
+		Condition::Bool(val) => {
+			out.push((lower_bool_cond(val, true, lbcx)?, false));
+		}
+		Condition::NotBool(val) => {
+			out.push((lower_bool_cond(val, false, lbcx)?, false));
+		}
+		Condition::Entity(ent) => {
+			out.push((IfModCondition::Entity(ent), false));
+		}
+		Condition::Predicate(pred) => {
+			out.push((IfModCondition::Predicate(pred), false));
+		}
+		Condition::Biome(loc, biome) => {
+			out.push((IfModCondition::Biome(loc, biome), false));
+		}
+		Condition::Loaded(loc) => {
+			out.push((IfModCondition::Loaded(loc), false));
+		}
+		Condition::Dimension(dim) => {
+			out.push((IfModCondition::Dimension(dim), false));
+		}
 	};
 
-	Ok((out.0, out.1, negate))
+	Ok((prelude, out))
 }
 
 fn lower_bool_cond(val: Value, check: bool, lbcx: &LowerBlockCx) -> anyhow::Result<IfModCondition> {
