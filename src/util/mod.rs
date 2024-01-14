@@ -1,10 +1,7 @@
-use std::{
-	collections::HashSet,
-	hash::Hash,
-	ops::{Deref, DerefMut},
-};
+use std::collections::HashSet;
+use std::hash::Hash;
+use std::ops::{Deref, DerefMut};
 
-use dashmap::DashSet;
 use rustc_hash::FxHashSet;
 
 /// A container that can hold values
@@ -12,19 +9,6 @@ pub trait Container<T> {
 	fn contains_val(&self, val: &T) -> bool;
 
 	fn empty(&self) -> bool;
-}
-
-impl<T> Container<T> for DashSet<T>
-where
-	T: Hash + Eq,
-{
-	fn contains_val(&self, val: &T) -> bool {
-		self.contains(val)
-	}
-
-	fn empty(&self) -> bool {
-		self.is_empty()
-	}
 }
 
 impl<T> Container<T> for HashSet<T>
