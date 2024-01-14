@@ -128,8 +128,8 @@ fn run_test(test_name: &str, generate: bool) -> anyhow::Result<()> {
 	} else {
 		let actual = create_output(datapacks).expect("Failed to create actual test output");
 		assert_eq!(
-			actual.lines().count(),
 			output_contents.lines().count(),
+			actual.lines().count(),
 			"Functions are of different lengths"
 		);
 		let expected = output_contents.lines();
