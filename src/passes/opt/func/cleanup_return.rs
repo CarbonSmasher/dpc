@@ -1,7 +1,6 @@
 use crate::common::val::Value;
 use crate::mir::MIRInstrKind;
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use anyhow::anyhow;
 
 pub struct CleanupReturnPass;
 
@@ -14,11 +13,7 @@ impl Pass for CleanupReturnPass {
 impl MIRPass for CleanupReturnPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			// Remove all instructions after an early return that is in the bare body
 			let mut rem_pos = None;

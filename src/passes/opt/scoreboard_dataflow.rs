@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use rustc_hash::FxHashMap;
 
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
@@ -27,10 +26,7 @@ impl LIRPass for ScoreboardDataflowPass {
 		for func in lir.functions.values_mut() {
 			instrs_to_remove.clear();
 
-			let block = lir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			loop {
 				flow_points.clear();

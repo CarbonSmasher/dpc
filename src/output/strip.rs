@@ -32,8 +32,7 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 	let mut counts = FxHashMap::default();
 
 	for func in lir.functions.values() {
-		let block = lir.blocks.get(&func.block).expect("Block does not exist");
-		for instr in &block.contents {
+		for instr in &func.block.contents {
 			if let LIRInstrKind::Call(func) = &instr.kind {
 				let entry = counts.entry(func);
 				*entry.or_insert(0) += 1;

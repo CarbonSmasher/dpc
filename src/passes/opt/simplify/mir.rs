@@ -8,7 +8,6 @@ use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
-use anyhow::anyhow;
 use num_traits::Zero;
 
 pub struct MIRSimplifyPass;
@@ -22,11 +21,7 @@ impl Pass for MIRSimplifyPass {
 impl MIRPass for MIRSimplifyPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			let mut instrs_to_remove = HashSetEmptyTracker::new();
 			loop {

@@ -1,14 +1,11 @@
 use anyhow::{anyhow, Context};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::common::block::BlockAllocator;
-use crate::common::function::{
-	CallInterface, Function, FunctionArgs, FunctionInterface, FunctionSignature,
-};
+use crate::common::function::{CallInterface, FunctionArgs, FunctionInterface, FunctionSignature};
 use crate::common::val::{MutableValue, Value};
 use crate::common::{DeclareBinding, Identifier, Register, RegisterList, ResourceLocation};
 use crate::lower::{cleanup_fn_id, fmt_lowered_arg};
-use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
+use crate::mir::{MIRBlock, MIRFunction, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::replace_and_expand_indices;
 
@@ -25,13 +22,8 @@ impl MIRPass for SimpleInlinePass {
 		let mut instrs_to_remove = Vec::new();
 		let mut instrs_to_remove_set = FxHashSet::default();
 		let cloned_funcs = data.mir.functions.clone();
-		let cloned_blocks = data.mir.blocks.clone();
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			loop {
 				instrs_to_remove.clear();
@@ -42,7 +34,6 @@ impl MIRPass for SimpleInlinePass {
 					&mut instrs_to_remove_set,
 					&data.inline_candidates,
 					&cloned_funcs,
-					&cloned_blocks,
 				)?;
 
 				block.contents =
@@ -63,8 +54,7 @@ fn run_simple_inline_iter(
 	instrs_to_remove: &mut Vec<(usize, Vec<MIRInstruction>)>,
 	instrs_to_remove_set: &mut FxHashSet<usize>,
 	inline_candidates: &FxHashSet<ResourceLocation>,
-	cloned_funcs: &FxHashMap<ResourceLocation, Function>,
-	cloned_blocks: &BlockAllocator<MIRBlock>,
+	cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
 ) -> anyhow::Result<bool> {
 	let mut run_again = false;
 
@@ -82,14 +72,7 @@ fn run_simple_inline_iter(
 		}
 		// Inline simple blocks into modifying instruction bodies
 		if let MIRInstrKind::Call { call } = &instr.kind {
-			let block = get_inlined_block(
-				call,
-				inline_candidates,
-				interface,
-				cloned_funcs,
-				cloned_blocks,
-				&regs,
-			)?;
+			let block = get_inlined_block(call, inline_candidates, interface, cloned_funcs, &regs)?;
 			if let Some(block) = block {
 				instrs_to_remove.push((i, block));
 				instrs_to_remove_set.insert(i);
@@ -101,19 +84,12 @@ fn run_simple_inline_iter(
 				instr: &mut MIRInstrKind,
 				inline_candidates: &FxHashSet<ResourceLocation>,
 				interface: &FunctionInterface,
-				cloned_funcs: &FxHashMap<ResourceLocation, Function>,
-				cloned_blocks: &BlockAllocator<MIRBlock>,
+				cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
 				regs: &RegisterList,
 			) -> anyhow::Result<()> {
 				if let MIRInstrKind::Call { call } = instr {
-					let block = get_inlined_block(
-						call,
-						inline_candidates,
-						interface,
-						cloned_funcs,
-						cloned_blocks,
-						&regs,
-					)?;
+					let block =
+						get_inlined_block(call, inline_candidates, interface, cloned_funcs, &regs)?;
 					if let Some(block) = block {
 						// We can only inline blocks that are one instruction long
 						if block.len() == 1 {
@@ -123,14 +99,7 @@ fn run_simple_inline_iter(
 					}
 				} else {
 					if let Some(body) = instr.get_body_mut() {
-						inner(
-							body,
-							inline_candidates,
-							interface,
-							cloned_funcs,
-							cloned_blocks,
-							regs,
-						)?;
+						inner(body, inline_candidates, interface, cloned_funcs, regs)?;
 					}
 				}
 
@@ -142,7 +111,6 @@ fn run_simple_inline_iter(
 				inline_candidates,
 				interface,
 				cloned_funcs,
-				cloned_blocks,
 				&regs,
 			)?;
 		}
@@ -155,8 +123,7 @@ fn get_inlined_block(
 	call: &CallInterface,
 	inline_candidates: &FxHashSet<ResourceLocation>,
 	interface: &FunctionInterface,
-	cloned_funcs: &FxHashMap<ResourceLocation, Function>,
-	cloned_blocks: &BlockAllocator<MIRBlock>,
+	cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
 	regs: &RegisterList,
 ) -> anyhow::Result<Option<Vec<MIRInstruction>>> {
 	// Don't inline this function call if it is recursive
@@ -169,12 +136,10 @@ fn get_inlined_block(
 	let func = cloned_funcs
 		.get(&call.function)
 		.ok_or(anyhow!("Called function does not exist"))?;
-	let inlined_block = cloned_blocks
-		.get(&func.block)
-		.ok_or(anyhow!("Inlined block does not exist"))?;
+	let inlined_block = func.block.clone();
 
 	// Inline the block
-	let mut inlined_contents = inlined_block.contents.clone();
+	let mut inlined_contents = inlined_block.contents;
 	let func_id = cleanup_fn_id(&call.function);
 
 	cleanup_fn(

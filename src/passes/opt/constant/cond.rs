@@ -1,5 +1,3 @@
-use anyhow::anyhow;
-
 use crate::common::ty::ScoreTypeContents;
 use crate::common::DeclareBinding;
 use crate::common::{condition::Condition, ty::DataTypeContents, val::Value};
@@ -34,11 +32,7 @@ impl Pass for ConstConditionPass {
 impl MIRPass for ConstConditionPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			let mut instrs_to_remove = HashSetEmptyTracker::new();
 			loop {

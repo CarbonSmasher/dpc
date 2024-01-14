@@ -1,10 +1,10 @@
 use std::panic::catch_unwind;
 
 use anyhow::{bail, Context};
-use dpc::common::function::{Function, FunctionInterface};
+use dpc::common::function::FunctionInterface;
 use dpc::common::ty::{DataType, DataTypeContents, ScoreType, ScoreTypeContents};
 use dpc::common::{val::Value, DeclareBinding};
-use dpc::ir::{Block, InstrKind, IR};
+use dpc::ir::{Block, IRFunction, InstrKind, IR};
 use dpc::parse::Parser;
 use dpc::push_instrs;
 
@@ -46,10 +46,9 @@ fn main() {
 			}
 		}
 
-		let block = ir.blocks.add(block);
 		ir.functions.insert(
 			"test:main/main".into(),
-			Function {
+			IRFunction {
 				interface: FunctionInterface::new("test:main/main".into()),
 				block,
 			},
@@ -76,15 +75,8 @@ fn run_test(test: Test) -> anyhow::Result<()> {
 		let Some(actual_func) = actual.functions.get(&func_id) else {
 			bail!("Function in output does not exist in input")
 		};
-		let expected_block = test
-			.output
-			.blocks
-			.get(&func.block)
-			.context("Expected block does not exist")?;
-		let actual_block = actual
-			.blocks
-			.get(&actual_func.block)
-			.context("Actual block does not exist")?;
+		let expected_block = func.block;
+		let actual_block = &actual_func.block;
 
 		// Check the instructions
 		assert_eq!(

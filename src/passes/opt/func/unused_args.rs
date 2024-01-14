@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use anyhow::anyhow;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::function::CallInterface;
@@ -24,11 +23,7 @@ impl MIRPass for UnusedArgsPass {
 		// and remove those arguments from the functions
 		let mut unused = FxHashMap::default();
 		for (func_id, func) in &mut data.mir.functions {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			// Just a simple refcell for this closure
 			let used_args = RefCell::new(FxHashSet::default());
@@ -80,11 +75,7 @@ impl MIRPass for UnusedArgsPass {
 		};
 
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			for instr in &mut block.contents {
 				if let Some(call) = get_instr_call_mut(&mut instr.kind) {

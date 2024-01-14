@@ -3,65 +3,72 @@ use std::hash::BuildHasherDefault;
 
 use rustc_hash::FxHashMap;
 
-use crate::common::block::{Block, BlockAllocator, BlockID};
-use crate::common::function::Function;
+use crate::common::block::Block;
+use crate::common::function::FunctionInterface;
 use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::Modifier;
 use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{ArraySize, Double};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
-use crate::common::{IRType, Identifier, RegisterList, ResourceLocation};
+use crate::common::{FunctionTrait, IRType, Identifier, RegisterList, ResourceLocation};
 
 #[derive(Debug, Clone)]
 pub struct LIR {
-	pub functions: FxHashMap<ResourceLocation, Function>,
-	pub blocks: BlockAllocator<LIRBlock>,
+	pub functions: FxHashMap<ResourceLocation, LIRFunction>,
 }
 
 impl LIR {
 	pub fn new() -> Self {
 		Self {
 			functions: FxHashMap::default(),
-			blocks: BlockAllocator::new(),
 		}
 	}
 
-	pub fn with_capacity(function_capacity: usize, block_capacity: usize) -> Self {
+	pub fn with_capacity(function_capacity: usize) -> Self {
 		Self {
 			functions: FxHashMap::with_capacity_and_hasher(
 				function_capacity,
 				BuildHasherDefault::default(),
 			),
-			blocks: BlockAllocator::with_capacity(block_capacity),
 		}
 	}
 }
 
 impl IRType for LIR {
-	type BlockType = LIRBlock;
-	type InstrType = LIRInstruction;
-	type InstrKindType = LIRInstrKind;
+	type FunctionType = LIRFunction;
 
-	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Function> {
+	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Self::FunctionType> {
 		&self.functions
 	}
 
-	fn get_fns_mut<'this>(&'this mut self) -> &'this mut FxHashMap<ResourceLocation, Function> {
+	fn get_fns_mut<'this>(
+		&'this mut self,
+	) -> &'this mut FxHashMap<ResourceLocation, Self::FunctionType> {
 		&mut self.functions
-	}
-
-	fn get_blocks<'this>(&'this self) -> &'this BlockAllocator<Self::BlockType> {
-		&self.blocks
-	}
-
-	fn get_blocks_mut<'this>(&'this mut self) -> &'this mut BlockAllocator<Self::BlockType> {
-		&mut self.blocks
 	}
 }
 
 impl Default for LIR {
 	fn default() -> Self {
 		Self::new()
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct LIRFunction {
+	pub interface: FunctionInterface,
+	pub block: LIRBlock,
+}
+
+impl FunctionTrait for LIRFunction {
+	type BlockType = LIRBlock;
+
+	fn block(&self) -> &Self::BlockType {
+		&self.block
+	}
+
+	fn block_mut(&mut self) -> &mut Self::BlockType {
+		&mut self.block
 	}
 }
 
@@ -81,12 +88,15 @@ impl LIRBlock {
 }
 
 impl Block for LIRBlock {
-	fn instr_count(&self) -> usize {
-		self.contents.len()
+	type InstrType = LIRInstruction;
+	type InstrKindType = LIRInstrKind;
+
+	fn contents(&self) -> &Vec<Self::InstrType> {
+		&self.contents
 	}
 
-	fn get_children(&self) -> Vec<BlockID> {
-		Vec::new()
+	fn contents_mut(&mut self) -> &mut Vec<Self::InstrType> {
+		&mut self.contents
 	}
 }
 

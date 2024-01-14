@@ -6,9 +6,9 @@ use std::collections::HashMap;
 use anyhow::{bail, Context};
 
 use crate::common::function::{
-	Function, FunctionAnnotations, FunctionInterface, FunctionSignature, ReturnType,
+	FunctionAnnotations, FunctionInterface, FunctionSignature, ReturnType,
 };
-use crate::ir::{Block, IR};
+use crate::ir::{Block, IRFunction, IR};
 use crate::parse::lex::{Side, Token};
 use crate::parse::parse::{parse_body, parse_simple_ty, UnparsedBody};
 
@@ -176,9 +176,8 @@ fn parse_definitions(ir: &mut IR, text: &str) -> anyhow::Result<()> {
 		let body = parse_body(body).context("Failed to parse function body")?;
 		let mut block = Block::new();
 		block.contents = body;
-		let block = ir.blocks.add(block);
 		ir.functions
-			.insert(interface.id.clone(), Function { interface, block });
+			.insert(interface.id.clone(), IRFunction { interface, block });
 	}
 
 	Ok(())

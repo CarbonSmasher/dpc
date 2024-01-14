@@ -1,4 +1,7 @@
-use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::{
+	common::IRType,
+	passes::{MIRPass, MIRPassData, Pass},
+};
 
 pub struct PrintBlocksPass;
 
@@ -10,7 +13,7 @@ impl Pass for PrintBlocksPass {
 
 impl MIRPass for PrintBlocksPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		dbg!(&data.mir.blocks);
+		dbg!(&data.mir.functions);
 
 		Ok(())
 	}
@@ -26,7 +29,7 @@ impl Pass for PrintInstrCountPass {
 
 impl MIRPass for PrintInstrCountPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		dbg!(&data.mir.blocks.instr_count());
+		dbg!(&data.mir.instr_count());
 
 		Ok(())
 	}

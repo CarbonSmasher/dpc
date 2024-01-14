@@ -53,10 +53,7 @@ fn check_recursion<'fun>(
 	if func_item.interface.annotations.no_inline {
 		candidates.remove(func_id);
 	}
-	let block = mir
-		.blocks
-		.get(&func_item.block)
-		.ok_or(anyhow!("Block does not exist"))?;
+	let block = &func_item.block;
 
 	for instr in &block.contents {
 		let call = get_instr_call(&instr.kind);

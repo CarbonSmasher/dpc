@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use rustc_hash::FxHashMap;
 
 use crate::common::reg::GetUsedRegs;
@@ -19,11 +18,7 @@ impl MIRPass for DSEPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut instrs_to_remove = HashSetEmptyTracker::new();
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			instrs_to_remove.clear();
 			loop {

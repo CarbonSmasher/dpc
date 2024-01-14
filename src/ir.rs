@@ -2,57 +2,65 @@ use std::fmt::Debug;
 
 use rustc_hash::FxHashMap;
 
-use crate::common::block::{Block as BlockTrait, BlockAllocator, BlockID};
+use crate::common::block::Block as BlockTrait;
 use crate::common::condition::Condition;
-use crate::common::function::{CallInterface, Function};
+use crate::common::function::{CallInterface, FunctionInterface};
 use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::StoreModLocation;
 use crate::common::mc::pos::DoubleCoordinates;
 use crate::common::mc::EntityTarget;
 use crate::common::ty::{DataType, Double};
-use crate::common::IRType;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
+use crate::common::{FunctionTrait, IRType};
 
 #[derive(Debug, Clone)]
 pub struct IR {
-	pub functions: FxHashMap<ResourceLocation, Function>,
-	pub blocks: BlockAllocator<Block>,
+	pub functions: FxHashMap<ResourceLocation, IRFunction>,
 }
 
 impl IR {
 	pub fn new() -> Self {
 		Self {
 			functions: FxHashMap::default(),
-			blocks: BlockAllocator::new(),
 		}
 	}
 }
 
 impl IRType for IR {
-	type BlockType = Block;
-	type InstrType = Instruction;
-	type InstrKindType = InstrKind;
+	type FunctionType = IRFunction;
 
-	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Function> {
+	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Self::FunctionType> {
 		&self.functions
 	}
 
-	fn get_fns_mut<'this>(&'this mut self) -> &'this mut FxHashMap<ResourceLocation, Function> {
+	fn get_fns_mut<'this>(
+		&'this mut self,
+	) -> &'this mut FxHashMap<ResourceLocation, Self::FunctionType> {
 		&mut self.functions
-	}
-
-	fn get_blocks<'this>(&'this self) -> &'this BlockAllocator<Self::BlockType> {
-		&self.blocks
-	}
-
-	fn get_blocks_mut<'this>(&'this mut self) -> &'this mut BlockAllocator<Self::BlockType> {
-		&mut self.blocks
 	}
 }
 
 impl Default for IR {
 	fn default() -> Self {
 		Self::new()
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct IRFunction {
+	pub interface: FunctionInterface,
+	pub block: Block,
+}
+
+impl FunctionTrait for IRFunction {
+	type BlockType = Block;
+
+	fn block(&self) -> &Self::BlockType {
+		&self.block
+	}
+
+	fn block_mut(&mut self) -> &mut Self::BlockType {
+		&mut self.block
 	}
 }
 
@@ -76,12 +84,15 @@ impl Default for Block {
 }
 
 impl BlockTrait for Block {
-	fn instr_count(&self) -> usize {
-		self.contents.len()
+	type InstrType = Instruction;
+	type InstrKindType = InstrKind;
+
+	fn contents(&self) -> &Vec<Self::InstrType> {
+		&self.contents
 	}
 
-	fn get_children(&self) -> Vec<BlockID> {
-		Vec::new()
+	fn contents_mut(&mut self) -> &mut Vec<Self::InstrType> {
+		&mut self.contents
 	}
 }
 

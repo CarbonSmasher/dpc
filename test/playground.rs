@@ -2,7 +2,7 @@
 
 use anyhow::Context;
 use dpc::common::function::{
-	CallInterface, Function, FunctionAnnotations, FunctionInterface, FunctionSignature,
+	CallInterface, FunctionAnnotations, FunctionInterface, FunctionSignature,
 };
 use dpc::common::mc::block::{BlockData, BlockProperties, SetBlockData, SetBlockMode};
 use dpc::common::mc::entity::{SelectorType, TargetSelector};
@@ -10,8 +10,8 @@ use dpc::common::mc::instr::MinecraftInstr;
 use dpc::common::mc::pos::Coordinates;
 use dpc::common::mc::{EntityTarget, XPValue};
 use dpc::common::val::{MutableValue, Value};
-use dpc::common::{DeclareBinding, Identifier};
-use dpc::ir::{Block, InstrKind, Instruction, IR};
+use dpc::common::{DeclareBinding, IRType, Identifier};
+use dpc::ir::{Block, IRFunction, InstrKind, Instruction, IR};
 use dpc::lower::ir_to_mir::lower_ir;
 use dpc::lower::mir_to_lir::lower_mir;
 use dpc::output::link;
@@ -45,12 +45,11 @@ fn known() {
 		};
 	}
 
-	let block = ir.blocks.add(block);
 	let mut annotations = FunctionAnnotations::new();
 	annotations.preserve = true;
 	ir.functions.insert(
 		"foo_baz".into(),
-		Function {
+		IRFunction {
 			interface: FunctionInterface::with_all(
 				"foo:baz".into(),
 				FunctionSignature::new(),
@@ -218,10 +217,9 @@ fn known() {
 		};
 	}
 
-	let block = ir.blocks.add(block);
 	ir.functions.insert(
 		"foo:bar".into(),
-		Function {
+		IRFunction {
 			interface: FunctionInterface::new("foo:bar".into()),
 			block,
 		},
@@ -249,11 +247,9 @@ fn known() {
 		};
 	}
 
-	let block = ir.blocks.add(block);
-
 	ir.functions.insert(
 		"foo:main".into(),
-		Function {
+		IRFunction {
 			interface: FunctionInterface::with_all(
 				"foo:main".into(),
 				FunctionSignature::new(),
@@ -391,7 +387,6 @@ fn fuzz() {
 			block.contents.push(Instruction::new(kind));
 		}
 
-		let block = ir.blocks.add(block);
 		let func_id = format!("foo:{fn_i}");
 		let mut annotations = FunctionAnnotations::new();
 		annotations.preserve = true;
@@ -406,7 +401,7 @@ fn fuzz() {
 		};
 		ir.functions.insert(
 			func_id.into(),
-			Function {
+			IRFunction {
 				interface: func,
 				block,
 			},
@@ -420,26 +415,24 @@ fn fuzz() {
 
 fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 	if debug {
-		println!("Functions:");
-		dbg!(&ir.functions);
 		println!("IR:");
-		dbg!(&ir.blocks);
+		dbg!(&ir.functions);
 	}
 	run_ir_passes(&mut ir, debug).context("IR passes failed")?;
 
 	let mut mir = lower_ir(ir).context("Failed to lower IR")?;
-	let init_count = mir.blocks.instr_count();
+	let init_count = mir.instr_count();
 	if debug {
 		println!("MIR:");
-		dbg!(&mir.blocks);
+		dbg!(&mir.functions);
 	}
 
 	run_mir_passes(&mut mir, debug).context("MIR passes failed")?;
 	if debug {
 		println!("Optimized MIR:");
-		dbg!(&mir.blocks);
+		dbg!(&mir.functions);
 	}
-	let final_count = mir.blocks.instr_count();
+	let final_count = mir.instr_count();
 	let pct = if init_count == 0 {
 		0.0
 	} else {
@@ -448,17 +441,17 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 	println!("Removed percent: {pct}%");
 
 	let mut lir = lower_mir(mir).context("Failed to lower MIR")?;
-	let init_count = lir.blocks.instr_count();
+	let init_count = lir.instr_count();
 	if debug {
 		println!("LIR:");
-		dbg!(&lir.blocks);
+		dbg!(&lir.functions);
 	}
 	run_lir_passes(&mut lir, debug).context("LIR passes failed")?;
 	if debug {
 		println!("Optimized LIR:");
-		dbg!(&lir.blocks);
+		dbg!(&lir.functions);
 	}
-	let final_count = lir.blocks.instr_count();
+	let final_count = lir.instr_count();
 	let pct = if init_count == 0 {
 		0.0
 	} else {

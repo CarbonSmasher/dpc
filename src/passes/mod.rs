@@ -1,11 +1,6 @@
-use std::sync::Arc;
-
-use dashmap::{DashMap, DashSet};
 use rustc_hash::FxHashSet;
 
-use crate::common::block::BlockID;
 use crate::common::ResourceLocation;
-use crate::lir::LIRBlock;
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::inline_candidates::InlineCandidatesPass;
@@ -131,15 +126,6 @@ pub fn run_lir_passes(lir: &mut LIR, debug: bool) -> anyhow::Result<()> {
 	Ok(())
 }
 
-pub trait LIRBlockPass: BlockPass {
-	fn run_pass(
-		&mut self,
-		block: &mut LIRBlock,
-		bpcx: &mut BlockPassCtx,
-		pass_id: usize,
-	) -> anyhow::Result<()>;
-}
-
 struct LIRBlockPassRunner;
 
 impl Pass for LIRBlockPassRunner {
@@ -178,27 +164,7 @@ impl LIRPass for NullPass {
 	}
 }
 
-impl LIRBlockPass for NullPass {
-	fn run_pass(
-		&mut self,
-		block: &mut LIRBlock,
-		bpcx: &mut BlockPassCtx,
-		pass_id: usize,
-	) -> anyhow::Result<()> {
-		let _ = block;
-		let _ = bpcx;
-		let _ = pass_id;
-		Ok(())
-	}
-}
-
 impl Pass for NullPass {
-	fn get_name(&self) -> &'static str {
-		"null"
-	}
-}
-
-impl BlockPass for NullPass {
 	fn get_name(&self) -> &'static str {
 		"null"
 	}
@@ -210,13 +176,4 @@ pub trait Pass {
 	fn made_changes(&self) -> bool {
 		false
 	}
-}
-
-pub trait BlockPass {
-	fn get_name(&self) -> &'static str;
-}
-
-pub struct BlockPassCtx {
-	pub removed_instrs: Arc<DashMap<BlockID, DashSet<usize>>>,
-	pub block_operation_progress: Arc<DashMap<BlockID, usize>>,
 }

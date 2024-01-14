@@ -12,9 +12,9 @@ use std::{fmt::Debug, sync::Arc};
 
 use rustc_hash::FxHashMap;
 
-use self::block::BlockAllocator;
+use self::block::Block;
 use self::condition::Condition;
-use self::function::{Function, FunctionSignature};
+use self::function::FunctionSignature;
 use self::reg::GetUsedRegs;
 use self::ty::DataType;
 use self::val::{MutableValue, Value};
@@ -91,25 +91,37 @@ pub type RegisterList = FxHashMap<Identifier, Register>;
 pub type ResourceLocation = Identifier;
 pub type ResourceLocationTag = Identifier;
 
+pub trait FunctionTrait {
+	type BlockType: Block;
+
+	fn block(&self) -> &Self::BlockType;
+	fn block_mut(&mut self) -> &mut Self::BlockType;
+}
+
 /// Trait used to implement helper functions for the different
 /// stages of IR we use
 pub trait IRType {
-	type BlockType;
-	type InstrType;
-	type InstrKindType;
+	type FunctionType: FunctionTrait;
 
 	// Interface functions for trait methods
-	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Function>;
-	fn get_fns_mut<'this>(&'this mut self) -> &'this mut FxHashMap<ResourceLocation, Function>;
-	fn get_blocks<'this>(&'this self) -> &'this BlockAllocator<Self::BlockType>;
-	fn get_blocks_mut<'this>(&'this mut self) -> &'this mut BlockAllocator<Self::BlockType>;
+	fn get_fns<'this>(&'this self) -> &'this FxHashMap<ResourceLocation, Self::FunctionType>;
+	fn get_fns_mut<'this>(
+		&'this mut self,
+	) -> &'this mut FxHashMap<ResourceLocation, Self::FunctionType>;
 
 	// Iteration methods
-	fn iter_fns(&self) -> std::collections::hash_map::Iter<ResourceLocation, Function> {
+	fn iter_fns(&self) -> std::collections::hash_map::Iter<ResourceLocation, Self::FunctionType> {
 		self.get_fns().iter()
 	}
 
-	fn iter_fns_mut(&mut self) -> std::collections::hash_map::IterMut<ResourceLocation, Function> {
+	fn iter_fns_mut(
+		&mut self,
+	) -> std::collections::hash_map::IterMut<ResourceLocation, Self::FunctionType> {
 		self.get_fns_mut().iter_mut()
+	}
+
+	fn instr_count(&self) -> usize {
+		self.iter_fns()
+			.fold(0, |sum, x| sum + x.1.block().instr_count())
 	}
 }

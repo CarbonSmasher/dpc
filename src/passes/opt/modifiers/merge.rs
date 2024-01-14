@@ -1,5 +1,3 @@
-use anyhow::anyhow;
-
 use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
 use crate::common::mc::pos::{AbsOrRelCoord, Coordinates};
 use crate::common::ty::Double;
@@ -17,10 +15,7 @@ impl Pass for MergeModifiersPass {
 impl LIRPass for MergeModifiersPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		for func in lir.functions.values_mut() {
-			let block = lir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			for instr in &mut block.contents {
 				if instr.modifiers.len() >= 2 {

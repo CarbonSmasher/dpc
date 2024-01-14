@@ -1,4 +1,5 @@
 use anyhow::Context;
+use common::IRType;
 use ir::IR;
 use output::datapack::Datapack;
 use project::ProjectSettings;
@@ -26,22 +27,17 @@ pub fn codegen_ir(
 	settings: CodegenIRSettings,
 ) -> anyhow::Result<Datapack> {
 	if settings.debug {
-		println!("Functions:");
-		dbg!(&ir.functions);
 		println!("IR:");
-		dbg!(&ir.blocks);
+		dbg!(&ir.functions);
 	}
 	if settings.ir_passes {
 		run_ir_passes(&mut ir, settings.debug).context("IR passes failed")?;
 	}
 
 	let mut mir = lower_ir(ir).context("Failed to lower IR")?;
-	let init_count = mir.blocks.instr_count();
+	let init_count = mir.instr_count();
 	if settings.debug {
 		println!("MIR:");
-		dbg!(&mir.blocks);
-	}
-	if settings.debug_functions {
 		dbg!(&mir.functions);
 	}
 
@@ -49,13 +45,10 @@ pub fn codegen_ir(
 		run_mir_passes(&mut mir, settings.debug).context("MIR passes failed")?;
 		if settings.debug {
 			println!("Optimized MIR:");
-			dbg!(&mir.blocks);
+			dbg!(&mir.functions);
 		}
 	}
-	if settings.debug_functions {
-		dbg!(&mir.functions);
-	}
-	let final_count = mir.blocks.instr_count();
+	let final_count = mir.instr_count();
 	let pct = if init_count == 0 {
 		0.0
 	} else {
@@ -66,25 +59,20 @@ pub fn codegen_ir(
 	}
 
 	let mut lir = lower_mir(mir).context("Failed to lower MIR")?;
-	let init_count = lir.blocks.instr_count();
+	let init_count = lir.instr_count();
 	if settings.debug {
 		println!("LIR:");
-		dbg!(&lir.blocks);
-	}
-	if settings.debug_functions {
 		dbg!(&lir.functions);
 	}
 	if settings.lir_passes {
 		run_lir_passes(&mut lir, settings.debug).context("LIR passes failed")?;
 		if settings.debug {
 			println!("Optimized LIR:");
-			dbg!(&lir.blocks);
+			dbg!(&lir.functions);
 		}
 	}
-	if settings.debug_functions {
-		dbg!(&lir.functions);
-	}
-	let final_count = lir.blocks.instr_count();
+
+	let final_count = lir.instr_count();
 	let pct = if init_count == 0 {
 		0.0
 	} else {

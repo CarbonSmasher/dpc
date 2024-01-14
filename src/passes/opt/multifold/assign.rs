@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use rustc_hash::FxHashMap;
 
 use crate::common::condition::Condition;
@@ -22,11 +21,8 @@ impl Pass for MultifoldAssignPass {
 impl MIRPass for MultifoldAssignPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
+
 			let mut removed = HashSetEmptyTracker::new();
 			let mut replaced = Vec::new();
 			loop {

@@ -5,12 +5,11 @@ pub mod ra;
 pub mod strip;
 pub mod text;
 
-use crate::common::block::BlockAllocator;
-use crate::lir::{LIRBlock, LIR};
+use crate::lir::{LIRFunction, LIR};
 use crate::lower::cleanup_fn_id;
 use crate::project::ProjectSettings;
 
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 
 use self::codegen::{codegen_block, CodegenCx};
 use self::datapack::{Datapack, Function};
@@ -29,7 +28,7 @@ pub fn link(lir: LIR, project: &ProjectSettings) -> anyhow::Result<Datapack> {
 				func_id = new_id.clone();
 			}
 		}
-		let fun = codegen_fn(&func_id, &lir.blocks, &mut ccx, &func.block)
+		let fun = codegen_fn(&func_id, &func, &mut ccx)
 			.with_context(|| format!("In function {:?}", func.interface))?;
 
 		out.functions.insert(func_id, fun);
@@ -42,16 +41,10 @@ pub fn link(lir: LIR, project: &ProjectSettings) -> anyhow::Result<Datapack> {
 	Ok(out)
 }
 
-fn codegen_fn(
-	func_id: &str,
-	blocks: &BlockAllocator<LIRBlock>,
-	ccx: &mut CodegenCx,
-	block: &usize,
-) -> anyhow::Result<Function> {
-	let block = blocks.get(block).ok_or(anyhow!("Block does not exist"))?;
+fn codegen_fn(func_id: &str, func: &LIRFunction, ccx: &mut CodegenCx) -> anyhow::Result<Function> {
 	let mut fun = Function::new();
 	let cleaned_id = cleanup_fn_id(func_id);
-	let code = codegen_block(&cleaned_id, block, ccx)?;
+	let code = codegen_block(&cleaned_id, &func.block, ccx)?;
 	fun.contents = code;
 	Ok(fun)
 }

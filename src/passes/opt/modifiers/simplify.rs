@@ -1,5 +1,3 @@
-use anyhow::anyhow;
-
 use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
 use crate::common::val::ScoreValue;
 use crate::lir::{LIRInstrKind, LIR};
@@ -19,10 +17,7 @@ impl LIRPass for SimplifyModifiersPass {
 		let mut mods_to_remove = HashSetEmptyTracker::new();
 
 		for func in lir.functions.values_mut() {
-			let block = lir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			for instr in &mut block.contents {
 				if !mods_to_remove.is_empty() {

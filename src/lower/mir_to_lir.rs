@@ -1,7 +1,7 @@
-use anyhow::{anyhow, bail, Context};
+use anyhow::{bail, Context};
 
 use crate::common::condition::Condition;
-use crate::common::function::{Function, FunctionInterface, FunctionSignature};
+use crate::common::function::{FunctionInterface, FunctionSignature};
 use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreDataType, StoreModLocation,
 };
@@ -12,7 +12,7 @@ use crate::common::{
 	val::MutableNBTValue, val::MutableScoreValue, val::MutableValue, val::NBTValue,
 	val::ScoreValue, val::Value, DeclareBinding, Identifier, Register, RegisterList,
 };
-use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
+use crate::lir::{LIRBlock, LIRFunction, LIRInstrKind, LIRInstruction, LIR};
 use crate::mir::{MIRInstrKind, MIR};
 
 macro_rules! lower {
@@ -31,13 +31,10 @@ macro_rules! lower {
 }
 
 /// Lower MIR to LIR
-pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
-	let mut lir = LIR::with_capacity(mir.functions.len(), mir.blocks.count());
+pub fn lower_mir(mir: MIR) -> anyhow::Result<LIR> {
+	let mut lir = LIR::with_capacity(mir.functions.len());
 	for (func_id, func) in mir.functions {
-		let block = mir
-			.blocks
-			.remove(&func.block)
-			.ok_or(anyhow!("Block does not exist"))?;
+		let block = func.block;
 		let mut lir_instrs = Vec::with_capacity(block.contents.len());
 
 		let mut lbcx = LowerBlockCx::new(&mut lir, func.interface.sig.clone());
@@ -49,12 +46,11 @@ pub fn lower_mir(mut mir: MIR) -> anyhow::Result<LIR> {
 		let mut lir_block = LIRBlock::new(lbcx.registers);
 		lir_block.contents = lir_instrs;
 
-		let block = lir.blocks.add(lir_block);
 		lir.functions.insert(
 			func_id,
-			Function {
+			LIRFunction {
 				interface: func.interface,
-				block,
+				block: lir_block,
 			},
 		);
 	}
@@ -966,13 +962,12 @@ fn lower_subinstr(instr: MIRInstrKind, lbcx: &mut LowerBlockCx) -> anyhow::Resul
 	} else {
 		let mut lir_block = LIRBlock::new(lbcx.registers.clone());
 		lir_block.contents = new_lir_instrs;
-		let block = lbcx.lir.blocks.add(lir_block);
 		let interface = lbcx.new_if_body_fn();
 		lbcx.lir.functions.insert(
 			interface.id.clone(),
-			Function {
+			LIRFunction {
 				interface: interface.clone(),
-				block,
+				block: lir_block,
 			},
 		);
 		LIRInstruction::new(LIRInstrKind::Call(interface.id))

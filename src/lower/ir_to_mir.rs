@@ -1,19 +1,15 @@
-use crate::common::function::Function;
 use crate::common::{val::MutableValue, DeclareBinding};
 use crate::ir::{InstrKind, IR};
-use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction, MIR};
+use crate::mir::{MIRBlock, MIRFunction, MIRInstrKind, MIRInstruction, MIR};
 
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 
 /// Lower IR to MIR
-pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
-	let mut mir = MIR::with_capacity(ir.functions.len(), ir.blocks.count());
+pub fn lower_ir(ir: IR) -> anyhow::Result<MIR> {
+	let mut mir = MIR::with_capacity(ir.functions.len());
 
 	for (func_id, func) in ir.functions {
-		let block = ir
-			.blocks
-			.remove(&func.block)
-			.ok_or(anyhow!("Block does not exist"))?;
+		let block = func.block;
 		let mut mir_block = MIRBlock::with_capacity(block.contents.len());
 
 		for ir_instr in block.contents {
@@ -23,12 +19,11 @@ pub fn lower_ir(mut ir: IR) -> anyhow::Result<MIR> {
 			mir_block.contents.push(MIRInstruction::new(instr));
 		}
 
-		let block = mir.blocks.add(mir_block);
 		mir.functions.insert(
 			func_id,
-			Function {
+			MIRFunction {
 				interface: func.interface,
-				block,
+				block: mir_block,
 			},
 		);
 	}

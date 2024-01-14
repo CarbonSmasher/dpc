@@ -6,8 +6,6 @@ use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
-use anyhow::anyhow;
-
 pub struct LIRSimplifyPass;
 
 impl Pass for LIRSimplifyPass {
@@ -19,10 +17,7 @@ impl Pass for LIRSimplifyPass {
 impl LIRPass for LIRSimplifyPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		for func in lir.functions.values_mut() {
-			let block = lir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			// We persist the same set of removed instructions across all iterations
 			// so that we only have to run the vec retain operation once, saving a lot of copies

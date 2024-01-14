@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use rustc_hash::FxHashSet;
 
 use crate::passes::{MIRPass, MIRPassData, Pass};
@@ -18,11 +17,7 @@ impl MIRPass for DCEPass {
 		// Find used functions
 		let mut used = FxHashSet::default();
 		for func in data.mir.functions.values() {
-			let block = data
-				.mir
-				.blocks
-				.get(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &func.block;
 
 			for instr in &block.contents {
 				let call = get_instr_call(&instr.kind);
@@ -40,7 +35,6 @@ impl MIRPass for DCEPass {
 			}
 			if !used.contains(func_id) {
 				unused.insert(func_id.clone());
-				data.mir.blocks.remove(&func.block);
 			}
 		}
 		for unused in unused {

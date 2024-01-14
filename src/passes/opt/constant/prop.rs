@@ -1,5 +1,3 @@
-use anyhow::anyhow;
-
 use crate::common::condition::Condition;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::val::{MutableValue, Value};
@@ -41,11 +39,7 @@ impl MIRPass for ConstPropPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut an = StoringConstAnalyzer::new();
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 			an.reset();
 			loop {
 				let run_again = run_const_prop_iter(block, &mut an)?;

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail};
+use anyhow::bail;
 use rustc_hash::FxHashMap;
 use std::fmt::Debug;
 
@@ -43,11 +43,7 @@ impl MIRPass for ConstFoldPass {
 		let mut fold_points = FxHashMap::default();
 		let mut an = ConstAnalyzer::new();
 		for func in data.mir.functions.values_mut() {
-			let block = data
-				.mir
-				.blocks
-				.get_mut(&func.block)
-				.ok_or(anyhow!("Block does not exist"))?;
+			let block = &mut func.block;
 
 			fold_points.clear();
 			an.reset();
