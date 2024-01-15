@@ -204,15 +204,13 @@ fn lower_kind(
 
 			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower if body")?;
 
-			for (condition, negate) in conditions {
-				instr.modifiers.insert(
-					0,
-					Modifier::If {
-						condition: Box::new(condition),
-						negate,
-					},
-				);
-			}
+			let prepend = conditions
+				.into_iter()
+				.map(|(condition, negate)| Modifier::If {
+					condition: Box::new(condition),
+					negate,
+				});
+			instr.modifiers = prepend.chain(instr.modifiers.into_iter()).collect();
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::As { target, body } => {

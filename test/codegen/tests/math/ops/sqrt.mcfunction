@@ -22,7 +22,7 @@ scoreboard players operation %rtest_sqrt2 _r = %atest_sqrt0 _r
 scoreboard players operation %rtest_sqrt3 _r = %atest_sqrt0 _r
 scoreboard players operation %rtest_sqrt4 _r = %atest_sqrt0 _r
 execute if score %atest_sqrt0 _r matches ..13924 run function test:sqrt_body_0
-execute if score %atest_sqrt0 _r matches ..16777216 if score %atest_sqrt0 _r matches 13925.. run function test:sqrt_body_1
+execute if score %atest_sqrt0 _r matches 13925.. if score %atest_sqrt0 _r matches ..16777216 run function test:sqrt_body_1
 execute if score %atest_sqrt0 _r matches 16777217.. run function test:sqrt_body_2
 scoreboard players operation %rtest_sqrt0 _r /= %rtest_sqrt4 _r
 scoreboard players operation %rtest_sqrt4 _r += %rtest_sqrt0 _r

@@ -14,7 +14,7 @@ execute if score %l1 _l matches 1 run say hi
 execute unless score %l1 _l matches 1 run say hi
 execute if score %l1 _l matches 1 run say hi
 execute unless score %l1 _l matches 1 run say hi
-execute if predicate bar:foo if predicate foo:bar run say hi
+execute if predicate foo:bar if predicate bar:foo run say hi
 execute if entity @s run say hi
 execute if predicate foo:bar run say hi
 execute if entity @s run say hi
