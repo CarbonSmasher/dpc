@@ -57,7 +57,7 @@ impl ScoreType {
 			Self::Score => {
 				matches!(self, Self::Score | Self::Bool)
 			}
-			Self::Bool => matches!(self, Self::Bool),
+			Self::Bool => matches!(self, Self::Score | Self::Bool),
 		}
 	}
 }

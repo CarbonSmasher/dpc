@@ -146,18 +146,16 @@ fn lower_kind(
 			);
 		}
 		MIRInstrKind::Or { left, right } => {
-			lower!(
-				lir_instrs,
-				AddScore,
+			let mut instr = LIRInstruction::new(LIRInstrKind::SetScore(
 				left.clone().to_mutable_score_value()?,
-				right.to_score_value()?
-			);
-			lower!(
-				lir_instrs,
-				DivScore,
-				left.clone().to_mutable_score_value()?,
-				ScoreValue::Mutable(left.to_mutable_score_value()?)
-			);
+				ScoreValue::Constant(ScoreTypeContents::Bool(true)),
+			));
+			let cond = lower_bool_cond(right, true, lbcx)?;
+			instr.modifiers.push(Modifier::If {
+				condition: Box::new(cond),
+				negate: false,
+			});
+			lir_instrs.push(instr);
 		}
 		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
 		MIRInstrKind::GetConst { value } => lower!(lir_instrs, GetConst, value),

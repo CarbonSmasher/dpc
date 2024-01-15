@@ -28,3 +28,12 @@
 	not %x;
 	use %x;
 }
+
+@preserve
+"fold:manual_or" {
+	let l: bool = val sco @s[] "foo";
+	let r: bool = val sco @s[] "bar";
+	add %l, %r;
+	div %l, %l;
+	use %l;
+}

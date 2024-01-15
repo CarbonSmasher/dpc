@@ -342,6 +342,28 @@ fn run_iter(
 					left: left.clone(),
 					right: b.clone(),
 				}),
+				// if x: y = true -> y |= x
+				Some(MIRInstrKind::Assign {
+					left,
+					right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(val))),
+				}) if val.get_i32() == 1 => Some(MIRInstrKind::Or {
+					left: left.clone(),
+					right: b.clone(),
+				}),
+				_ => None,
+			},
+			MIRInstrKind::If {
+				condition: Condition::NotBool(b),
+				body,
+			} => match body.contents.only().map(|x| &x.kind) {
+				// if not x: y = false -> y &= x
+				Some(MIRInstrKind::Assign {
+					left,
+					right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(val))),
+				}) if val.get_i32() == 0 => Some(MIRInstrKind::And {
+					left: left.clone(),
+					right: b.clone(),
+				}),
 				_ => None,
 			},
 			MIRInstrKind::StoreResult {

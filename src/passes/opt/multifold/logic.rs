@@ -46,11 +46,13 @@ fn run_iter(
 	let mut run_again = false;
 	let mut let_cond_prop = FxHashMap::<Identifier, LetCondProp>::default();
 	let mut let_cond_not = FxHashMap::<Identifier, LetCondNot>::default();
+	let mut manual_or = FxHashMap::<Identifier, ManualOr>::default();
 
 	#[derive(Default)]
 	struct RegsToKeep {
 		let_cond_prop: bool,
 		let_cond_not: bool,
+		manual_or: bool,
 	}
 
 	for (i, instr) in block.contents.iter_mut().enumerate() {
@@ -105,6 +107,50 @@ fn run_iter(
 					}
 				}
 			}
+			MIRInstrKind::Add {
+				left: MutableValue::Reg(left),
+				right: Value::Mutable(MutableValue::Reg(right)),
+			} => {
+				manual_or.retain(|_, fold| {
+					if fold.finished {
+						true
+					} else {
+						&fold.right != left && &fold.right != right
+					}
+				});
+
+				manual_or.insert(
+					left.clone(),
+					ManualOr {
+						finished: false,
+						start_pos: i,
+						end_pos: i,
+						right: right.clone(),
+					},
+				);
+
+				regs_to_keep.manual_or = true;
+			}
+			MIRInstrKind::Div {
+				left: MutableValue::Reg(left),
+				right: Value::Mutable(MutableValue::Reg(right)),
+			} if left == right => {
+				manual_or.retain(|_, fold| {
+					if fold.finished {
+						true
+					} else {
+						&fold.right != left
+					}
+				});
+				if let Some(fold) = manual_or.get_mut(left) {
+					if !fold.finished {
+						fold.end_pos = i;
+						fold.finished = true;
+					}
+				}
+
+				regs_to_keep.manual_or = true;
+			}
 			_ => {}
 		}
 
@@ -124,6 +170,15 @@ fn run_iter(
 					},
 				);
 			}
+			if !regs_to_keep.manual_or {
+				manual_or.retain(|fold_reg, fold| {
+					if fold.finished {
+						true
+					} else {
+						fold_reg != reg && &fold.right != reg
+					}
+				});
+			}
 		}
 	}
 
@@ -140,6 +195,21 @@ fn run_iter(
 				left: MutableValue::Reg(reg),
 				right: DeclareBinding::Condition(Condition::Not(Box::new(fold.condition))),
 			}
+		}
+	}
+
+	for (reg, fold) in manual_or {
+		if fold.finished {
+			run_again = true;
+			removed.insert(fold.start_pos);
+			block
+				.contents
+				.get_mut(fold.end_pos)
+				.expect("Instr at pos does not exist")
+				.kind = MIRInstrKind::Or {
+				left: MutableValue::Reg(reg),
+				right: Value::Mutable(MutableValue::Reg(fold.right)),
+			};
 		}
 	}
 
@@ -197,4 +267,15 @@ struct LetCondNot {
 	start_pos: usize,
 	end_pos: usize,
 	condition: Condition,
+}
+
+/// Simplifies:
+/// x += y; x /= x
+/// to:
+/// x |= y
+struct ManualOr {
+	finished: bool,
+	start_pos: usize,
+	end_pos: usize,
+	right: Identifier,
 }
