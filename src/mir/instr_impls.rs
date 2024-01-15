@@ -6,10 +6,10 @@ use crate::common::{
 	DeclareBinding, Identifier,
 };
 
-use super::MIRInstrKind;
+use super::{MIRBlock, MIRInstrKind};
 
 impl MIRInstrKind {
-	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: F) {
+	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: &F) {
 		match self {
 			Self::Declare { left, .. } => {
 				f(left);
@@ -105,7 +105,7 @@ impl MIRInstrKind {
 		}
 	}
 
-	pub fn replace_mut_vals<F: Fn(&mut MutableValue)>(&mut self, f: F) {
+	pub fn replace_mut_vals<F: Fn(&mut MutableValue)>(&mut self, f: &F) {
 		match self {
 			Self::Assign { left, right } => {
 				let right_regs: Box<dyn Iterator<Item = _>> = match right {
@@ -195,7 +195,7 @@ impl MIRInstrKind {
 		}
 	}
 
-	pub fn get_body(&self) -> Option<&MIRInstrKind> {
+	pub fn get_body(&self) -> Option<&MIRBlock> {
 		match self {
 			Self::As { body, .. }
 			| Self::At { body, .. }
@@ -207,7 +207,7 @@ impl MIRInstrKind {
 		}
 	}
 
-	pub fn get_body_mut<'a>(&'a mut self) -> Option<&'a mut MIRInstrKind> {
+	pub fn get_body_mut<'a>(&'a mut self) -> Option<&'a mut MIRBlock> {
 		match self {
 			Self::As { body, .. }
 			| Self::At { body, .. }
@@ -218,23 +218,6 @@ impl MIRInstrKind {
 			_ => None,
 		}
 	}
-
-	/// Gets the final body in a chain of multiple instructions with bodies
-	// pub fn get_final_body_mut<'a>(&'a mut self) -> Option<&'a mut MIRInstrKind> {
-	// 	fn inner<'a>(instr: &'a mut MIRInstrKind, first: bool) -> Option<&'a mut MIRInstrKind> {
-	// 		if let Some(body) = instr.get_body_mut() {
-	// 			inner(body, false)
-	// 		} else {
-	// 			if first {
-	// 				None
-	// 			} else {
-	// 				Some(instr)
-	// 			}
-	// 		}
-	// 	}
-
-	// 	inner(self, true)
-	// }
 
 	pub fn get_op_lhs(&self) -> Option<&MutableValue> {
 		match self {
@@ -319,17 +302,3 @@ impl GetUsedRegs for MIRInstrKind {
 		}
 	}
 }
-
-// pub struct MIRInstrBodyIter<'instr> {
-// 	instr: &'instr mut MIRInstrKind,
-// }
-
-// impl<'instr> Iterator for MIRInstrBodyIter<'instr> {
-// 	type Item = &'instr mut MIRInstrKind;
-// 	fn next(&mut self) -> Option<Self::Item> {
-// 		self.instr.get_body_mut().take().map(|node| {
-// 				self.instr = node.as_deref_mut();
-// 				&mut node.elem
-// 		})
-// 	}
-// }

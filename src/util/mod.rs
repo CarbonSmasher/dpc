@@ -160,3 +160,32 @@ where
 pub struct EqFloat(pub f32);
 
 impl Eq for EqFloat {}
+
+/// Trait for a container to get the first element only if the container
+/// is exactly one element long
+pub trait Only {
+	type Item;
+
+	fn only(&self) -> Option<&Self::Item>;
+	fn only_mut(&mut self) -> Option<&mut Self::Item>;
+}
+
+impl<T> Only for Vec<T> {
+	type Item = T;
+
+	fn only(&self) -> Option<&Self::Item> {
+		if self.len() == 1 {
+			unsafe { Some(self.first().unwrap_unchecked()) }
+		} else {
+			None
+		}
+	}
+
+	fn only_mut(&mut self) -> Option<&mut Self::Item> {
+		if self.len() == 1 {
+			unsafe { Some(self.first_mut().unwrap_unchecked()) }
+		} else {
+			None
+		}
+	}
+}

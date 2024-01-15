@@ -25,7 +25,7 @@ use crate::common::ty::{
 };
 use crate::common::val::{MutableValue, Value};
 use crate::common::DeclareBinding;
-use crate::ir::{InstrKind, Instruction};
+use crate::ir::{Block, InstrKind, Instruction};
 
 use super::lex::{Side, Token, TokenAndPos};
 
@@ -840,7 +840,7 @@ fn parse_instr<'t>(
 			let Some(instr) = instr else { bail!("As instruction missing") };
 			Ok(InstrKind::As {
 				target,
-				body: Box::new(instr),
+				body: Box::new(Block::from_single(instr)),
 			})
 		}
 		"at" => {
@@ -850,7 +850,7 @@ fn parse_instr<'t>(
 			let Some(instr) = instr else { bail!("At instruction missing") };
 			Ok(InstrKind::At {
 				target,
-				body: Box::new(instr),
+				body: Box::new(Block::from_single(instr)),
 			})
 		}
 		"str" => {
@@ -860,7 +860,7 @@ fn parse_instr<'t>(
 			let Some(instr) = instr else { bail!("Str instruction missing") };
 			Ok(InstrKind::StoreResult {
 				location: loc,
-				body: Box::new(instr),
+				body: Box::new(Block::from_single(instr)),
 			})
 		}
 		"sts" => {
@@ -870,7 +870,7 @@ fn parse_instr<'t>(
 			let Some(instr) = instr else { bail!("Sts instruction missing") };
 			Ok(InstrKind::StoreSuccess {
 				location: loc,
-				body: Box::new(instr),
+				body: Box::new(Block::from_single(instr)),
 			})
 		}
 		"pos" => {
@@ -880,7 +880,7 @@ fn parse_instr<'t>(
 			let Some(instr) = instr else { bail!("Pos instruction missing") };
 			Ok(InstrKind::Positioned {
 				position: pos,
-				body: Box::new(instr),
+				body: Box::new(Block::from_single(instr)),
 			})
 		}
 		"retr" => {
@@ -888,7 +888,7 @@ fn parse_instr<'t>(
 			let instr = parse_instr(toks).context("Failed to parse retr body instruction")?;
 			let Some(instr) = instr else { bail!("Retr instruction missing") };
 			Ok(InstrKind::ReturnRun {
-				body: Box::new(instr),
+				body: Box::new(Block::from_single(instr)),
 			})
 		}
 		"ret" => {
@@ -1614,7 +1614,7 @@ fn parse_if<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Res
 	let Some(instr) = instr else { bail!("If instruction missing") };
 	Ok(InstrKind::If {
 		condition,
-		body: Box::new(instr),
+		body: Box::new(Block::from_single(instr)),
 	})
 }
 

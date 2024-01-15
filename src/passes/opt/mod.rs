@@ -38,16 +38,38 @@ impl MutableScoreValue {
 	}
 }
 
-pub fn get_instr_call(instr: &MIRInstrKind) -> Option<&CallInterface> {
+pub fn get_instr_calls(instr: &MIRInstrKind) -> Vec<&CallInterface> {
 	match instr {
-		MIRInstrKind::Call { call } => Some(call),
-		other => other.get_body().and_then(get_instr_call),
+		MIRInstrKind::Call { call } => vec![call],
+		other => {
+			let body = other.get_body();
+			if let Some(body) = body {
+				let mut out = Vec::new();
+				for instr in &body.contents {
+					out.extend(get_instr_calls(&instr.kind));
+				}
+				out
+			} else {
+				Vec::new()
+			}
+		}
 	}
 }
 
-pub fn get_instr_call_mut(instr: &mut MIRInstrKind) -> Option<&mut CallInterface> {
+pub fn get_instr_calls_mut(instr: &mut MIRInstrKind) -> Vec<&mut CallInterface> {
 	match instr {
-		MIRInstrKind::Call { call } => Some(call),
-		other => other.get_body_mut().and_then(get_instr_call_mut),
+		MIRInstrKind::Call { call } => vec![call],
+		other => {
+			let body = other.get_body_mut();
+			if let Some(body) = body {
+				let mut out = Vec::new();
+				for instr in &mut body.contents {
+					out.extend(get_instr_calls_mut(&mut instr.kind));
+				}
+				out
+			} else {
+				Vec::new()
+			}
+		}
 	}
 }

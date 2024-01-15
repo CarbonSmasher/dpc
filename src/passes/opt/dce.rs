@@ -2,7 +2,7 @@ use rustc_hash::FxHashSet;
 
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
-use super::get_instr_call;
+use super::get_instr_calls;
 
 pub struct DCEPass;
 
@@ -20,8 +20,8 @@ impl MIRPass for DCEPass {
 			let block = &func.block;
 
 			for instr in &block.contents {
-				let call = get_instr_call(&instr.kind);
-				if let Some(call) = call {
+				let calls = get_instr_calls(&instr.kind);
+				for call in calls {
 					used.insert(call.function.clone());
 				}
 			}

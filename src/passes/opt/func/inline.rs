@@ -99,7 +99,15 @@ fn run_simple_inline_iter(
 					}
 				} else {
 					if let Some(body) = instr.get_body_mut() {
-						inner(body, inline_candidates, interface, cloned_funcs, regs)?;
+						for instr in &mut body.contents {
+							inner(
+								&mut instr.kind,
+								inline_candidates,
+								interface,
+								cloned_funcs,
+								regs,
+							)?;
+						}
 					}
 				}
 
@@ -180,12 +188,12 @@ fn cleanup_fn(
 	}
 
 	for instr in block.iter_mut() {
-		instr.kind.replace_regs(|reg| {
+		instr.kind.replace_regs(&|reg| {
 			let new = fmt_inlined_reg(func_id, reg);
 			*reg = new;
 		});
 
-		instr.kind.replace_mut_vals(|val| {
+		instr.kind.replace_mut_vals(&|val| {
 			if let MutableValue::Arg(idx) = val {
 				*val = MutableValue::Reg(fmt_lowered_arg(func_id, *idx));
 			}

@@ -12,6 +12,7 @@ use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::StoreModLocation;
 use crate::common::mc::pos::DoubleCoordinates;
 use crate::common::mc::EntityTarget;
+use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{DataType, Double};
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 use crate::common::{FunctionTrait, IRType};
@@ -83,14 +84,28 @@ pub struct MIRBlock {
 
 impl MIRBlock {
 	pub fn new() -> Self {
-		Self {
-			contents: Vec::new(),
-		}
+		Self::with_contents(Vec::new())
+	}
+
+	pub fn with_contents(contents: Vec<MIRInstruction>) -> Self {
+		Self { contents }
 	}
 
 	pub fn with_capacity(capacity: usize) -> Self {
 		Self {
 			contents: Vec::with_capacity(capacity),
+		}
+	}
+
+	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: &F) {
+		for instr in &mut self.contents {
+			instr.kind.replace_regs(f);
+		}
+	}
+
+	pub fn replace_mut_vals<F: Fn(&mut MutableValue)>(&mut self, f: &F) {
+		for instr in &mut self.contents {
+			instr.kind.replace_mut_vals(f);
 		}
 	}
 }
@@ -128,6 +143,12 @@ pub struct MIRInstruction {
 impl MIRInstruction {
 	pub fn new(kind: MIRInstrKind) -> Self {
 		Self { kind }
+	}
+}
+
+impl GetUsedRegs for MIRInstruction {
+	fn append_used_regs<'this>(&'this self, regs: &mut Vec<&'this Identifier>) {
+		self.kind.append_used_regs(regs);
 	}
 }
 
@@ -236,7 +257,7 @@ pub enum MIRInstrKind {
 	},
 	If {
 		condition: Condition,
-		body: Box<MIRInstrKind>,
+		body: Box<MIRBlock>,
 	},
 	// Game instructions
 	MC(MinecraftInstr),
@@ -248,7 +269,7 @@ pub enum MIRInstrKind {
 		value: Value,
 	},
 	ReturnRun {
-		body: Box<MIRInstrKind>,
+		body: Box<MIRBlock>,
 	},
 	NoOp,
 	Command {
@@ -260,23 +281,23 @@ pub enum MIRInstrKind {
 	// Modifiers
 	As {
 		target: EntityTarget,
-		body: Box<MIRInstrKind>,
+		body: Box<MIRBlock>,
 	},
 	At {
 		target: EntityTarget,
-		body: Box<MIRInstrKind>,
+		body: Box<MIRBlock>,
 	},
 	StoreResult {
 		location: StoreModLocation,
-		body: Box<MIRInstrKind>,
+		body: Box<MIRBlock>,
 	},
 	StoreSuccess {
 		location: StoreModLocation,
-		body: Box<MIRInstrKind>,
+		body: Box<MIRBlock>,
 	},
 	Positioned {
 		position: DoubleCoordinates,
-		body: Box<MIRInstrKind>,
+		body: Box<MIRBlock>,
 	},
 }
 

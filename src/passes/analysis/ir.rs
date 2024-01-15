@@ -3,7 +3,7 @@ use anyhow::{bail, Context};
 use crate::common::mc::modifier::StoreModLocation;
 use crate::common::ty::{get_op_tys, DataType};
 use crate::common::{Register, RegisterList};
-use crate::ir::{IRFunction, InstrKind, IR};
+use crate::ir::{Block, IRFunction, InstrKind, IR};
 use crate::passes::{IRPass, Pass};
 
 pub struct ValidatePass;
@@ -17,14 +17,20 @@ impl Pass for ValidatePass {
 impl IRPass for ValidatePass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()> {
 		for func in ir.functions.values() {
-			let mut regs = RegisterList::default();
-			for (i, instr) in func.block.contents.iter().enumerate() {
-				validate_instr_kind(&instr.kind, &mut regs, func, &i)?;
-			}
+			validate_block(&func.block, &mut RegisterList::default(), func)?;
 		}
 
 		Ok(())
 	}
+}
+
+fn validate_block(block: &Block, regs: &mut RegisterList, func: &IRFunction) -> anyhow::Result<()> {
+	let mut regs = regs.clone();
+	for (i, instr) in block.contents.iter().enumerate() {
+		validate_instr_kind(&instr.kind, &mut regs, func, &i)?;
+	}
+
+	Ok(())
 }
 
 fn validate_instr_kind(
@@ -91,7 +97,7 @@ fn validate_instr_kind(
 			_ => {}
 		},
 		InstrKind::StoreResult { location, body } => {
-			validate_instr_kind(body, regs, func, i)?;
+			validate_block(body, regs, func)?;
 			if let StoreModLocation::Reg(reg, scale) = location {
 				if let DataType::Score(..) = regs.get(reg).context("Register does not exist")?.ty {
 					if *scale != 1.0 {
@@ -106,7 +112,7 @@ fn validate_instr_kind(
 		| InstrKind::StoreSuccess { body, .. }
 		| InstrKind::Positioned { body, .. }
 		| InstrKind::ReturnRun { body, .. } => {
-			validate_instr_kind(body, regs, func, i)?;
+			validate_block(body, regs, func)?;
 		}
 		_ => {}
 	}

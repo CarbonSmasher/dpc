@@ -139,5 +139,5 @@ struct AssignIfBool {
 	start_pos: usize,
 	end_pos: usize,
 	condition: Condition,
-	body: Option<MIRInstrKind>,
+	body: Option<MIRBlock>,
 }

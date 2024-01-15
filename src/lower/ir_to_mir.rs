@@ -1,5 +1,5 @@
 use crate::common::{val::MutableValue, DeclareBinding};
-use crate::ir::{InstrKind, IR};
+use crate::ir::{Block, InstrKind, IR};
 use crate::mir::{MIRBlock, MIRFunction, MIRInstrKind, MIRInstruction, MIR};
 
 use anyhow::Context;
@@ -9,15 +9,7 @@ pub fn lower_ir(ir: IR) -> anyhow::Result<MIR> {
 	let mut mir = MIR::with_capacity(ir.functions.len());
 
 	for (func_id, func) in ir.functions {
-		let block = func.block;
-		let mut mir_block = MIRBlock::with_capacity(block.contents.len());
-
-		for ir_instr in block.contents {
-			let (prelude, instr) =
-				lower_kind(ir_instr.kind).context("Failed to lower instruction")?;
-			mir_block.contents.extend(prelude);
-			mir_block.contents.push(MIRInstruction::new(instr));
-		}
+		let mir_block = lower_block(func.block)?;
 
 		mir.functions.insert(
 			func_id,
@@ -29,6 +21,17 @@ pub fn lower_ir(ir: IR) -> anyhow::Result<MIR> {
 	}
 
 	Ok(mir)
+}
+
+fn lower_block(block: Block) -> anyhow::Result<MIRBlock> {
+	let mut mir_block = MIRBlock::with_capacity(block.contents.len());
+
+	for ir_instr in block.contents {
+		let instrs = lower_kind(ir_instr.kind).context("Failed to lower instruction")?;
+		mir_block.contents.extend(instrs);
+	}
+
+	Ok(mir_block)
 }
 
 macro_rules! lower {
@@ -45,12 +48,12 @@ macro_rules! lower {
 	}
 }
 
-fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrKind)> {
-	let mut prelude = Vec::new();
+fn lower_kind(kind: InstrKind) -> anyhow::Result<Vec<MIRInstruction>> {
+	let mut out = Vec::new();
 	let kind = match kind {
 		InstrKind::Declare { left, ty, right } => {
 			let left_clone = left.clone();
-			prelude.push(MIRInstruction::new(lower!(Declare, left, ty)));
+			out.push(MIRInstruction::new(lower!(Declare, left, ty)));
 			lower!(MIRInstrKind::Assign {
 				left: MutableValue::Reg(left_clone),
 				right,
@@ -87,58 +90,51 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 		InstrKind::Call { call } => lower!(Call, call),
 		InstrKind::CallExtern { func } => lower!(CallExtern, func),
 		InstrKind::If { condition, body } => {
-			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower if body")?;
-			prelude.extend(new_prelude);
+			let instrs = lower_block(*body).context("Failed to lower if body")?;
 			MIRInstrKind::If {
 				condition,
-				body: Box::new(instr),
+				body: Box::new(instrs),
 			}
 		}
 		InstrKind::As { target, body } => {
-			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower as body")?;
-			prelude.extend(new_prelude);
+			let instrs = lower_block(*body).context("Failed to lower as body")?;
 			MIRInstrKind::As {
 				target,
-				body: Box::new(instr),
+				body: Box::new(instrs),
 			}
 		}
 		InstrKind::At { target, body } => {
-			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower at body")?;
-			prelude.extend(new_prelude);
+			let instrs = lower_block(*body).context("Failed to lower at body")?;
 			MIRInstrKind::At {
 				target,
-				body: Box::new(instr),
+				body: Box::new(instrs),
 			}
 		}
 		InstrKind::StoreResult { location, body } => {
-			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower at body")?;
-			prelude.extend(new_prelude);
+			let instrs = lower_block(*body).context("Failed to lower at body")?;
 			MIRInstrKind::StoreResult {
 				location,
-				body: Box::new(instr),
+				body: Box::new(instrs),
 			}
 		}
 		InstrKind::StoreSuccess { location, body } => {
-			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower at body")?;
-			prelude.extend(new_prelude);
+			let instrs = lower_block(*body).context("Failed to lower at body")?;
 			MIRInstrKind::StoreSuccess {
 				location,
-				body: Box::new(instr),
+				body: Box::new(instrs),
 			}
 		}
 		InstrKind::Positioned { position, body } => {
-			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower pos body")?;
-			prelude.extend(new_prelude);
+			let instrs = lower_block(*body).context("Failed to lower pos body")?;
 			MIRInstrKind::Positioned {
 				position,
-				body: Box::new(instr),
+				body: Box::new(instrs),
 			}
 		}
 		InstrKind::ReturnRun { body } => {
-			let (new_prelude, instr) = lower_kind(*body).context("Failed to lower retr body")?;
-			prelude.extend(new_prelude);
+			let instrs = lower_block(*body).context("Failed to lower retr body")?;
 			MIRInstrKind::ReturnRun {
-				body: Box::new(instr),
+				body: Box::new(instrs),
 			}
 		}
 		InstrKind::ReturnValue { index, value } => lower!(ReturnValue, index, value),
@@ -147,6 +143,7 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<(Vec<MIRInstruction>, MIRInstrK
 		InstrKind::Comment { comment } => lower!(Comment, comment),
 		InstrKind::MC(instr) => MIRInstrKind::MC(instr),
 	};
+	out.push(MIRInstruction::new(kind));
 
-	Ok((prelude, kind))
+	Ok(out)
 }

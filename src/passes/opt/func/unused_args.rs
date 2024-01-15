@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::function::CallInterface;
 use crate::common::val::MutableValue;
-use crate::passes::opt::get_instr_call_mut;
+use crate::passes::opt::get_instr_calls_mut;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::remove_indices;
 
@@ -29,7 +29,7 @@ impl MIRPass for UnusedArgsPass {
 			let used_args = RefCell::new(FxHashSet::default());
 
 			for instr in &mut block.contents {
-				instr.kind.replace_mut_vals(|x| {
+				instr.kind.replace_mut_vals(&|x| {
 					if let MutableValue::Arg(a) = x {
 						used_args.borrow_mut().insert(*a);
 					}
@@ -53,7 +53,7 @@ impl MIRPass for UnusedArgsPass {
 			}
 			// Remap
 			for instr in &mut block.contents {
-				instr.kind.replace_mut_vals(|x| {
+				instr.kind.replace_mut_vals(&|x| {
 					if let MutableValue::Arg(a) = x {
 						*a = *new_mapping
 							.get(a)
@@ -78,7 +78,7 @@ impl MIRPass for UnusedArgsPass {
 			let block = &mut func.block;
 
 			for instr in &mut block.contents {
-				if let Some(call) = get_instr_call_mut(&mut instr.kind) {
+				for call in get_instr_calls_mut(&mut instr.kind) {
 					modify_call(call);
 				}
 			}

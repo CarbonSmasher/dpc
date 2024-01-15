@@ -1,9 +1,9 @@
 use crate::common::ty::ScoreTypeContents;
 use crate::common::DeclareBinding;
 use crate::common::{condition::Condition, ty::DataTypeContents, val::Value};
-use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::{remove_indices, HashSetEmptyTracker};
+use crate::util::{replace_and_expand_indices, HashSetEmptyTracker};
 
 pub struct ConstConditionPass {
 	pub(super) made_changes: bool,
@@ -35,15 +35,17 @@ impl MIRPass for ConstConditionPass {
 			let block = &mut func.block;
 
 			let mut instrs_to_remove = HashSetEmptyTracker::new();
+			let mut instrs_to_replace = Vec::new();
 			loop {
-				let run_again = run_const_condition_iter(block, &mut instrs_to_remove);
+				let run_again =
+					run_const_condition_iter(block, &mut instrs_to_remove, &mut instrs_to_replace);
 				if run_again {
 					self.made_changes = true;
 				} else {
 					break;
 				}
 			}
-			remove_indices(&mut block.contents, &instrs_to_remove);
+			block.contents = replace_and_expand_indices(block.contents.clone(), &instrs_to_replace);
 		}
 
 		Ok(())
@@ -55,6 +57,7 @@ impl MIRPass for ConstConditionPass {
 fn run_const_condition_iter(
 	block: &mut MIRBlock,
 	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
+	instrs_to_replace: &mut Vec<(usize, Vec<MIRInstruction>)>,
 ) -> bool {
 	let mut run_again = false;
 
@@ -68,9 +71,11 @@ fn run_const_condition_iter(
 				let result = const_eval_condition(condition);
 				if let Some(result) = result {
 					if result {
-						instr.kind = *body.clone();
+						instrs_to_remove.insert(i);
+						instrs_to_replace.push((i, body.contents.clone()));
 					} else {
 						instrs_to_remove.insert(i);
+						instrs_to_replace.push((i, Vec::new()));
 					}
 					run_again = true;
 				}

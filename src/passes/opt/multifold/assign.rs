@@ -8,7 +8,7 @@ use crate::common::DeclareBinding;
 use crate::common::{val::MutableValue, val::Value, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::{remove_indices, HashSetEmptyTracker};
+use crate::util::{remove_indices, HashSetEmptyTracker, Only};
 
 pub struct MultifoldAssignPass;
 
@@ -166,11 +166,11 @@ fn run_iter(
 					}
 				}
 			}
-			MIRInstrKind::If { condition, body } => match body.as_ref() {
-				MIRInstrKind::Assign {
+			MIRInstrKind::If { condition, body } => match body.contents.only().map(|x| &x.kind) {
+				Some(MIRInstrKind::Assign {
 					left: MutableValue::Reg(left),
 					right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(right))),
-				} => {
+				}) => {
 					let right = right.get_i32();
 					if right == 0 || right == 1 {
 						if let Some(fold) = if_cond_assign.get_mut(left) {

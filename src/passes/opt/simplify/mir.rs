@@ -6,7 +6,7 @@ use crate::common::val::MutableValue;
 use crate::common::{val::Value, DeclareBinding};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::{remove_indices, HashSetEmptyTracker};
+use crate::util::{remove_indices, HashSetEmptyTracker, Only};
 
 use num_traits::Zero;
 
@@ -131,14 +131,8 @@ fn run_mir_simplify_iter(
 				| MinecraftInstr::GetTime { .. }
 				| MinecraftInstr::GetXP { .. },
 			) => true,
-			// Noop inside of an if can be removed
-			MIRInstrKind::If { body, .. } => {
-				if let MIRInstrKind::NoOp = body.as_ref() {
-					true
-				} else {
-					false
-				}
-			}
+			// Empty block inside of an if can be removed
+			MIRInstrKind::If { body, .. } => body.contents.is_empty(),
 			MIRInstrKind::NoOp => true,
 			_ => false,
 		};
@@ -238,11 +232,11 @@ fn run_mir_simplify_iter(
 			MIRInstrKind::If {
 				condition: Condition::Equal(Value::Mutable(left1), right1),
 				body,
-			} => match body.as_ref() {
-				MIRInstrKind::Assign {
+			} => match body.contents.only().map(|x| &x.kind) {
+				Some(MIRInstrKind::Assign {
 					left: left2,
 					right: DeclareBinding::Value(right2),
-				} if left1.is_same_val(left2) && right1.is_value_eq(right2) => Some(MIRInstrKind::Assign {
+				}) if left1.is_same_val(left2) && right1.is_value_eq(right2) => Some(MIRInstrKind::Assign {
 					left: left1.clone(),
 					right: DeclareBinding::Value(right1.clone()),
 				}),
@@ -254,26 +248,31 @@ fn run_mir_simplify_iter(
 				body,
 			} => match condition.as_ref() {
 				// if x != y: x = y -> x = y
-				Condition::Equal(Value::Mutable(left1), right1) => match body.as_ref() {
-					MIRInstrKind::Assign {
-						left: left2,
-						right: DeclareBinding::Value(right2),
-					} if left1.is_same_val(left2) && right1.is_value_eq(right2) => Some(MIRInstrKind::Assign {
-						left: left1.clone(),
-						right: DeclareBinding::Value(right1.clone()),
-					}),
-					_ => None,
-				},
-				// if x != y: x = y -> x = y
-				Condition::Bool(b) => match body.as_ref() {
-					MIRInstrKind::Mul {
-						left,
-						right: Value::Constant(DataTypeContents::Score(val)),
+				Condition::Equal(Value::Mutable(left1), right1) => {
+					match body.contents.only().map(|x| &x.kind) {
+						Some(MIRInstrKind::Assign {
+							left: left2,
+							right: DeclareBinding::Value(right2),
+						}) if left1.is_same_val(left2) && right1.is_value_eq(right2) => Some(MIRInstrKind::Assign {
+							left: left1.clone(),
+							right: DeclareBinding::Value(right1.clone()),
+						}),
+						_ => None,
 					}
-					| MIRInstrKind::Assign {
-						left,
-						right: DeclareBinding::Value(Value::Constant(DataTypeContents::Score(val))),
-					} if val.get_i32() == 0 => Some(MIRInstrKind::Mul {
+				}
+				// if x != y: x = y -> x = y
+				Condition::Bool(b) => match body.contents.only().map(|x| &x.kind) {
+					Some(
+						MIRInstrKind::Mul {
+							left,
+							right: Value::Constant(DataTypeContents::Score(val)),
+						}
+						| MIRInstrKind::Assign {
+							left,
+							right:
+								DeclareBinding::Value(Value::Constant(DataTypeContents::Score(val))),
+						},
+					) if val.get_i32() == 0 => Some(MIRInstrKind::Mul {
 						left: left.clone(),
 						right: b.clone(),
 					}),
@@ -287,12 +286,12 @@ fn run_mir_simplify_iter(
 					| Condition::GreaterThanOrEqual(Value::Mutable(left1), right1),
 				body,
 			} => {
-				match body.as_ref() {
+				match body.contents.only().map(|x| &x.kind) {
 					// if x > y: x = y -> min x, y;
-					MIRInstrKind::Assign {
+					Some(MIRInstrKind::Assign {
 						left: left2,
 						right: DeclareBinding::Value(right2),
-					} if left1.is_same_val(left2) && right1.is_value_eq(right2) => Some(MIRInstrKind::Min {
+					}) if left1.is_same_val(left2) && right1.is_value_eq(right2) => Some(MIRInstrKind::Min {
 						left: left1.clone(),
 						right: right1.clone(),
 					}),
@@ -305,12 +304,12 @@ fn run_mir_simplify_iter(
 					| Condition::LessThanOrEqual(Value::Mutable(left1), right1),
 				body,
 			} => {
-				match body.as_ref() {
+				match body.contents.only().map(|x| &x.kind) {
 					// if x < y: x = y -> max x, y;
-					MIRInstrKind::Assign {
+					Some(MIRInstrKind::Assign {
 						left: left2,
 						right: DeclareBinding::Value(right2),
-					} if left1.is_same_val(left2) && right1.is_value_eq(right2) => Some(MIRInstrKind::Max {
+					}) if left1.is_same_val(left2) && right1.is_value_eq(right2) => Some(MIRInstrKind::Max {
 						left: left1.clone(),
 						right: right1.clone(),
 					}),
@@ -320,20 +319,20 @@ fn run_mir_simplify_iter(
 			MIRInstrKind::If {
 				condition: Condition::Bool(b),
 				body,
-			} => match body.as_ref() {
+			} => match body.contents.only().map(|x| &x.kind) {
 				// if x: y += 1 -> y += x
-				MIRInstrKind::Add {
+				Some(MIRInstrKind::Add {
 					left,
 					right: Value::Constant(DataTypeContents::Score(val)),
-				} if val.get_i32() == 1 => Some(MIRInstrKind::Add {
+				}) if val.get_i32() == 1 => Some(MIRInstrKind::Add {
 					left: left.clone(),
 					right: b.clone(),
 				}),
 				// if x: y -= 1 -> y -= x
-				MIRInstrKind::Sub {
+				Some(MIRInstrKind::Sub {
 					left,
 					right: Value::Constant(DataTypeContents::Score(val)),
-				} if val.get_i32() == 1 => Some(MIRInstrKind::Sub {
+				}) if val.get_i32() == 1 => Some(MIRInstrKind::Sub {
 					left: left.clone(),
 					right: b.clone(),
 				}),
@@ -343,12 +342,12 @@ fn run_mir_simplify_iter(
 				location: StoreModLocation::Reg(left, left_scale),
 				body,
 			} => {
-				match body.as_ref() {
+				match body.contents.only().map(|x| &x.kind) {
 					// str x: get y -> x = y (essentially)
-					MIRInstrKind::Get {
+					Some(MIRInstrKind::Get {
 						value: right,
 						scale: right_scale,
-					} => {
+					}) => {
 						if left_scale * right_scale == 1.0 {
 							Some(MIRInstrKind::Assign {
 								left: MutableValue::Reg(left.clone()),
@@ -365,15 +364,17 @@ fn run_mir_simplify_iter(
 				location: StoreModLocation::Reg(left, left_scale),
 				body,
 			} if left_scale == &1.0 => {
-				match body.as_ref() {
+				match body.contents.only().map(|x| &x.kind) {
 					// Canonicalize to let cond
-					MIRInstrKind::If { condition, body } => match body.as_ref() {
-						MIRInstrKind::NoOp => Some(MIRInstrKind::Assign {
-							left: MutableValue::Reg(left.clone()),
-							right: DeclareBinding::Condition(condition.clone()),
-						}),
-						_ => None,
-					},
+					Some(MIRInstrKind::If { condition, body }) => {
+						match body.contents.only().map(|x| &x.kind) {
+							Some(MIRInstrKind::NoOp) | None => Some(MIRInstrKind::Assign {
+								left: MutableValue::Reg(left.clone()),
+								right: DeclareBinding::Condition(condition.clone()),
+							}),
+							_ => None,
+						}
+					}
 					_ => None,
 				}
 			}

@@ -64,16 +64,22 @@ impl FunctionTrait for IRFunction {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Block {
 	pub contents: Vec<Instruction>,
 }
 
 impl Block {
 	pub fn new() -> Self {
-		Self {
-			contents: Vec::new(),
-		}
+		Self::with_contents(Vec::new())
+	}
+
+	pub fn with_contents(contents: Vec<Instruction>) -> Self {
+		Self { contents }
+	}
+
+	pub fn from_single(instr: InstrKind) -> Self {
+		Self::with_contents(vec![Instruction::new(instr)])
 	}
 }
 
@@ -210,7 +216,7 @@ pub enum InstrKind {
 	},
 	If {
 		condition: Condition,
-		body: Box<InstrKind>,
+		body: Box<Block>,
 	},
 	Call {
 		call: CallInterface,
@@ -227,7 +233,7 @@ pub enum InstrKind {
 		value: Value,
 	},
 	ReturnRun {
-		body: Box<InstrKind>,
+		body: Box<Block>,
 	},
 	Command {
 		command: String,
@@ -237,23 +243,23 @@ pub enum InstrKind {
 	},
 	As {
 		target: EntityTarget,
-		body: Box<InstrKind>,
+		body: Box<Block>,
 	},
 	At {
 		target: EntityTarget,
-		body: Box<InstrKind>,
+		body: Box<Block>,
 	},
 	StoreResult {
 		location: StoreModLocation,
-		body: Box<InstrKind>,
+		body: Box<Block>,
 	},
 	StoreSuccess {
 		location: StoreModLocation,
-		body: Box<InstrKind>,
+		body: Box<Block>,
 	},
 	Positioned {
 		position: DoubleCoordinates,
-		body: Box<InstrKind>,
+		body: Box<Block>,
 	},
 }
 

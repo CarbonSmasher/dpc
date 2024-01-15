@@ -13,7 +13,7 @@ use crate::common::{
 	val::ScoreValue, val::Value, DeclareBinding, Identifier, Register, RegisterList,
 };
 use crate::lir::{LIRBlock, LIRFunction, LIRInstrKind, LIRInstruction, LIR};
-use crate::mir::{MIRInstrKind, MIR};
+use crate::mir::{MIRBlock, MIRInstrKind, MIR};
 
 macro_rules! lower {
 	($instrs:expr, $kind:ident) => {
@@ -196,7 +196,7 @@ fn lower_kind(
 				lower_condition(condition, lbcx).context("Failed to lower condition")?;
 			lir_instrs.extend(prepend);
 
-			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower if body")?;
+			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower if body")?;
 
 			for (condition, negate) in conditions {
 				instr.modifiers.insert(
@@ -210,37 +210,37 @@ fn lower_kind(
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::As { target, body } => {
-			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower as body")?;
+			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower as body")?;
 
 			instr.modifiers.insert(0, Modifier::As(target));
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::At { target, body } => {
-			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower at body")?;
+			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower at body")?;
 
 			instr.modifiers.insert(0, Modifier::At(target));
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::StoreResult { location, body } => {
-			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower str body")?;
+			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower str body")?;
 
 			instr.modifiers.insert(0, Modifier::StoreResult(location));
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::StoreSuccess { location, body } => {
-			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower sts body")?;
+			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower sts body")?;
 
 			instr.modifiers.insert(0, Modifier::StoreSuccess(location));
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::Positioned { position, body } => {
-			let mut instr = lower_subinstr(*body, lbcx).context("Failed to lower pos body")?;
+			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower pos body")?;
 
 			instr.modifiers.insert(0, Modifier::Positioned(position));
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::ReturnRun { body } => {
-			let instr = lower_subinstr(*body, lbcx).context("Failed to lower retr body")?;
+			let instr = lower_subblock(*body, lbcx).context("Failed to lower retr body")?;
 
 			lir_instrs.push(LIRInstruction::new(LIRInstrKind::ReturnRun(Box::new(
 				instr,
@@ -949,9 +949,12 @@ fn lower_bool_cond(val: Value, check: bool, lbcx: &LowerBlockCx) -> anyhow::Resu
 	}
 }
 
-fn lower_subinstr(instr: MIRInstrKind, lbcx: &mut LowerBlockCx) -> anyhow::Result<LIRInstruction> {
+fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LIRInstruction> {
 	let mut new_lir_instrs = Vec::new();
-	lower_kind(instr, &mut new_lir_instrs, lbcx).context("Failed to lower subinstruction body")?;
+	for instr in block.contents {
+		lower_kind(instr.kind, &mut new_lir_instrs, lbcx)
+			.context("Failed to lower subinstruction body")?;
+	}
 
 	// Create a new function or just inline it
 	let out = if new_lir_instrs.len() == 1 {

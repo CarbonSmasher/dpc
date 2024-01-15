@@ -138,7 +138,9 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 				),
 				_ => (None, None),
 			};
-			const_prop_instr(body, an, run_again);
+			for instr in &mut body.contents {
+				const_prop_instr(&mut instr.kind, an, run_again);
+			}
 			// Now we have to restore the previous value
 			if let Some(previous_reg) = previous.0 {
 				if let Some(previous_val) = previous.1 {
@@ -158,7 +160,9 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 		| MIRInstrKind::StoreSuccess { body, .. }
 		| MIRInstrKind::Positioned { body, .. }
 		| MIRInstrKind::ReturnRun { body } => {
-			const_prop_instr(body, an, run_again);
+			for instr in &mut body.contents {
+				const_prop_instr(&mut instr.kind, an, run_again);
+			}
 		}
 		_ => {}
 	};

@@ -1,6 +1,6 @@
 use crate::common::ResourceLocation;
 use crate::mir::MIR;
-use crate::passes::opt::get_instr_call;
+use crate::passes::opt::get_instr_calls;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
 use anyhow::anyhow;
@@ -56,8 +56,8 @@ fn check_recursion<'fun>(
 	let block = &func_item.block;
 
 	for instr in &block.contents {
-		let call = get_instr_call(&instr.kind);
-		if let Some(call) = call {
+		let calls = get_instr_calls(&instr.kind);
+		for call in calls {
 			// Recursion!
 			if call_stack.set.contains(&call.function) {
 				candidates.remove(&call.function);
