@@ -68,7 +68,7 @@ fn run_const_condition_iter(
 
 		match &mut instr.kind {
 			MIRInstrKind::If { condition, body } => {
-				let result = const_eval_condition(condition);
+				let result = const_eval_result(condition);
 				if let Some(result) = result {
 					if result {
 						instrs_to_remove.insert(i);
@@ -84,7 +84,7 @@ fn run_const_condition_iter(
 				left,
 				right: DeclareBinding::Condition(condition),
 			} => {
-				let result = const_eval_condition(condition);
+				let result = const_eval_result(condition);
 				if let Some(result) = result {
 					instr.kind = MIRInstrKind::Assign {
 						left: left.clone(),
@@ -99,6 +99,34 @@ fn run_const_condition_iter(
 	}
 
 	run_again
+}
+
+/// Tries to constant eval parts of a condition, then returns a constant
+/// result of the whole condition if possible
+fn const_eval_result(condition: &mut Condition) -> Option<bool> {
+	match condition {
+		Condition::Not(inner) => {
+			let result = const_eval_result(inner);
+			result.map(|x| !x)
+		}
+		Condition::And(l, r) => {
+			if let (Some(l), Some(r)) = (const_eval_result(l), const_eval_result(r)) {
+				Some(l && r)
+			} else {
+				None
+			}
+		}
+		_ => {
+			if let Some(result) = const_eval_condition(condition) {
+				*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+					ScoreTypeContents::Bool(result),
+				)));
+				Some(result)
+			} else {
+				None
+			}
+		}
+	}
 }
 
 fn const_eval_condition(condition: &Condition) -> Option<bool> {

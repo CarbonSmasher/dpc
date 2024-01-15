@@ -1,7 +1,10 @@
 # mir_passes
 
 @preserve
-"test:main" {
+"test:main" {}
+
+@preserve
+"test:prop" {
 	# Test propagation of register values to conditions
 	let a: score = val 4s;
 	if gt sco "foo" "bar", %a:
@@ -27,4 +30,12 @@
 	use %equal;
 	let nequal: bool = cond not eq %left, %right;
 	use %nequal;
+}
+
+@preserve
+"test:partial" {
+	# Test partial evaluation of inner conditions
+	let x: score = val 6s;
+	if and eq %x, 6s, pred "foo:bar":
+		say "hello";
 }

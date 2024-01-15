@@ -406,6 +406,34 @@ fn simplify_condition(condition: &mut Condition, run_again: &mut bool) {
 			Condition::Bool(b) => *condition = Condition::NotBool(b.clone()),
 			_ => simplify_condition(inner, run_again),
 		},
+		Condition::And(l, r) => match (l.as_mut(), r.as_mut()) {
+			(Condition::Bool(Value::Constant(DataTypeContents::Score(b))), inner)
+			| (inner, Condition::Bool(Value::Constant(DataTypeContents::Score(b)))) => {
+				if b.get_i32() == 1 {
+					*condition = inner.clone();
+				} else {
+					*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+						ScoreTypeContents::Bool(true),
+					)));
+				}
+				*run_again = true;
+			}
+			(Condition::NotBool(Value::Constant(DataTypeContents::Score(b))), inner)
+			| (inner, Condition::NotBool(Value::Constant(DataTypeContents::Score(b)))) => {
+				if b.get_i32() == 0 {
+					*condition = inner.clone();
+				} else {
+					*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+						ScoreTypeContents::Bool(true),
+					)));
+				}
+				*run_again = true;
+			}
+			(l, r) => {
+				simplify_condition(l, run_again);
+				simplify_condition(r, run_again);
+			}
+		},
 		_ => {}
 	}
 }
