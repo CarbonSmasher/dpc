@@ -18,13 +18,21 @@
 	let out: score = val &0;
 
 	# Range-specific
-	if lte &0, 13924s:
-		call %out run "test:sqrt1", %out;
-	if gte &0, 13925s:
-		if lte &0, 16777216s:
-			call %out run "test:sqrt2", %out;
-	if gte &0, 16777217s:
-		call %out run "test:sqrt3", %out;
+	if lte &0, 13924s {
+		sub %out, 1s;
+		div %out, 119s;
+		add %out, 1s;
+	};
+	if and gte &0, 13925s, lte &0, 16777216s {
+		sub %out, 13924s;
+		div %out, 4214s;
+		add %out, 118s;
+	};
+	if gte &0, 16777217s {
+		sub %out, 16777216s;
+		div %out, 50436s;
+		add %out, 4096s;
+	};
 
 	# Run
 	div %tmp0, %out;
@@ -43,25 +51,4 @@
 	add %out, %tmp3;
 	div %out, 2s;
 	retv 0, %out;
-}
-
-"test:sqrt1" score : score {
-	sub &0, 1s;
-	div &0, 119s;
-	add &0, 1s;
-	retv 0, &0;
-}
-
-"test:sqrt2" score : score {
-	sub &0, 13924s;
-	div &0, 4214s;
-	add &0, 118s;
-	retv 0, &0;
-}
-
-"test:sqrt3" score : score {
-	sub &0, 16777216s;
-	div &0, 50436s;
-	add &0, 4096s;
-	retv 0, &0;
 }

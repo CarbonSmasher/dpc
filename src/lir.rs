@@ -58,6 +58,7 @@ impl Default for LIR {
 pub struct LIRFunction {
 	pub interface: FunctionInterface,
 	pub block: LIRBlock,
+	pub parent: Option<ResourceLocation>,
 }
 
 impl FunctionTrait for LIRFunction {

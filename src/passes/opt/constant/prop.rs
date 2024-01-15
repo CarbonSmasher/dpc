@@ -226,6 +226,10 @@ fn const_prop_condition(
 			}
 		}
 		Condition::Not(cond) => const_prop_condition(cond, an, run_again),
+		Condition::And(l, r) => {
+			const_prop_condition(l, an, run_again);
+			const_prop_condition(r, an, run_again);
+		}
 		_ => {}
 	}
 }

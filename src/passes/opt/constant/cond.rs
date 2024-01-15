@@ -129,6 +129,13 @@ fn const_eval_condition(condition: &Condition) -> Option<bool> {
 		}
 		Condition::Exists(Value::Constant(..)) => Some(true),
 		Condition::Not(condition) => const_eval_condition(condition).map(|x| !x),
+		Condition::And(l, r) => {
+			if let (Some(l), Some(r)) = (const_eval_condition(l), const_eval_condition(r)) {
+				Some(l && r)
+			} else {
+				None
+			}
+		}
 		_ => None,
 	}
 }

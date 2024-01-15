@@ -8,6 +8,7 @@ use crate::common::mc::modifier::{
 use crate::common::ty::{
 	get_op_tys, ArraySize, DataType, DataTypeContents, Double, ScoreType, ScoreTypeContents,
 };
+use crate::common::ResourceLocation;
 use crate::common::{
 	val::MutableNBTValue, val::MutableScoreValue, val::MutableValue, val::NBTValue,
 	val::ScoreValue, val::Value, DeclareBinding, Identifier, Register, RegisterList,
@@ -37,7 +38,11 @@ pub fn lower_mir(mir: MIR) -> anyhow::Result<LIR> {
 		let block = func.block;
 		let mut lir_instrs = Vec::with_capacity(block.contents.len());
 
-		let mut lbcx = LowerBlockCx::new(&mut lir, func.interface.sig.clone());
+		let mut lbcx = LowerBlockCx::new(
+			&mut lir,
+			func.interface.id.clone(),
+			func.interface.sig.clone(),
+		);
 
 		for mir_instr in block.contents {
 			lower_kind(mir_instr.kind, &mut lir_instrs, &mut lbcx)?;
@@ -51,6 +56,7 @@ pub fn lower_mir(mir: MIR) -> anyhow::Result<LIR> {
 			LIRFunction {
 				interface: func.interface,
 				block: lir_block,
+				parent: None,
 			},
 		);
 	}
@@ -281,16 +287,18 @@ struct LowerBlockCx<'lir> {
 	registers: RegisterList,
 	additional_reg_count: u32,
 	if_body_count: u32,
+	func_id: ResourceLocation,
 	sig: FunctionSignature,
 }
 
 impl<'lir> LowerBlockCx<'lir> {
-	fn new(lir: &'lir mut LIR, sig: FunctionSignature) -> Self {
+	fn new(lir: &'lir mut LIR, func_id: ResourceLocation, sig: FunctionSignature) -> Self {
 		Self {
 			lir,
 			registers: RegisterList::default(),
 			additional_reg_count: 0,
 			if_body_count: 0,
+			func_id,
 			sig,
 		}
 	}
@@ -971,6 +979,7 @@ fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LI
 			LIRFunction {
 				interface: interface.clone(),
 				block: lir_block,
+				parent: Some(lbcx.func_id.clone()),
 			},
 		);
 		LIRInstruction::new(LIRInstrKind::Call(interface.id))

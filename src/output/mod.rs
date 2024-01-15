@@ -43,6 +43,13 @@ pub fn link(lir: LIR, project: &ProjectSettings) -> anyhow::Result<Datapack> {
 
 fn codegen_fn(func_id: &str, func: &LIRFunction, ccx: &mut CodegenCx) -> anyhow::Result<Function> {
 	let mut fun = Function::new();
+	// We need to use the function id of the parent if it is present
+	// since then we are using the correct registers of the parent
+	let func_id = if let Some(func_id) = &func.parent {
+		func_id
+	} else {
+		func_id
+	};
 	let cleaned_id = cleanup_fn_id(func_id);
 	let code = codegen_block(&cleaned_id, &func.block, ccx)?;
 	fun.contents = code;
