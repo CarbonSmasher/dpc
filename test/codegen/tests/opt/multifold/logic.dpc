@@ -4,8 +4,27 @@
 "test:main" {}
 
 @preserve
-"fold:assign_if_bool" {
+"fold:let_cond_prop" {
 	let x: bool = cond eq sco @s[] "foo", 7s;
 	if not bool %x:
 		say "hello";
+	
+	let l: bool = cond pred "foo:bar";
+	let r: bool = cond pred "bar:foo";
+	if and bool %l, not bool %r:
+		say "hello";
+
+	# Nested
+	let a: bool = cond pred "foo:bar";
+	let b: bool = cond not bool %a;
+	let c: bool = cond and bool %b, bool %a;
+	if bool %c:
+		say "hello";
+}
+
+@preserve
+"fold:let_cond_not" {
+	let x: bool = cond eq sco @s[] "foo", 10s;
+	not %x;
+	use %x;
 }

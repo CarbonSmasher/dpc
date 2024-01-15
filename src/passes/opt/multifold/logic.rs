@@ -44,14 +44,16 @@ fn run_iter(
 ) -> bool {
 	let _ = replaced;
 	let mut run_again = false;
-	let mut assign_if_bool = FxHashMap::<Identifier, AssignIfBool>::default();
+	let mut let_cond_prop = FxHashMap::<Identifier, LetCondProp>::default();
+	let mut let_cond_not = FxHashMap::<Identifier, LetCondNot>::default();
 
 	#[derive(Default)]
 	struct RegsToKeep {
-		assign_if_bool: bool,
+		let_cond_prop: bool,
+		let_cond_not: bool,
 	}
 
-	for (i, instr) in block.contents.iter().enumerate() {
+	for (i, instr) in block.contents.iter_mut().enumerate() {
 		// Even though this instruction hasn't actually been removed from the vec, we treat it
 		// as if it has to prevent doing the same work over and over and actually iterating indefinitely
 		if removed.contains(&i) {
@@ -60,33 +62,44 @@ fn run_iter(
 
 		let mut regs_to_keep = RegsToKeep::default();
 
-		match &instr.kind {
+		match &mut instr.kind {
 			MIRInstrKind::Assign {
 				left: MutableValue::Reg(left),
 				right: DeclareBinding::Condition(cond),
 			} => {
-				assign_if_bool.insert(
+				let_cond_propagate(cond, &mut let_cond_prop, &mut run_again);
+				for reg in cond.get_used_regs() {
+					let_cond_prop.remove(reg);
+				}
+				let_cond_prop.insert(
 					left.clone(),
-					AssignIfBool {
+					LetCondProp {
+						finished: false,
+						condition: cond.clone(),
+					},
+				);
+
+				let_cond_not.insert(
+					left.clone(),
+					LetCondNot {
 						finished: false,
 						start_pos: i,
 						end_pos: i,
 						condition: cond.clone(),
-						body: None,
 					},
 				);
 
-				regs_to_keep.assign_if_bool = true;
+				regs_to_keep.let_cond_prop = true;
+				regs_to_keep.let_cond_not = true;
 			}
-			MIRInstrKind::If {
-				condition:
-					Condition::Bool(Value::Mutable(MutableValue::Reg(b)))
-					| Condition::NotBool(Value::Mutable(MutableValue::Reg(b))),
-				body,
+			MIRInstrKind::If { condition, .. } => {
+				let_cond_propagate(condition, &mut let_cond_prop, &mut run_again);
+			}
+			MIRInstrKind::Not {
+				value: MutableValue::Reg(reg),
 			} => {
-				if let Some(fold) = assign_if_bool.get_mut(b) {
+				if let Some(fold) = let_cond_not.get_mut(reg) {
 					if !fold.finished {
-						fold.body = Some(*body.clone());
 						fold.end_pos = i;
 						fold.finished = true;
 					}
@@ -97,8 +110,11 @@ fn run_iter(
 
 		let used_regs = instr.kind.get_used_regs();
 		for reg in used_regs.into_iter() {
-			if !regs_to_keep.assign_if_bool {
-				assign_if_bool.retain(
+			if !regs_to_keep.let_cond_prop {
+				let_cond_prop.remove(reg);
+			}
+			if !regs_to_keep.let_cond_not {
+				let_cond_not.retain(
 					|fold_reg, fold| {
 						if fold.finished {
 							true
@@ -112,32 +128,73 @@ fn run_iter(
 	}
 
 	// Finish the folds
-	for (_, fold) in assign_if_bool {
-		if let Some(body) = fold.body {
+	for (reg, fold) in let_cond_not {
+		if fold.finished {
 			run_again = true;
-			removed.insert(fold.start_pos);
+			removed.insert(fold.end_pos);
 			block
 				.contents
-				.get_mut(fold.end_pos)
+				.get_mut(fold.start_pos)
 				.expect("Instr at pos does not exist")
-				.kind = MIRInstrKind::If {
-				condition: fold.condition,
-				body: Box::new(body),
-			};
+				.kind = MIRInstrKind::Assign {
+				left: MutableValue::Reg(reg),
+				right: DeclareBinding::Condition(Condition::Not(Box::new(fold.condition))),
+			}
 		}
 	}
 
 	run_again
 }
 
+/// Propagates let conditions into other let conditions and ifs
+struct LetCondProp {
+	finished: bool,
+	condition: Condition,
+}
+
+// Recursively check for boolean conditions and replace them
+// We do this in place because we don't want to store where in the subconditions
+// the condition to replace is
+fn let_cond_propagate(
+	condition: &mut Condition,
+	let_cond_prop: &mut FxHashMap<Identifier, LetCondProp>,
+	run_again: &mut bool,
+) {
+	match condition {
+		Condition::Bool(Value::Mutable(MutableValue::Reg(b))) => {
+			if let Some(fold) = let_cond_prop.get_mut(b) {
+				if !fold.finished {
+					*condition = fold.condition.clone();
+					fold.finished = true;
+					*run_again = true;
+				}
+			}
+		}
+		Condition::NotBool(Value::Mutable(MutableValue::Reg(b))) => {
+			if let Some(fold) = let_cond_prop.get_mut(b) {
+				if !fold.finished {
+					*condition = Condition::Not(Box::new(fold.condition.clone()));
+					fold.finished = true;
+					*run_again = true;
+				}
+			}
+		}
+		Condition::Not(cond) => let_cond_propagate(cond, let_cond_prop, run_again),
+		Condition::And(l, r) => {
+			let_cond_propagate(l, let_cond_prop, run_again);
+			let_cond_propagate(r, let_cond_prop, run_again);
+		}
+		_ => {}
+	}
+}
+
 /// Simplifies:
-/// let x = cond ..; if bool x
+/// let x = cond ..; not x
 /// to:
-/// if ..
-struct AssignIfBool {
+/// let x = cond not ..
+struct LetCondNot {
 	finished: bool,
 	start_pos: usize,
 	end_pos: usize,
 	condition: Condition,
-	body: Option<MIRBlock>,
 }
