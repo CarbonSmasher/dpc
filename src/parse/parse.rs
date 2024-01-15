@@ -34,8 +34,21 @@ pub type UnparsedBody = Vec<TokenAndPos>;
 pub fn parse_body(body: UnparsedBody) -> anyhow::Result<Vec<Instruction>> {
 	let mut out = Vec::new();
 
-	// Split into the tokens for each instruction
-	let split = body.split(|x| matches!(x.0, Token::Semicolon));
+	// Split into the tokens for each instruction, with respect to nested blocks
+	let mut nested_counter = 0;
+	let split = body.split(|x| match x.0 {
+		Token::Curly(Side::Left) => {
+			nested_counter += 1;
+			false
+		}
+		Token::Curly(Side::Right) => {
+			nested_counter -= 1;
+			false
+		}
+		Token::Semicolon => nested_counter == 0,
+		_ => false,
+	});
+
 	for (i, instr) in split.enumerate() {
 		let instr = parse_instr(&mut instr.iter())
 			.with_context(|| format!("Failed to parse instruction {i}"))?;
@@ -129,7 +142,21 @@ macro_rules! consume_optional_extract {
 fn parse_instr<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<Option<InstrKind>> {
-	let instr = consume_extract!(toks, Ident, { return Ok(None) });
+	let first_tok = toks.next();
+	if let Some(first_tok) = first_tok {
+		parse_instr_impl(first_tok, toks)
+	} else {
+		Ok(None)
+	}
+}
+
+fn parse_instr_impl<'t>(
+	first_tok: &TokenAndPos,
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<Option<InstrKind>> {
+	let Token::Ident(instr) = &first_tok.0 else {
+		bail!("Unexpected token for instruction");
+	};
 
 	let instr = match instr.as_str() {
 		"let" => parse_let(toks),
@@ -835,60 +862,53 @@ fn parse_instr<'t>(
 		}
 		"as" => {
 			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
-			consume_expect!(toks, Colon, { bail!("Missing colon") });
-			let instr = parse_instr(toks).context("Failed to parse as body instruction")?;
-			let Some(instr) = instr else { bail!("As instruction missing") };
+			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
+
 			Ok(InstrKind::As {
 				target,
-				body: Box::new(Block::from_single(instr)),
+				body: Box::new(body),
 			})
 		}
 		"at" => {
 			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
-			consume_expect!(toks, Colon, { bail!("Missing colon") });
-			let instr = parse_instr(toks).context("Failed to parse at body instruction")?;
-			let Some(instr) = instr else { bail!("At instruction missing") };
+			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
 			Ok(InstrKind::At {
 				target,
-				body: Box::new(Block::from_single(instr)),
+				body: Box::new(body),
 			})
 		}
 		"str" => {
 			let loc = parse_storage_location(toks).context("Failed to parse storage location")?;
-			consume_expect!(toks, Colon, { bail!("Missing colon") });
-			let instr = parse_instr(toks).context("Failed to parse str body instruction")?;
-			let Some(instr) = instr else { bail!("Str instruction missing") };
+			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
+
 			Ok(InstrKind::StoreResult {
 				location: loc,
-				body: Box::new(Block::from_single(instr)),
+				body: Box::new(body),
 			})
 		}
 		"sts" => {
 			let loc = parse_storage_location(toks).context("Failed to parse storage location")?;
-			consume_expect!(toks, Colon, { bail!("Missing colon") });
-			let instr = parse_instr(toks).context("Failed to parse sts body instruction")?;
-			let Some(instr) = instr else { bail!("Sts instruction missing") };
+			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
+
 			Ok(InstrKind::StoreSuccess {
 				location: loc,
-				body: Box::new(Block::from_single(instr)),
+				body: Box::new(body),
 			})
 		}
 		"pos" => {
 			let pos = parse_double_coords(toks).context("Failed to parse position")?;
-			consume_expect!(toks, Colon, { bail!("Missing colon") });
-			let instr = parse_instr(toks).context("Failed to parse pos body instruction")?;
-			let Some(instr) = instr else { bail!("Pos instruction missing") };
+			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
+
 			Ok(InstrKind::Positioned {
 				position: pos,
-				body: Box::new(Block::from_single(instr)),
+				body: Box::new(body),
 			})
 		}
 		"retr" => {
-			consume_expect!(toks, Colon, { bail!("Missing colon") });
-			let instr = parse_instr(toks).context("Failed to parse retr body instruction")?;
-			let Some(instr) = instr else { bail!("Retr instruction missing") };
+			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
+
 			Ok(InstrKind::ReturnRun {
-				body: Box::new(Block::from_single(instr)),
+				body: Box::new(body),
 			})
 		}
 		"ret" => {
@@ -899,6 +919,57 @@ fn parse_instr<'t>(
 	}
 	.context("Failed to parse instruction")?;
 	Ok(Some(instr))
+}
+
+/// Parses a nested block with braces
+fn parse_nested_block<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<Block> {
+	let first_tok = consume!(toks, { bail!("Missing first nested block token") });
+	match first_tok.0 {
+		Token::Curly(Side::Left) => {
+			let mut out = Vec::new();
+			loop {
+				let first_tok = consume_optional!(toks);
+				if let Some(first_tok) = first_tok {
+					if let Token::Curly(Side::Right) = first_tok.0 {
+						break;
+					}
+
+					let instr = parse_instr_impl(first_tok, toks)?;
+					if let Some(instr) = instr {
+						out.push(Instruction::new(instr));
+					} else {
+						break;
+					}
+
+					let next = consume_optional!(toks);
+					if let Some(next) = next {
+						match &next.0 {
+							Token::Semicolon => {}
+							Token::Curly(Side::Right) => {
+								break;
+							}
+							other => bail!("Unexpected token {other:?} {}", next.1),
+						}
+					}
+				} else {
+					break;
+				}
+			}
+
+			Ok(Block::with_contents(out))
+		}
+		Token::Colon => {
+			let instr = parse_instr(toks).context("Failed to parse nested block instruction")?;
+			if let Some(instr) = instr {
+				Ok(Block::from_single(instr))
+			} else {
+				Ok(Block::new())
+			}
+		}
+		_ => bail!("Unexpected token {:?} {:?}", first_tok.0, first_tok.1),
+	}
 }
 
 fn parse_let<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<InstrKind> {
@@ -1609,12 +1680,11 @@ fn parse_selector_parameters<'t>(
 
 fn parse_if<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<InstrKind> {
 	let condition = parse_condition(toks).context("Failed to parse if condition")?;
-	consume_expect!(toks, Colon, { bail!("Missing colon") });
-	let instr = parse_instr(toks).context("Failed to parse if body instruction")?;
-	let Some(instr) = instr else { bail!("If instruction missing") };
+	let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
+
 	Ok(InstrKind::If {
 		condition,
-		body: Box::new(Block::from_single(instr)),
+		body: Box::new(body),
 	})
 }
 
