@@ -4,11 +4,17 @@ use num_traits::{Bounded, NumOps, One, PrimInt, Signed};
 
 use crate::output::codegen::Codegen;
 
-use super::ty::{Int, Float};
+use super::ty::{Float, Int};
 
 // I love traits
-pub trait Rangeable: Sized + NumOps + Bounded + PartialEq + PartialOrd + Signed + Display + Copy {}
-impl<S> Rangeable for S where S: Sized + NumOps + Bounded + PartialEq + PartialOrd + Signed + Display + Copy {}
+pub trait Rangeable:
+	Sized + NumOps + Bounded + PartialEq + PartialOrd + Signed + Display + Copy
+{
+}
+impl<S> Rangeable for S where
+	S: Sized + NumOps + Bounded + PartialEq + PartialOrd + Signed + Display + Copy
+{
+}
 
 pub type IntRange = Range<Int>;
 pub type FloatRange = Range<Float>;

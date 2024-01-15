@@ -1,10 +1,8 @@
 use std::iter;
 
-use crate::common::{
-	reg::GetUsedRegs,
-	val::{MutableValue, Value},
-	DeclareBinding, Identifier,
-};
+use crate::common::reg::GetUsedRegs;
+use crate::common::val::{MutableValue, Value};
+use crate::common::{DeclareBinding, Identifier};
 
 use super::{MIRBlock, MIRInstrKind};
 
