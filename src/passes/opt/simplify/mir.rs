@@ -423,7 +423,7 @@ fn run_iter(
 			simplify_condition(condition, &mut run_again);
 		}
 
-		if let Some(body) = instr.kind.get_body_mut() {
+		for body in instr.kind.get_bodies_mut() {
 			run_again.merge(simplify_block(body, false));
 		}
 	}

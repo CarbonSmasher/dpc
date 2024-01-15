@@ -66,7 +66,7 @@ fn run_iter(block: &mut MIRBlock, instrs_to_remove: &mut HashSetEmptyTracker<usi
 			run_again.yes();
 		}
 
-		if let Some(body) = instr.kind.get_body_mut() {
+		for body in instr.kind.get_bodies_mut() {
 			run_again.merge(cleanup_block(body));
 		}
 	}

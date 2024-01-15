@@ -109,7 +109,7 @@ fn run_iter(
 				}
 			}
 		}
-		if let Some(body) = instr.kind.get_body_mut() {
+		for body in instr.kind.get_bodies_mut() {
 			run_block(interface, inline_candidates, body, cloned_funcs, false)?;
 		}
 	}

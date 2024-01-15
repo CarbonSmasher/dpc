@@ -193,27 +193,27 @@ impl MIRInstrKind {
 		}
 	}
 
-	pub fn get_body(&self) -> Option<&MIRBlock> {
+	pub fn get_bodies(&self) -> Vec<&MIRBlock> {
 		match self {
 			Self::As { body, .. }
 			| Self::At { body, .. }
 			| Self::If { body, .. }
 			| Self::StoreResult { body, .. }
 			| Self::StoreSuccess { body, .. }
-			| Self::Positioned { body, .. } => Some(body),
-			_ => None,
+			| Self::Positioned { body, .. } => vec![body],
+			_ => Vec::new(),
 		}
 	}
 
-	pub fn get_body_mut<'a>(&'a mut self) -> Option<&'a mut MIRBlock> {
+	pub fn get_bodies_mut<'a>(&'a mut self) -> Vec<&'a mut MIRBlock> {
 		match self {
 			Self::As { body, .. }
 			| Self::At { body, .. }
 			| Self::If { body, .. }
 			| Self::StoreResult { body, .. }
 			| Self::StoreSuccess { body, .. }
-			| Self::Positioned { body, .. } => Some(body),
-			_ => None,
+			| Self::Positioned { body, .. } => vec![body],
+			_ => Vec::new(),
 		}
 	}
 

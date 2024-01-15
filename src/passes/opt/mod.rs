@@ -42,16 +42,16 @@ pub fn get_instr_calls(instr: &MIRInstrKind) -> Vec<&CallInterface> {
 	match instr {
 		MIRInstrKind::Call { call } => vec![call],
 		other => {
-			let body = other.get_body();
-			if let Some(body) = body {
-				let mut out = Vec::new();
+			let bodies = other.get_bodies();
+			let mut out = Vec::new();
+
+			for body in bodies {
 				for instr in &body.contents {
 					out.extend(get_instr_calls(&instr.kind));
 				}
-				out
-			} else {
-				Vec::new()
 			}
+
+			out
 		}
 	}
 }
@@ -60,16 +60,16 @@ pub fn get_instr_calls_mut(instr: &mut MIRInstrKind) -> Vec<&mut CallInterface> 
 	match instr {
 		MIRInstrKind::Call { call } => vec![call],
 		other => {
-			let body = other.get_body_mut();
-			if let Some(body) = body {
-				let mut out = Vec::new();
+			let bodies = other.get_bodies_mut();
+			let mut out = Vec::new();
+
+			for body in bodies {
 				for instr in &mut body.contents {
 					out.extend(get_instr_calls_mut(&mut instr.kind));
 				}
-				out
-			} else {
-				Vec::new()
 			}
+
+			out
 		}
 	}
 }
