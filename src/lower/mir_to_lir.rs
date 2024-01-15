@@ -286,7 +286,7 @@ struct LowerBlockCx<'lir> {
 	lir: &'lir mut LIR,
 	registers: RegisterList,
 	additional_reg_count: u32,
-	if_body_count: u32,
+	body_count: u32,
 	func_id: ResourceLocation,
 	sig: FunctionSignature,
 }
@@ -297,7 +297,7 @@ impl<'lir> LowerBlockCx<'lir> {
 			lir,
 			registers: RegisterList::default(),
 			additional_reg_count: 0,
-			if_body_count: 0,
+			body_count: 0,
 			func_id,
 			sig,
 		}
@@ -309,10 +309,10 @@ impl<'lir> LowerBlockCx<'lir> {
 		Identifier::from(format!("__lir_lower_{old_val}"))
 	}
 
-	fn new_if_body_fn(&mut self) -> FunctionInterface {
-		let old_val = self.if_body_count;
-		self.if_body_count += 1;
-		FunctionInterface::new(format!("dpc::ifbody_{old_val}").into())
+	fn new_body_fn(&mut self) -> FunctionInterface {
+		let old_val = self.body_count;
+		self.body_count += 1;
+		FunctionInterface::new(format!("{}_body_{old_val}", self.func_id).into())
 	}
 }
 
@@ -973,7 +973,7 @@ fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LI
 	} else {
 		let mut lir_block = LIRBlock::new(lbcx.registers.clone());
 		lir_block.contents = new_lir_instrs;
-		let interface = lbcx.new_if_body_fn();
+		let interface = lbcx.new_body_fn();
 		lbcx.lir.functions.insert(
 			interface.id.clone(),
 			LIRFunction {
