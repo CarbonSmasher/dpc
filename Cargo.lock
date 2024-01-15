@@ -149,6 +149,7 @@ dependencies = [
  "clap",
  "color-print",
  "include_dir",
+ "intset",
  "itertools",
  "num-traits",
  "rand",
@@ -213,6 +214,12 @@ name = "indoc"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa799dd5ed20a7e349f3b4639aa80d74549c81716d9ec4f994c9b5815598306"
+
+[[package]]
+name = "intset"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c0c5728a5d09022d01c6f8a716796123933297460344501b25d2e1bfd8e1db2"
 
 [[package]]
 name = "itertools"

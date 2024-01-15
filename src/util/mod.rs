@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 
+use intset::GrowSet;
 use rustc_hash::FxHashSet;
 
 /// A container that can hold values
@@ -47,6 +48,16 @@ where
 
 	fn empty(&self) -> bool {
 		self.is_empty()
+	}
+}
+
+impl Container<usize> for GrowSet {
+	fn contains_val(&self, val: &usize) -> bool {
+		self.contains(*val)
+	}
+
+	fn empty(&self) -> bool {
+		self.len() == 0
 	}
 }
 

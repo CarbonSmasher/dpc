@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context};
+use intset::GrowSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::function::{CallInterface, FunctionArgs, FunctionInterface, FunctionSignature};
@@ -44,7 +45,7 @@ fn run_block(
 ) -> anyhow::Result<RunAgain> {
 	let mut out = RunAgain::new();
 	let mut instrs_to_remove = Vec::new();
-	let mut instrs_to_remove_set = FxHashSet::default();
+	let mut instrs_to_remove_set = GrowSet::with_capacity(block.contents.len());
 
 	loop {
 		instrs_to_remove.clear();
@@ -59,8 +60,9 @@ fn run_block(
 		)?;
 		out.merge(run_again);
 
-		block.contents = replace_and_expand_indices(block.contents.clone(), &instrs_to_remove);
-		if !run_again {
+		if run_again.result() {
+			block.contents = replace_and_expand_indices(block.contents.clone(), &instrs_to_remove);
+		} else {
 			break;
 		}
 	}
@@ -72,7 +74,7 @@ fn run_iter(
 	interface: &FunctionInterface,
 	block: &mut MIRBlock,
 	instrs_to_remove: &mut Vec<(usize, Vec<MIRInstruction>)>,
-	instrs_to_remove_set: &mut FxHashSet<usize>,
+	instrs_to_remove_set: &mut GrowSet,
 	inline_candidates: &FxHashSet<ResourceLocation>,
 	cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
 	is_root: bool,
@@ -81,7 +83,7 @@ fn run_iter(
 
 	let mut regs = RegisterList::default();
 	for (i, instr) in block.contents.iter_mut().enumerate() {
-		if instrs_to_remove_set.contains(&i) {
+		if instrs_to_remove_set.contains(i) {
 			continue;
 		}
 		if let MIRInstrKind::Declare { left, ty } = &instr.kind {
@@ -93,71 +95,23 @@ fn run_iter(
 		}
 		// Inline simple blocks into modifying instruction bodies
 		if let MIRInstrKind::Call { call } = &instr.kind {
-			let block = get_inlined_block(call, inline_candidates, interface, cloned_funcs, &regs)?;
+			let block = get_call_block(call, inline_candidates, interface, cloned_funcs)?;
 			if let Some(block) = block {
 				// If we aren't at the root, then inlining blocks that are more than 1 long
 				// will just create a bunch of identical copies of functions because the blocks will be inlined
 				// and just lowered to functions again
 				// We may want to relax this for special cases in the future that allow certain folds to be run
-				if !(!is_root && block.len() != 1) {
+				if !(!is_root && block.contents.len() != 1) {
+					let block = get_inlined_block(call, interface, block, &regs)?;
 					instrs_to_remove.push((i, block));
-					instrs_to_remove_set.insert(i);
+					instrs_to_remove_set.add(i);
 					run_again.yes();
 				}
 			}
 		}
 		if let Some(body) = instr.kind.get_body_mut() {
-			run_again.merge(run_block(
-				interface,
-				inline_candidates,
-				body,
-				cloned_funcs,
-				false,
-			)?);
+			run_block(interface, inline_candidates, body, cloned_funcs, false)?;
 		}
-		// if instr.kind.get_body().is_some() {
-		// 	fn inner(
-		// 		instr: &mut MIRInstrKind,
-		// 		inline_candidates: &FxHashSet<ResourceLocation>,
-		// 		interface: &FunctionInterface,
-		// 		cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
-		// 		regs: &RegisterList,
-		// 	) -> anyhow::Result<()> {
-		// 		if let MIRInstrKind::Call { call } = instr {
-		// 			let block =
-		// 				get_inlined_block(call, inline_candidates, interface, cloned_funcs, &regs)?;
-		// 			if let Some(block) = block {
-		// 				// We can only inline blocks that are one instruction long
-		// 				if block.len() == 1 {
-		// 					let body_instr = block.first().expect("Length is 1");
-		// 					*instr = body_instr.kind.clone();
-		// 				}
-		// 			}
-		// 		} else {
-		// 			if let Some(body) = instr.get_body_mut() {
-		// 				for instr in &mut body.contents {
-		// 					inner(
-		// 						&mut instr.kind,
-		// 						inline_candidates,
-		// 						interface,
-		// 						cloned_funcs,
-		// 						regs,
-		// 					)?;
-		// 				}
-		// 			}
-		// 		}
-
-		// 		Ok(())
-		// 	}
-
-		// 	inner(
-		// 		&mut instr.kind,
-		// 		inline_candidates,
-		// 		interface,
-		// 		cloned_funcs,
-		// 		&regs,
-		// 	)?;
-		// }
 	}
 
 	Ok(run_again)
@@ -165,25 +119,12 @@ fn run_iter(
 
 fn get_inlined_block(
 	call: &CallInterface,
-	inline_candidates: &FxHashSet<ResourceLocation>,
 	interface: &FunctionInterface,
-	cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
+	call_block: &MIRBlock,
 	regs: &RegisterList,
-) -> anyhow::Result<Option<Vec<MIRInstruction>>> {
-	// Don't inline this function call if it is recursive
-	if call.function == interface.id {
-		return Ok(None);
-	}
-	if !inline_candidates.contains(&call.function) {
-		return Ok(None);
-	}
-	let func = cloned_funcs
-		.get(&call.function)
-		.ok_or(anyhow!("Called function does not exist"))?;
-	let inlined_block = func.block.clone();
-
+) -> anyhow::Result<Vec<MIRInstruction>> {
 	// Inline the block
-	let mut inlined_contents = inlined_block.contents;
+	let mut inlined_contents = call_block.contents.clone();
 	let func_id = cleanup_fn_id(&call.function);
 
 	cleanup_fn(
@@ -196,7 +137,27 @@ fn get_inlined_block(
 	)
 	.context("Failed to clean up inlined function blocks")?;
 
-	Ok(Some(inlined_contents))
+	Ok(inlined_contents)
+}
+
+/// Get the block from the function we are calling, to possibly be inlined
+fn get_call_block<'f>(
+	call: &CallInterface,
+	inline_candidates: &FxHashSet<ResourceLocation>,
+	interface: &FunctionInterface,
+	cloned_funcs: &'f FxHashMap<ResourceLocation, MIRFunction>,
+) -> anyhow::Result<Option<&'f MIRBlock>> {
+	// Don't inline this function call if it is recursive
+	if call.function == interface.id {
+		return Ok(None);
+	}
+	if !inline_candidates.contains(&call.function) {
+		return Ok(None);
+	}
+	let func = cloned_funcs
+		.get(&call.function)
+		.ok_or(anyhow!("Called function does not exist"))?;
+	Ok(Some(&func.block))
 }
 
 /// Cleanup a function block so that it can be compatible when inlined

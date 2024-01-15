@@ -1,9 +1,11 @@
+use intset::GrowSet;
+
 use crate::common::ty::ScoreTypeContents;
 use crate::common::DeclareBinding;
 use crate::common::{condition::Condition, ty::DataTypeContents, val::Value};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::{replace_and_expand_indices, HashSetEmptyTracker};
+use crate::util::replace_and_expand_indices;
 
 pub struct ConstConditionPass {
 	pub(super) made_changes: bool,
@@ -34,7 +36,7 @@ impl MIRPass for ConstConditionPass {
 		for func in data.mir.functions.values_mut() {
 			let block = &mut func.block;
 
-			let mut instrs_to_remove = HashSetEmptyTracker::new();
+			let mut instrs_to_remove = GrowSet::with_capacity(block.contents.len());
 			let mut instrs_to_replace = Vec::new();
 			loop {
 				let run_again =
@@ -45,7 +47,10 @@ impl MIRPass for ConstConditionPass {
 					break;
 				}
 			}
-			block.contents = replace_and_expand_indices(block.contents.clone(), &instrs_to_replace);
+			if self.made_changes {
+				block.contents =
+					replace_and_expand_indices(block.contents.clone(), &instrs_to_replace);
+			}
 		}
 
 		Ok(())
@@ -56,13 +61,13 @@ impl MIRPass for ConstConditionPass {
 /// should be run
 fn run_const_condition_iter(
 	block: &mut MIRBlock,
-	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
+	instrs_to_remove: &mut GrowSet,
 	instrs_to_replace: &mut Vec<(usize, Vec<MIRInstruction>)>,
 ) -> bool {
 	let mut run_again = false;
 
 	for (i, instr) in block.contents.iter_mut().enumerate() {
-		if instrs_to_remove.contains(&i) {
+		if instrs_to_remove.contains(i) {
 			continue;
 		}
 
@@ -71,10 +76,10 @@ fn run_const_condition_iter(
 				let result = const_eval_result(condition);
 				if let Some(result) = result {
 					if result {
-						instrs_to_remove.insert(i);
+						instrs_to_remove.add(i);
 						instrs_to_replace.push((i, body.contents.clone()));
 					} else {
-						instrs_to_remove.insert(i);
+						instrs_to_remove.add(i);
 						instrs_to_replace.push((i, Vec::new()));
 					}
 					run_again = true;
