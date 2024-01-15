@@ -5,6 +5,7 @@ use crate::common::ty::{DataTypeContents, NBTTypeContents, ScoreTypeContents};
 use crate::common::val::MutableValue;
 use crate::common::{val::Value, DeclareBinding};
 use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker, Only};
 
@@ -21,29 +22,33 @@ impl Pass for MIRSimplifyPass {
 impl MIRPass for MIRSimplifyPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		for func in data.mir.functions.values_mut() {
-			let block = &mut func.block;
-
-			let mut instrs_to_remove = HashSetEmptyTracker::new();
-			loop {
-				let run_again = run_mir_simplify_iter(block, &mut instrs_to_remove);
-				if !run_again {
-					break;
-				}
-			}
-			remove_indices(&mut block.contents, &instrs_to_remove);
+			simplify_block(&mut func.block, true);
 		}
 
 		Ok(())
 	}
 }
 
-/// Runs an iteration of the MIRSimplifyPass. Returns true if another iteration
-/// should be run
-fn run_mir_simplify_iter(
+fn simplify_block(block: &mut MIRBlock, is_root: bool) -> RunAgain {
+	let mut out = RunAgain::new();
+	let mut instrs_to_remove = HashSetEmptyTracker::new();
+	loop {
+		let run_again = run_iter(block, &mut instrs_to_remove, is_root);
+		out.merge(run_again);
+		if !run_again {
+			break;
+		}
+	}
+	remove_indices(&mut block.contents, &instrs_to_remove);
+	out
+}
+
+fn run_iter(
 	block: &mut MIRBlock,
 	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
-) -> bool {
-	let mut run_again = false;
+	is_root: bool,
+) -> RunAgain {
+	let mut run_again = RunAgain::new();
 
 	for (i, instr) in block.contents.iter_mut().enumerate() {
 		let remove = match &instr.kind {
@@ -119,7 +124,8 @@ fn run_mir_simplify_iter(
 				right: Value::Constant(DataTypeContents::NBT(NBTTypeContents::Compound(_, comp))),
 				..
 			} if comp.is_empty() => true,
-			// Get instructions without their results stored don't do anything
+			// Get instructions without their results stored don't do anything, as long as we are
+			// at the root
 			MIRInstrKind::GetConst { .. }
 			| MIRInstrKind::Get { .. }
 			| MIRInstrKind::MC(
@@ -130,7 +136,7 @@ fn run_mir_simplify_iter(
 				| MinecraftInstr::GetGamerule { .. }
 				| MinecraftInstr::GetTime { .. }
 				| MinecraftInstr::GetXP { .. },
-			) => true,
+			) => is_root,
 			// Empty block inside of an if can be removed
 			MIRInstrKind::If { body, .. } => body.contents.is_empty(),
 			MIRInstrKind::NoOp => true,
@@ -140,7 +146,7 @@ fn run_mir_simplify_iter(
 		if remove {
 			let is_new = instrs_to_remove.insert(i);
 			if is_new {
-				run_again = true;
+				run_again.yes();
 			}
 
 			continue;
@@ -383,7 +389,7 @@ fn run_mir_simplify_iter(
 
 		if let Some(kind_repl) = kind_repl {
 			instr.kind = kind_repl;
-			run_again = true;
+			run_again.yes();
 		}
 
 		if let MIRInstrKind::If { condition, .. }
@@ -394,16 +400,25 @@ fn run_mir_simplify_iter(
 		{
 			simplify_condition(condition, &mut run_again);
 		}
+
+		if let Some(body) = instr.kind.get_body_mut() {
+			run_again.merge(simplify_block(body, false));
+		}
 	}
 
 	run_again
 }
 
-fn simplify_condition(condition: &mut Condition, run_again: &mut bool) {
+fn simplify_condition(condition: &mut Condition, run_again: &mut RunAgain) {
 	match condition {
 		Condition::Not(inner) => match inner.as_ref() {
 			// not bool -> nbool for better lowering
 			Condition::Bool(b) => *condition = Condition::NotBool(b.clone()),
+			// not not -> remove
+			Condition::Not(inner) => {
+				*condition = *inner.clone();
+				run_again.yes();
+			}
 			_ => simplify_condition(inner, run_again),
 		},
 		Condition::And(l, r) => match (l.as_mut(), r.as_mut()) {
@@ -416,7 +431,7 @@ fn simplify_condition(condition: &mut Condition, run_again: &mut bool) {
 						ScoreTypeContents::Bool(true),
 					)));
 				}
-				*run_again = true;
+				run_again.yes();
 			}
 			(Condition::NotBool(Value::Constant(DataTypeContents::Score(b))), inner)
 			| (inner, Condition::NotBool(Value::Constant(DataTypeContents::Score(b)))) => {
@@ -427,7 +442,7 @@ fn simplify_condition(condition: &mut Condition, run_again: &mut bool) {
 						ScoreTypeContents::Bool(true),
 					)));
 				}
-				*run_again = true;
+				run_again.yes();
 			}
 			(l, r) => {
 				simplify_condition(l, run_again);

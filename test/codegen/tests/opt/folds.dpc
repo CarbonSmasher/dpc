@@ -74,3 +74,9 @@
 	let cond: bool = cond bool sco @s[] "foo";
 	use %cond;
 }
+
+@preserve
+"test:conditions" {
+	let x: bool = cond not not pred "foo:bar";
+	use %x;
+}

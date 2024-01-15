@@ -3,6 +3,7 @@ use crate::common::mc::modifier::Modifier;
 use crate::common::ty::ScoreTypeContents;
 use crate::common::val::ScoreValue;
 use crate::lir::{LIRBlock, LIRInstrKind, LIR};
+use crate::passes::util::RunAgain;
 use crate::passes::{LIRPass, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
@@ -17,29 +18,29 @@ impl Pass for LIRSimplifyPass {
 impl LIRPass for LIRSimplifyPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		for func in lir.functions.values_mut() {
-			let block = &mut func.block;
-
-			// We persist the same set of removed instructions across all iterations
-			// so that we only have to run the vec retain operation once, saving a lot of copies
-			let mut instrs_to_remove = HashSetEmptyTracker::new();
-			loop {
-				let run_again = run_lir_simplify_iter(block, &mut instrs_to_remove);
-				if !run_again {
-					break;
-				}
-			}
-			remove_indices(&mut block.contents, &instrs_to_remove);
+			simplify_block(&mut func.block);
 		}
 
 		Ok(())
 	}
 }
 
-fn run_lir_simplify_iter(
-	block: &mut LIRBlock,
-	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
-) -> bool {
-	let mut run_again = false;
+fn simplify_block(block: &mut LIRBlock) -> RunAgain {
+	let mut out = RunAgain::new();
+	let mut instrs_to_remove = HashSetEmptyTracker::new();
+	loop {
+		let run_again = run_iter(block, &mut instrs_to_remove);
+		out.merge(run_again);
+		if !run_again {
+			break;
+		}
+	}
+	remove_indices(&mut block.contents, &instrs_to_remove);
+	out
+}
+
+fn run_iter(block: &mut LIRBlock, instrs_to_remove: &mut HashSetEmptyTracker<usize>) -> RunAgain {
+	let mut run_again = RunAgain::new();
 
 	for (i, instr) in block.contents.iter().enumerate() {
 		// Don't remove instructions that store their result or success
@@ -89,7 +90,7 @@ fn run_lir_simplify_iter(
 		if remove {
 			let is_new = instrs_to_remove.insert(i);
 			if is_new {
-				run_again = true;
+				run_again.yes();
 			}
 			continue;
 		}
@@ -195,7 +196,7 @@ fn run_lir_simplify_iter(
 	});
 
 	if repl_mutated {
-		run_again = true;
+		run_again.yes();
 	}
 
 	run_again

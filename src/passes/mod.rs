@@ -22,6 +22,7 @@ use self::opt::simplify::{lir::LIRSimplifyPass, mir::MIRSimplifyPass};
 
 pub mod analysis;
 pub mod opt;
+pub mod util;
 
 pub trait IRPass: Pass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()>;

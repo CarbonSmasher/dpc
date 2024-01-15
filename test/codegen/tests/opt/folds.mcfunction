@@ -4,6 +4,9 @@ scoreboard objectives add _l dummy
 scoreboard players set %l1 _l 1
 scoreboard players set %l2 _l 2
 
+# === test:conditions === #
+execute store success score %rtest_conditions0 _r if predicate foo:bar
+
 # === test:let_cond === #
 scoreboard players operation %rtest_let_cond0 _r = @s foo
 

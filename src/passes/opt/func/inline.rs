@@ -6,6 +6,7 @@ use crate::common::val::{MutableValue, Value};
 use crate::common::{DeclareBinding, Identifier, Register, RegisterList, ResourceLocation};
 use crate::lower::{cleanup_fn_id, fmt_lowered_arg};
 use crate::mir::{MIRBlock, MIRFunction, MIRInstrKind, MIRInstruction};
+use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::replace_and_expand_indices;
 
@@ -19,44 +20,64 @@ impl Pass for SimpleInlinePass {
 
 impl MIRPass for SimpleInlinePass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		let mut instrs_to_remove = Vec::new();
-		let mut instrs_to_remove_set = FxHashSet::default();
 		let cloned_funcs = data.mir.functions.clone();
 		for func in data.mir.functions.values_mut() {
-			let block = &mut func.block;
-
-			loop {
-				instrs_to_remove.clear();
-				let run_again = run_simple_inline_iter(
-					&func.interface,
-					block,
-					&mut instrs_to_remove,
-					&mut instrs_to_remove_set,
-					&data.inline_candidates,
-					&cloned_funcs,
-				)?;
-
-				block.contents =
-					replace_and_expand_indices(block.contents.clone(), &instrs_to_remove);
-				if !run_again {
-					break;
-				}
-			}
+			run_block(
+				&func.interface,
+				&data.inline_candidates,
+				&mut func.block,
+				&cloned_funcs,
+				true,
+			)?;
 		}
 
 		Ok(())
 	}
 }
 
-fn run_simple_inline_iter(
+fn run_block(
+	interface: &FunctionInterface,
+	inline_candidates: &FxHashSet<ResourceLocation>,
+	block: &mut MIRBlock,
+	cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
+	is_root: bool,
+) -> anyhow::Result<RunAgain> {
+	let mut out = RunAgain::new();
+	let mut instrs_to_remove = Vec::new();
+	let mut instrs_to_remove_set = FxHashSet::default();
+
+	loop {
+		instrs_to_remove.clear();
+		let run_again = run_iter(
+			interface,
+			block,
+			&mut instrs_to_remove,
+			&mut instrs_to_remove_set,
+			inline_candidates,
+			&cloned_funcs,
+			is_root,
+		)?;
+		out.merge(run_again);
+
+		block.contents = replace_and_expand_indices(block.contents.clone(), &instrs_to_remove);
+		if !run_again {
+			break;
+		}
+	}
+
+	Ok(out)
+}
+
+fn run_iter(
 	interface: &FunctionInterface,
 	block: &mut MIRBlock,
 	instrs_to_remove: &mut Vec<(usize, Vec<MIRInstruction>)>,
 	instrs_to_remove_set: &mut FxHashSet<usize>,
 	inline_candidates: &FxHashSet<ResourceLocation>,
 	cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
-) -> anyhow::Result<bool> {
-	let mut run_again = false;
+	is_root: bool,
+) -> anyhow::Result<RunAgain> {
+	let mut run_again = RunAgain::new();
 
 	let mut regs = RegisterList::default();
 	for (i, instr) in block.contents.iter_mut().enumerate() {
@@ -74,54 +95,69 @@ fn run_simple_inline_iter(
 		if let MIRInstrKind::Call { call } = &instr.kind {
 			let block = get_inlined_block(call, inline_candidates, interface, cloned_funcs, &regs)?;
 			if let Some(block) = block {
-				instrs_to_remove.push((i, block));
-				instrs_to_remove_set.insert(i);
-				run_again = true;
-			}
-		}
-		if instr.kind.get_body().is_some() {
-			fn inner(
-				instr: &mut MIRInstrKind,
-				inline_candidates: &FxHashSet<ResourceLocation>,
-				interface: &FunctionInterface,
-				cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
-				regs: &RegisterList,
-			) -> anyhow::Result<()> {
-				if let MIRInstrKind::Call { call } = instr {
-					let block =
-						get_inlined_block(call, inline_candidates, interface, cloned_funcs, &regs)?;
-					if let Some(block) = block {
-						// We can only inline blocks that are one instruction long
-						if block.len() == 1 {
-							let body_instr = block.first().expect("Length is 1");
-							*instr = body_instr.kind.clone();
-						}
-					}
-				} else {
-					if let Some(body) = instr.get_body_mut() {
-						for instr in &mut body.contents {
-							inner(
-								&mut instr.kind,
-								inline_candidates,
-								interface,
-								cloned_funcs,
-								regs,
-							)?;
-						}
-					}
+				// If we aren't at the root, then inlining blocks that are more than 1 long
+				// will just create a bunch of identical copies of functions because the blocks will be inlined
+				// and just lowered to functions again
+				// We may want to relax this for special cases in the future that allow certain folds to be run
+				if !(!is_root && block.len() != 1) {
+					instrs_to_remove.push((i, block));
+					instrs_to_remove_set.insert(i);
+					run_again.yes();
 				}
-
-				Ok(())
 			}
-
-			inner(
-				&mut instr.kind,
-				inline_candidates,
-				interface,
-				cloned_funcs,
-				&regs,
-			)?;
 		}
+		if let Some(body) = instr.kind.get_body_mut() {
+			run_again.merge(run_block(
+				interface,
+				inline_candidates,
+				body,
+				cloned_funcs,
+				false,
+			)?);
+		}
+		// if instr.kind.get_body().is_some() {
+		// 	fn inner(
+		// 		instr: &mut MIRInstrKind,
+		// 		inline_candidates: &FxHashSet<ResourceLocation>,
+		// 		interface: &FunctionInterface,
+		// 		cloned_funcs: &FxHashMap<ResourceLocation, MIRFunction>,
+		// 		regs: &RegisterList,
+		// 	) -> anyhow::Result<()> {
+		// 		if let MIRInstrKind::Call { call } = instr {
+		// 			let block =
+		// 				get_inlined_block(call, inline_candidates, interface, cloned_funcs, &regs)?;
+		// 			if let Some(block) = block {
+		// 				// We can only inline blocks that are one instruction long
+		// 				if block.len() == 1 {
+		// 					let body_instr = block.first().expect("Length is 1");
+		// 					*instr = body_instr.kind.clone();
+		// 				}
+		// 			}
+		// 		} else {
+		// 			if let Some(body) = instr.get_body_mut() {
+		// 				for instr in &mut body.contents {
+		// 					inner(
+		// 						&mut instr.kind,
+		// 						inline_candidates,
+		// 						interface,
+		// 						cloned_funcs,
+		// 						regs,
+		// 					)?;
+		// 				}
+		// 			}
+		// 		}
+
+		// 		Ok(())
+		// 	}
+
+		// 	inner(
+		// 		&mut instr.kind,
+		// 		inline_candidates,
+		// 		interface,
+		// 		cloned_funcs,
+		// 		&regs,
+		// 	)?;
+		// }
 	}
 
 	Ok(run_again)

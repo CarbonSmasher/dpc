@@ -1,5 +1,6 @@
 use crate::common::reg::GetUsedRegs;
 use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
@@ -21,24 +22,29 @@ impl Pass for CleanupPass {
 impl MIRPass for CleanupPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		for func in data.mir.functions.values_mut() {
-			let block = &mut func.block;
-
-			let mut instrs_to_remove = HashSetEmptyTracker::new();
-			loop {
-				let run_again = run_iter(block, &mut instrs_to_remove);
-				if !run_again {
-					break;
-				}
-			}
-			remove_indices(&mut block.contents, &instrs_to_remove);
+			cleanup_block(&mut func.block);
 		}
 
 		Ok(())
 	}
 }
 
-fn run_iter(block: &mut MIRBlock, instrs_to_remove: &mut HashSetEmptyTracker<usize>) -> bool {
-	let mut run_again = false;
+fn cleanup_block(block: &mut MIRBlock) -> RunAgain {
+	let mut out = RunAgain::new();
+	let mut instrs_to_remove = HashSetEmptyTracker::new();
+	loop {
+		let run_again = run_iter(block, &mut instrs_to_remove);
+		out.merge(run_again);
+		if !run_again {
+			break;
+		}
+	}
+	remove_indices(&mut block.contents, &instrs_to_remove);
+	out
+}
+
+fn run_iter(block: &mut MIRBlock, instrs_to_remove: &mut HashSetEmptyTracker<usize>) -> RunAgain {
+	let mut run_again = RunAgain::new();
 
 	let mut used_regs = FxHashSet::default();
 	for instr in &block.contents {
@@ -57,7 +63,11 @@ fn run_iter(block: &mut MIRBlock, instrs_to_remove: &mut HashSetEmptyTracker<usi
 
 		if remove {
 			instrs_to_remove.insert(i);
-			run_again = true;
+			run_again.yes();
+		}
+
+		if let Some(body) = instr.kind.get_body_mut() {
+			run_again.merge(cleanup_block(body));
 		}
 	}
 
