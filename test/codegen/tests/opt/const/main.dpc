@@ -65,3 +65,13 @@
 	if not bool &0:
 		cmd "setblock ~ ~ ~ smooth_stone";
 }
+
+@preserve
+"test:div_by_self" {
+	let x: score = val 10s;
+	div %x, %x;
+	use %x;
+	let y: score = val 0s;
+	div %y, %y;
+	use %y;
+}
