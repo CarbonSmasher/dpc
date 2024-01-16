@@ -56,10 +56,10 @@ Right now, the main thing that needs to be done is the implementation of all the
    - [x] Custom commands
      - [ ] Custom command access to registers, arguments, etc.
    - [x] If
-   - [ ] Nested blocks
+   - [x] Nested blocks
    - [ ] Loops
    - [ ] Lookup tables
-   - [ ] Else
+   - [x] Else
    - [ ] Inverse binops
    - [ ] Function tag declaration
    - [ ] Recursion
@@ -101,6 +101,7 @@ Right now, the main thing that needs to be done is the implementation of all the
      - [x] Assignment pattern matching
      - [ ] Math pattern matching
      - [ ] Conditional pattern matching
+     - [x] Logical pattern matching
    - [ ] Function specialization
    - [ ] Smarter / less aggressive inliner
    - [ ] Macro optimizations
