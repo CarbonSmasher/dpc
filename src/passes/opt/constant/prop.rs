@@ -113,7 +113,12 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 				}
 			}
 		}
-		MIRInstrKind::If { condition, body } => {
+		MIRInstrKind::If { condition, body }
+		| MIRInstrKind::IfElse {
+			condition,
+			first: body,
+			..
+		} => {
 			const_prop_condition(condition, an, run_again);
 			// Since eq and bool both check if a value is equal to something,
 			// that value is then guaranteed to be the value it is equal to

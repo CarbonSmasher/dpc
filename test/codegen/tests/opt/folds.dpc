@@ -80,3 +80,19 @@
 	let x: bool = cond not not pred "foo:bar";
 	use %x;
 }
+
+@preserve
+"test:if_else" {
+	ife pred "foo:bar" {
+		say "Hello";
+	} {};
+	ife pred "foo:bar" {} {
+		say "Hello";
+	};
+
+	ife pred "foo:bar" {
+		say "Hello";
+	} {
+		say "Hello";
+	};
+}

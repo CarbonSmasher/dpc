@@ -77,7 +77,7 @@ impl FunctionTrait for MIRFunction {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct MIRBlock {
 	pub contents: Vec<MIRInstruction>,
 }
@@ -135,7 +135,7 @@ impl Debug for MIRBlock {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct MIRInstruction {
 	pub kind: MIRInstrKind,
 }
@@ -158,7 +158,7 @@ impl Debug for MIRInstruction {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum MIRInstrKind {
 	Declare {
 		left: Identifier,
@@ -259,6 +259,11 @@ pub enum MIRInstrKind {
 		condition: Condition,
 		body: Box<MIRBlock>,
 	},
+	IfElse {
+		condition: Condition,
+		first: Box<MIRBlock>,
+		second: Box<MIRBlock>,
+	},
 	// Game instructions
 	MC(MinecraftInstr),
 	ReturnValue {
@@ -329,6 +334,11 @@ impl Debug for MIRInstrKind {
 			Self::Call { call } => format!("call {call:?}"),
 			Self::CallExtern { func } => format!("callx {func}"),
 			Self::If { condition, body } => format!("if {condition:?} then {body:?}"),
+			Self::IfElse {
+				condition,
+				first,
+				second,
+			} => format!("if {condition:?}: {first:?} else {second:?}"),
 			Self::Remove { val } => format!("rm {val:?}"),
 			Self::ReturnValue { index, value } => format!("retv {index} {value:?}"),
 			Self::Return { value } => format!("ret {value:?}"),

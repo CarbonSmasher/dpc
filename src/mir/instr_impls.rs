@@ -79,6 +79,17 @@ impl MIRInstrKind {
 				}
 				body.replace_regs(f);
 			}
+			Self::IfElse {
+				condition,
+				first,
+				second,
+			} => {
+				for val in condition.iter_used_regs_mut() {
+					f(val);
+				}
+				first.replace_regs(f);
+				second.replace_regs(f);
+			}
 			Self::As { body, .. }
 			| Self::At { body, .. }
 			| Self::Positioned { body, .. }
@@ -168,6 +179,17 @@ impl MIRInstrKind {
 				}
 				body.replace_mut_vals(f);
 			}
+			Self::IfElse {
+				condition,
+				first,
+				second,
+			} => {
+				for val in condition.iter_mut_vals() {
+					f(val);
+				}
+				first.replace_mut_vals(f);
+				second.replace_mut_vals(f);
+			}
 			Self::As { body, .. }
 			| Self::At { body, .. }
 			| Self::Positioned { body, .. }
@@ -201,6 +223,7 @@ impl MIRInstrKind {
 			| Self::StoreResult { body, .. }
 			| Self::StoreSuccess { body, .. }
 			| Self::Positioned { body, .. } => vec![body],
+			Self::IfElse { first, second, .. } => vec![first, second],
 			_ => Vec::new(),
 		}
 	}
@@ -213,6 +236,7 @@ impl MIRInstrKind {
 			| Self::StoreResult { body, .. }
 			| Self::StoreSuccess { body, .. }
 			| Self::Positioned { body, .. } => vec![body],
+			Self::IfElse { first, second, .. } => vec![first, second],
 			_ => Vec::new(),
 		}
 	}
@@ -281,6 +305,15 @@ impl GetUsedRegs for MIRInstrKind {
 			Self::If { condition, body } => {
 				condition.append_used_regs(regs);
 				body.append_used_regs(regs);
+			}
+			Self::IfElse {
+				condition,
+				first,
+				second,
+			} => {
+				condition.append_used_regs(regs);
+				first.append_used_regs(regs);
+				second.append_used_regs(regs);
 			}
 			Self::As { body, .. }
 			| Self::At { body, .. }

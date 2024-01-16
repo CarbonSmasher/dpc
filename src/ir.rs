@@ -218,6 +218,11 @@ pub enum InstrKind {
 		condition: Condition,
 		body: Box<Block>,
 	},
+	IfElse {
+		condition: Condition,
+		first: Box<Block>,
+		second: Box<Block>,
+	},
 	Call {
 		call: CallInterface,
 	},
@@ -290,6 +295,11 @@ impl Debug for InstrKind {
 			Self::Call { call } => format!("call {call:?}"),
 			Self::CallExtern { func } => format!("callx {func}"),
 			Self::If { condition, body } => format!("if {condition:?}: {body:?}"),
+			Self::IfElse {
+				condition,
+				first,
+				second,
+			} => format!("if {condition:?}: {first:?} else {second:?}"),
 			Self::Remove { val } => format!("rm {val:?}"),
 			Self::ReturnValue { index, value } => format!("retv {index} {value:?}"),
 			Self::Return { value } => format!("ret {value:?}"),

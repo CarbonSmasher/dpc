@@ -7,6 +7,11 @@ scoreboard players set %l2 _l 2
 # === test:conditions === #
 execute store success score %rtest_conditions0 _r if predicate foo:bar
 
+# === test:if_else === #
+execute if predicate foo:bar run say Hello
+execute unless predicate foo:bar run say Hello
+execute if predicate foo:bar run say Hello
+
 # === test:let_cond === #
 scoreboard players operation %rtest_let_cond0 _r = @s foo
 

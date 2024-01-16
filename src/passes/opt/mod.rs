@@ -1,7 +1,7 @@
 use crate::common::function::CallInterface;
 use crate::common::val::{MutableScoreValue, MutableValue};
 use crate::common::Identifier;
-use crate::mir::MIRInstrKind;
+use crate::mir::{MIRInstrKind, MIRBlock};
 
 pub mod constant;
 pub mod dce;
@@ -72,4 +72,8 @@ pub fn get_instr_calls_mut(instr: &mut MIRInstrKind) -> Vec<&mut CallInterface> 
 			out
 		}
 	}
+}
+
+pub fn are_blocks_equivalent(block1: &MIRBlock, block2: &MIRBlock) -> bool {
+	block1 == block2
 }

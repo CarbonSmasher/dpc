@@ -96,6 +96,19 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<Vec<MIRInstruction>> {
 				body: Box::new(instrs),
 			}
 		}
+		InstrKind::IfElse {
+			condition,
+			first,
+			second,
+		} => {
+			let first = lower_block(*first).context("Failed to lower if else first body")?;
+			let second = lower_block(*second).context("Failed to lower if else second body")?;
+			MIRInstrKind::IfElse {
+				condition,
+				first: Box::new(first),
+				second: Box::new(second),
+			}
+		}
 		InstrKind::As { target, body } => {
 			let instrs = lower_block(*body).context("Failed to lower as body")?;
 			MIRInstrKind::As {

@@ -5,4 +5,10 @@
 	if exi %y:
 		if not eq 5s, %y:
 			set %x, 3s;
+
+	ife pred "foo:bar" {
+		say "True";
+	} {
+		say "False";
+	};
 }

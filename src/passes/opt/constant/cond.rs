@@ -76,12 +76,27 @@ fn run_const_condition_iter(
 				let result = const_eval_result(condition);
 				if let Some(result) = result {
 					if result {
-						instrs_to_remove.add(i);
 						instrs_to_replace.push((i, body.contents.clone()));
 					} else {
-						instrs_to_remove.add(i);
 						instrs_to_replace.push((i, Vec::new()));
 					}
+					instrs_to_remove.add(i);
+					run_again = true;
+				}
+			}
+			MIRInstrKind::IfElse {
+				condition,
+				first,
+				second,
+			} => {
+				let result = const_eval_result(condition);
+				if let Some(result) = result {
+					if result {
+						instrs_to_replace.push((i, first.contents.clone()));
+					} else {
+						instrs_to_replace.push((i, second.contents.clone()));
+					}
+					instrs_to_remove.add(i);
 					run_again = true;
 				}
 			}

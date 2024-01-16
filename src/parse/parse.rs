@@ -320,6 +320,17 @@ fn parse_instr_impl<'t>(
 		}
 		"specs" => Ok(InstrKind::MC(MinecraftInstr::SpectateStop)),
 		"if" => parse_if(toks).context("Failed to parse if"),
+		"ife" => {
+			let condition = parse_condition(toks).context("Failed to parse if else condition")?;
+			let first = parse_nested_block(toks).context("Failed to parse if else first body")?;
+			let second = parse_nested_block(toks).context("Failed to parse if else second body")?;
+
+			Ok(InstrKind::IfElse {
+				condition,
+				first: Box::new(first),
+				second: Box::new(second),
+			})
+		}
 		"kill" => {
 			let tgt = parse_entity_target(toks).context("Failed to parse target")?;
 			Ok(InstrKind::MC(MinecraftInstr::Kill { target: tgt }))

@@ -211,6 +211,46 @@ fn lower_kind(
 			instr.modifiers = prepend.chain(instr.modifiers.into_iter()).collect();
 			lir_instrs.push(instr);
 		}
+		MIRInstrKind::IfElse {
+			condition,
+			first,
+			second,
+		} => {
+			// We first lower a let cond to a new register,
+			// then check that register for truth or falseness on each branch
+			let condition_reg = lbcx.new_additional_reg();
+			let condition_reg_val = MutableValue::Reg(condition_reg.clone());
+			let reg = Register {
+				id: condition_reg.clone(),
+				ty: DataType::Score(ScoreType::Bool),
+			};
+			lbcx.registers.insert(condition_reg.clone(), reg);
+			lower_let_cond(condition_reg_val.clone(), &condition, lir_instrs, lbcx)
+				.context("Failed to lower if else condition")?;
+
+			let mut first =
+				lower_subblock(*first, lbcx).context("Failed to lower if else first body")?;
+			first.modifiers.push(Modifier::If {
+				condition: Box::new(lower_bool_cond(
+					Value::Mutable(condition_reg_val.clone()),
+					true,
+					lbcx,
+				)?),
+				negate: false,
+			});
+			lir_instrs.push(first);
+			let mut second =
+				lower_subblock(*second, lbcx).context("Failed to lower if else second body")?;
+			second.modifiers.push(Modifier::If {
+				condition: Box::new(lower_bool_cond(
+					Value::Mutable(condition_reg_val.clone()),
+					false,
+					lbcx,
+				)?),
+				negate: false,
+			});
+			lir_instrs.push(second);
+		}
 		MIRInstrKind::As { target, body } => {
 			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower as body")?;
 
@@ -400,23 +440,7 @@ fn lower_assign(
 		}
 		// Condition just becomes a simple execute store success {lhs} if {condition}
 		DeclareBinding::Condition(cond) => {
-			let store_loc = match left.get_ty(&lbcx.registers, &lbcx.sig)? {
-				DataType::Score(..) => {
-					StoreModLocation::from_mut_score_val(&left.clone().to_mutable_score_value()?)?
-				}
-				_ => bail!("Invalid type"),
-			};
-			let mut instr = LIRInstruction::new(LIRInstrKind::NoOp);
-			instr.modifiers.push(Modifier::StoreSuccess(store_loc));
-			let (prelude, conditions) = lower_condition(cond.clone(), lbcx)?;
-			out.extend(prelude);
-			for (condition, negate) in conditions {
-				instr.modifiers.push(Modifier::If {
-					condition: Box::new(condition),
-					negate,
-				});
-			}
-			out.push(instr);
+			lower_let_cond(left.clone(), cond, &mut out, lbcx)?;
 
 			None
 		}
@@ -436,6 +460,33 @@ fn lower_assign(
 	}
 
 	Ok(out)
+}
+
+fn lower_let_cond(
+	left: MutableValue,
+	condition: &Condition,
+	lir_instrs: &mut Vec<LIRInstruction>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<()> {
+	let store_loc = match left.get_ty(&lbcx.registers, &lbcx.sig)? {
+		DataType::Score(..) => {
+			StoreModLocation::from_mut_score_val(&left.to_mutable_score_value()?)?
+		}
+		_ => bail!("Invalid type"),
+	};
+	let mut instr = LIRInstruction::new(LIRInstrKind::NoOp);
+	instr.modifiers.push(Modifier::StoreSuccess(store_loc));
+	let (prelude, conditions) = lower_condition(condition.clone(), lbcx)?;
+	lir_instrs.extend(prelude);
+	for (condition, negate) in conditions {
+		instr.modifiers.push(Modifier::If {
+			condition: Box::new(condition),
+			negate,
+		});
+	}
+	lir_instrs.push(instr);
+
+	Ok(())
 }
 
 fn lower_add(

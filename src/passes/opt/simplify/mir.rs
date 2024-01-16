@@ -5,6 +5,7 @@ use crate::common::ty::{DataTypeContents, NBTTypeContents, ScoreTypeContents};
 use crate::common::val::MutableValue;
 use crate::common::{val::Value, DeclareBinding};
 use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::passes::opt::are_blocks_equivalent;
 use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker, Only};
@@ -177,6 +178,7 @@ fn run_iter(
 					ScoreTypeContents::Score(1),
 				))),
 			}),
+			// x - x = 0
 			MIRInstrKind::Sub {
 				left,
 				right: Value::Mutable(right),
@@ -235,6 +237,34 @@ fn run_iter(
 					ScoreTypeContents::Bool(true),
 				))),
 			}),
+			// Change ifelse with empty branches to just if
+			MIRInstrKind::IfElse {
+				condition,
+				first,
+				second,
+			} if first.contents.is_empty() => Some(MIRInstrKind::If {
+				condition: Condition::Not(Box::new(condition.clone())),
+				body: second.clone(),
+			}),
+			// Change ifelse with empty branches to just if
+			MIRInstrKind::IfElse {
+				condition,
+				first,
+				second,
+			} if second.contents.is_empty() => Some(MIRInstrKind::If {
+				condition: condition.clone(),
+				body: first.clone(),
+			}),
+			// Change ifelse with both branches the same to if
+			MIRInstrKind::IfElse {
+				condition,
+				first,
+				second,
+			} if are_blocks_equivalent(first, second) => Some(MIRInstrKind::If {
+				condition: condition.clone(),
+				body: first.clone(),
+			}),
+			// if x == y: x = y -> x = y
 			MIRInstrKind::If {
 				condition: Condition::Equal(Value::Mutable(left1), right1),
 				body,
@@ -266,7 +296,7 @@ fn run_iter(
 						_ => None,
 					}
 				}
-				// if x != y: x = y -> x = y
+				// if x: y *= 0  |  if x: y = 0 -> x *= y
 				Condition::Bool(b) => match body.contents.only().map(|x| &x.kind) {
 					Some(
 						MIRInstrKind::Mul {
@@ -415,6 +445,7 @@ fn run_iter(
 		}
 
 		if let MIRInstrKind::If { condition, .. }
+		| MIRInstrKind::IfElse { condition, .. }
 		| MIRInstrKind::Assign {
 			right: DeclareBinding::Condition(condition),
 			..

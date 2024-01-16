@@ -94,7 +94,7 @@ fn run_iter(
 				regs_to_keep.let_cond_prop = true;
 				regs_to_keep.let_cond_not = true;
 			}
-			MIRInstrKind::If { condition, .. } => {
+			MIRInstrKind::If { condition, .. } | MIRInstrKind::IfElse { condition, .. } => {
 				let_cond_propagate(condition, &mut let_cond_prop, &mut run_again);
 			}
 			MIRInstrKind::Not {
