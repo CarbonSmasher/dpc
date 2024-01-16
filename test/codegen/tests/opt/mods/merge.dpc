@@ -3,5 +3,5 @@
 "test:main" {
 	pos ~0.0 ~0.5 ~2.1:
 		pos ~0.5 20.0 ~-34.4:
-			say "hello";
+			cmd "custom command";
 }

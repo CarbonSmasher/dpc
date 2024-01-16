@@ -107,7 +107,7 @@ fn merge_modifiers(instr: &mut LIRInstruction) {
 			(l, r) => (l.clone(), Some(r.clone())),
 		};
 		mods.push(new_mods.0);
-		if i == instr.modifiers.len() - 1 {
+		if i == instr.modifiers.len() - 2 {
 			mods.extend(new_mods.1);
 		}
 	}

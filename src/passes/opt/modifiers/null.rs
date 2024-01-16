@@ -31,14 +31,13 @@ impl LIRPass for NullModifiersPass {
 				let mut mods_to_remove = GrowSet::with_capacity(modifier_count);
 
 				let mut mod_deps = FxHashSet::default();
-				'outer: for (i, modifier) in instr.modifiers.iter_mut().enumerate() {
-					if mods_to_remove.contains(i) {
-						continue;
-					}
-
+				'outer: for (i, modifier) in instr.modifiers.iter_mut().enumerate().rev() {
 					// If neither the instruction nor any of the modifiers after this one
 					// needs the context of this modifier, then it can be removed
 					let this_mod_ctx = <Modifier as GetSetOwned<Modified>>::get_set(modifier);
+
+					let mut dont_push_deps = false;
+
 					// We also need to check for side effects
 					if !modifier.has_extra_side_efects() {
 						// Can't do if either since that can break the chain
@@ -48,11 +47,14 @@ impl LIRPass for NullModifiersPass {
 								instr_deps.contains(&dep) | mod_deps.contains(&dep)
 							}) {
 								mods_to_remove.add(i);
+								dont_push_deps = true;
 							}
 						}
 					}
 
-					<Modifier as GetSetOwned<Dependency>>::append_set(modifier, &mut mod_deps);
+					if !dont_push_deps {
+						<Modifier as GetSetOwned<Dependency>>::append_set(modifier, &mut mod_deps);
+					}
 					if mod_deps.contains(&Dependency(ModifierContext::Everything)) {
 						break 'outer;
 					}

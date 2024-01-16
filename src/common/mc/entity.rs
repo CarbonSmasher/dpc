@@ -46,6 +46,10 @@ impl TargetSelector {
 				.iter()
 				.any(|x| matches!(x, SelectorParameter::Distance { .. }))
 	}
+
+	pub fn relies_on_executor(&self) -> bool {
+		matches!(self.selector, SelectorType::This)
+	}
 }
 
 impl Debug for TargetSelector {

@@ -5,4 +5,9 @@
 	at @s[]:
 		pos ~0.0 ~0.0 ~0.1:
 			add %x, 2s;
+	as @e[]:
+		say "hello";
+	as @e[type="zombie"]:
+		as @e[type="wolf"]:
+			cmd "custom command";
 }

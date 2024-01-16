@@ -36,6 +36,10 @@ impl EntityTarget {
 	pub fn relies_on_position(&self) -> bool {
 		matches!(self, Self::Selector(tgt) if tgt.relies_on_position())
 	}
+
+	pub fn relies_on_executor(&self) -> bool {
+		matches!(self, Self::Selector(tgt) if tgt.relies_on_executor())
+	}
 }
 
 impl Debug for EntityTarget {

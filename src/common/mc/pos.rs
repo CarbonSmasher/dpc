@@ -118,6 +118,12 @@ pub enum AbsOrRelCoord<T> {
 	Rel(T),
 }
 
+impl<T> AbsOrRelCoord<T> {
+	pub fn is_rel(&self) -> bool {
+		matches!(self, Self::Rel(..))
+	}
+}
+
 impl<T: Num> AbsOrRelCoord<T> {
 	/// Checks if this coordinate is relatively zero. Absolute zero will return false
 	pub fn is_relative_zero(&self) -> bool {
