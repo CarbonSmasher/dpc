@@ -32,6 +32,10 @@ impl EntityTarget {
 		matches!((self, other), (Self::Player(l), Self::Player(r)) if l == r)
 			|| matches!((self, other), (Self::Selector(l), Self::Selector(r)) if l.is_value_eq(r))
 	}
+
+	pub fn relies_on_position(&self) -> bool {
+		matches!(self, Self::Selector(tgt) if tgt.relies_on_position())
+	}
 }
 
 impl Debug for EntityTarget {

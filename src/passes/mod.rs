@@ -12,6 +12,7 @@ use self::opt::func::cleanup_return::CleanupReturnPass;
 use self::opt::func::inline::SimpleInlinePass;
 use self::opt::func::unused_args::UnusedArgsPass;
 use self::opt::modifiers::merge::MergeModifiersPass;
+use self::opt::modifiers::null::NullModifiersPass;
 use self::opt::modifiers::simplify::SimplifyModifiersPass;
 use self::opt::multifold::assign::MultifoldAssignPass;
 use self::opt::multifold::inst_combine::InstCombinePass;
@@ -112,6 +113,7 @@ pub fn run_lir_passes(lir: &mut LIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(LIRSimplifyPass),
 		Box::new(ScoreboardDataflowPass),
 		Box::new(MergeModifiersPass),
+		Box::new(NullModifiersPass),
 		Box::new(SimplifyModifiersPass),
 		Box::new(MergeModifiersPass),
 		Box::new(LIRSimplifyPass),

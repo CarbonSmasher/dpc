@@ -1,0 +1,8 @@
+# lir_passes
+
+"test:main" {
+	let x: score = val 0s;
+	at @s[]:
+		pos ~0.0 ~0.0 ~0.1:
+			add %x, 2s;
+}

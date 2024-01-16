@@ -38,6 +38,14 @@ impl TargetSelector {
 		self.selector.is_player_type()
 			|| matches!(self.selector, SelectorType::AllEntities if self.params.contains(&SelectorParameter::Type { ty: "player".into(), invert: false }))
 	}
+
+	pub fn relies_on_position(&self) -> bool {
+		matches!(self.selector, SelectorType::NearestPlayer)
+			| self
+				.params
+				.iter()
+				.any(|x| matches!(x, SelectorParameter::Distance { .. }))
+	}
 }
 
 impl Debug for TargetSelector {

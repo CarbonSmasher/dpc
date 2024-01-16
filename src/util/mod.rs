@@ -200,3 +200,16 @@ impl<T> Only for Vec<T> {
 		}
 	}
 }
+
+/// Utility trait for getting a set of something in a custom type.
+/// Uses overrides of the append method so that a new vec doesnt have to be
+/// allocated for every subitem
+pub trait GetSetOwned<T> {
+	fn append_set(&self, set: &mut FxHashSet<T>);
+
+	fn get_set(&self) -> FxHashSet<T> {
+		let mut out = FxHashSet::default();
+		self.append_set(&mut out);
+		out
+	}
+}
