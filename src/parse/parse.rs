@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{bail, Context};
@@ -5,6 +6,9 @@ use rustc_hash::FxHashMap;
 
 use crate::common::condition::Condition;
 use crate::common::function::CallInterface;
+use crate::common::mc::block::{
+	BlockData, BlockProperties, BlockStateValue, BlockStates, SetBlockData, SetBlockMode,
+};
 use crate::common::mc::entity::{EffectDuration, SelectorParameter, SelectorType, TargetSelector};
 use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::item::ItemData;
@@ -869,6 +873,18 @@ fn parse_instr_impl<'t>(
 				volume: *volume as f32,
 				pitch: *pitch as f32,
 				min_volume: *min_volume as f32,
+			}))
+		}
+		"sb" => {
+			let pos = parse_int_coords(toks).context("Failed to parse position")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let block = parse_block_data(toks).context("Failed to parse block data")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let mode = consume_extract!(toks, Ident, { bail!("Missing mode") });
+			let mode = SetBlockMode::parse(mode).context("Invalid mode")?;
+
+			Ok(InstrKind::MC(MinecraftInstr::SetBlock {
+				data: SetBlockData { pos, block, mode },
 			}))
 		}
 		"as" => {
@@ -1877,6 +1893,70 @@ fn parse_item_data<'t>(
 		item: item.clone().into(),
 		nbt,
 	})
+}
+
+fn parse_block_data<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<BlockData> {
+	let block = consume_extract!(toks, Str, { bail!("Missing block ID") });
+	let props = parse_block_props(toks).context("Failed to parse block properties")?;
+	Ok(BlockData {
+		block: block.clone().into(),
+		props,
+	})
+}
+
+fn parse_block_props<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<BlockProperties> {
+	consume_expect!(toks, Token::Curly(Side::Left), {
+		bail!("Missing opening bracket")
+	});
+	let (_, nbt) = parse_compound_lit(toks).context("Failed to parse block NBT")?;
+	let states = parse_block_states(toks).context("Failed to parse block states")?;
+	Ok(BlockProperties { data: nbt, states })
+}
+
+fn parse_block_states<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<BlockStates> {
+	consume_expect!(toks, Token::Square(Side::Left), {
+		bail!("Missing opening bracket")
+	});
+	let mut out = HashMap::new();
+	loop {
+		let first_tok = consume_optional!(toks);
+		if let Some(first_tok) = first_tok {
+			if let Token::Square(Side::Right) = first_tok.0 {
+				break;
+			}
+
+			let Token::Ident(key) = &first_tok.0 else {
+				bail!("Unexpected token {:?} {}", first_tok.0, first_tok.1);
+			};
+			consume_expect!(toks, Token::Equal, {
+				bail!("Missing selector parameter equal");
+			});
+			let val = consume_extract!(toks, Str, { bail!("Missing value token") });
+
+			out.insert(key.clone(), BlockStateValue::String(val.clone().into()));
+
+			let next = consume_optional!(toks);
+			if let Some(next) = next {
+				match &next.0 {
+					Token::Comma => {}
+					Token::Square(Side::Right) => {
+						break;
+					}
+					other => bail!("Unexpected token {other:?} {}", next.1),
+				}
+			}
+		} else {
+			break;
+		}
+	}
+
+	Ok(BlockStates::new(out))
 }
 
 fn parse_bool<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<bool> {

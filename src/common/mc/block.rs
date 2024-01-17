@@ -161,6 +161,17 @@ impl Debug for SetBlockMode {
 	}
 }
 
+impl SetBlockMode {
+	pub fn parse(string: &str) -> Option<Self> {
+		match string {
+			"destroy" => Some(Self::Destroy),
+			"keep" => Some(Self::Keep),
+			"replace" => Some(Self::Replace),
+			_ => None,
+		}
+	}
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum FillMode {
 	Destroy,

@@ -99,6 +99,7 @@
 	wbwd 0.8;
 	wbwt 3;
 	ply "entity.ender_dragon.roar", master, @s[], ~0.0 ~0.0 ~0.0, 1.0, 2.0, 0.0;
+	sb ~0 ~0 ~0, "stone"{}[], replace;
 
 	retr:
 		say "hello";

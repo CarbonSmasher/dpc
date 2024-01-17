@@ -44,11 +44,10 @@ fn run_block(
 	is_root: bool,
 ) -> anyhow::Result<RunAgain> {
 	let mut out = RunAgain::new();
-	let mut instrs_to_remove = Vec::new();
-	let mut instrs_to_remove_set = GrowSet::with_capacity(block.contents.len());
-
+	
 	loop {
-		instrs_to_remove.clear();
+		let mut instrs_to_remove_set = GrowSet::with_capacity(block.contents.len());
+		let mut instrs_to_remove = Vec::new();
 		let run_again = run_iter(
 			interface,
 			block,

@@ -15,7 +15,7 @@ use crate::common::mc::{DatapackListMode, Score};
 use crate::common::ty::NBTTypeContents;
 use crate::common::val::MutableScoreValue;
 use crate::common::{val::NBTValue, val::ScoreValue, RegisterList};
-use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction};
+use crate::lir::{LIRBlock, LIRFunction, LIRInstrKind, LIRInstruction};
 use crate::output::codegen::util::cg_data_modify_rhs;
 use crate::project::ProjectSettings;
 
@@ -23,7 +23,7 @@ use self::modifier::codegen_modifier;
 use self::t::macros::cgwrite;
 use self::util::{create_lit_score, get_mut_score_val_score, FloatCG, SpaceSepListCG};
 
-use super::ra::{alloc_block_registers, RegAllocCx, RegAllocResult};
+use super::ra::{GlobalRegAllocResult, RegAllocCx, RegAllocResult};
 use super::strip::FunctionMapping;
 
 use t::macros::cgformat;
@@ -33,16 +33,22 @@ pub struct CodegenCx<'proj> {
 	pub project: &'proj ProjectSettings,
 	pub func_mapping: Option<FunctionMapping>,
 	pub racx: RegAllocCx,
+	pub ra: GlobalRegAllocResult,
 	pub score_literals: HashSet<i32>,
 	pub requirements: HashSet<CodegenRequirement>,
 }
 
 impl<'proj> CodegenCx<'proj> {
-	pub fn new(project: &'proj ProjectSettings, func_mapping: Option<FunctionMapping>) -> Self {
+	pub fn new(
+		project: &'proj ProjectSettings,
+		func_mapping: Option<FunctionMapping>,
+		ra: GlobalRegAllocResult,
+	) -> Self {
 		Self {
 			project,
 			func_mapping,
 			racx: RegAllocCx::new(),
+			ra,
 			score_literals: HashSet::new(),
 			requirements: HashSet::new(),
 		}
@@ -71,10 +77,21 @@ pub struct CodegenBlockCx<'ccx, 'proj> {
 
 pub fn codegen_block(
 	func_id: &str,
+	func: &LIRFunction,
 	block: &LIRBlock,
 	ccx: &mut CodegenCx,
 ) -> anyhow::Result<Vec<String>> {
-	let ra = alloc_block_registers(func_id, block, &mut ccx.racx)?;
+	let real_func = if let Some(parent) = &func.parent {
+		parent
+	} else {
+		&func.interface.id
+	};
+	let ra = ccx
+		.ra
+		.results
+		.get(real_func)
+		.expect("No registers allocated for function")
+		.clone();
 
 	let mut cbcx = CodegenBlockCx {
 		ccx,

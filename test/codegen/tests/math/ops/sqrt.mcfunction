@@ -10,10 +10,10 @@ scoreboard players set %l50436 _l 50436
 # === test:main === #
 scoreboard players set atest_sqrt0 _r 4
 function test:sqrt
-scoreboard players operation %rtest_main4 _r = rtest_sqrt0 _r
+scoreboard players operation %rtest_main0 _r = rtest_sqrt0 _r
 scoreboard players set atest_sqrt0 _r 25
 function test:sqrt
-scoreboard players operation %rtest_main4 _r = rtest_sqrt0 _r
+scoreboard players operation %rtest_main0 _r = rtest_sqrt0 _r
 
 # === test:sqrt === #
 scoreboard players operation %rtest_sqrt0 _r = %atest_sqrt0 _r

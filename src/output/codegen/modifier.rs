@@ -308,18 +308,24 @@ impl StoreModLocation {
 
 #[cfg(test)]
 mod tests {
+	use rustc_hash::FxHashMap;
+
 	use super::*;
 
 	use crate::common::mc::{EntityTarget, Score};
 	use crate::common::RegisterList;
 	use crate::common::{ty::ScoreTypeContents, val::MutableScoreValue};
+	use crate::output::ra::GlobalRegAllocResult;
 	use crate::output::{codegen::CodegenCx, ra::RegAllocResult};
 	use crate::project::ProjectSettings;
 
 	#[test]
 	fn test_if_score_codegen() {
 		let proj = ProjectSettings::new("dpc".into());
-		let mut ccx = CodegenCx::new(&proj, None);
+		let ra = GlobalRegAllocResult {
+			results: FxHashMap::default(),
+		};
+		let mut ccx = CodegenCx::new(&proj, None, ra);
 		let mut cbcx = CodegenBlockCx {
 			ccx: &mut ccx,
 			ra: RegAllocResult::new(),

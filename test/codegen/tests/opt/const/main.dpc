@@ -61,9 +61,9 @@
 
 "test:setblock_fn" bool {
 	if bool &0:
-		cmd "setblock ~ ~ ~ stone";
+		sb ~0 ~0 ~0, "stone"{}[], replace;
 	if not bool &0:
-		cmd "setblock ~ ~ ~ smooth_stone";
+		sb ~0 ~0 ~0, "smooth_stone"{}[], replace;
 }
 
 @preserve

@@ -1,0 +1,18 @@
+@preserve
+"test:main" {
+	let x: score = val 0s;
+	use %x;
+	let y: score = val 2s;
+	use %y;
+	if pred "foo:bar" {
+		add %y, 1s;
+	};
+	let a: score = val 0s;
+	let b: score = val 8s;
+	if pred "foo:bar" {
+		mod %b, %a;
+		let c: score = val 10s;
+		use %c;
+	}
+	use %b;
+}

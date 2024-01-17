@@ -13,6 +13,7 @@ use anyhow::Context;
 
 use self::codegen::{codegen_block, CodegenCx};
 use self::datapack::{Datapack, Function};
+use self::ra::alloc_registers;
 
 pub fn link(lir: LIR, project: &ProjectSettings) -> anyhow::Result<Datapack> {
 	let mut out = Datapack::new();
@@ -20,7 +21,8 @@ pub fn link(lir: LIR, project: &ProjectSettings) -> anyhow::Result<Datapack> {
 	// Strip the LIR
 	let mapping = self::strip::strip(&lir, project);
 
-	let mut ccx = CodegenCx::new(project, mapping);
+	let ra = alloc_registers(&lir, &mapping)?;
+	let mut ccx = CodegenCx::new(project, mapping, ra);
 	for (func_id, func) in lir.functions {
 		let mut func_id = func_id.clone();
 		if let Some(mapping) = &ccx.func_mapping {
@@ -51,7 +53,7 @@ fn codegen_fn(func_id: &str, func: &LIRFunction, ccx: &mut CodegenCx) -> anyhow:
 		func_id
 	};
 	let cleaned_id = cleanup_fn_id(func_id);
-	let code = codegen_block(&cleaned_id, &func.block, ccx)?;
+	let code = codegen_block(&cleaned_id, &func, &func.block, ccx)?;
 	fun.contents = code;
 	Ok(fun)
 }

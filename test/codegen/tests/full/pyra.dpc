@@ -1,0 +1,182 @@
+# split
+
+@preserve
+"test:main" {}
+
+@preserve
+"player:main" {
+	if lte sco @s[] "cd.actionbar", 0s:
+		call run "player:hud/refresh";
+}
+
+"player:hud/refresh" {
+	# Refresh cooldown bar
+	call run "player:hud/cooldown/cooldown_bar";
+	# Tell the bar to the player
+	rm stg "dungeons:items" "tempCenterText";
+	cmd "data merge storage dungeons:items {tempCenterText:'[{\"score\":{\"name\":\"@s\",\"objective\":\"stat.total.def\"},\"color\":\"green\"},{\"text\":\"❈ Defense   \",\"color\":\"green\"}]'}";
+
+	call run "player:hud/end/main";
+	callx "player:hud/show_actionbar";
+}
+
+"player:hud/end/main" {
+	rm stg "dungeons:items" "tempEndText";
+	# execute if score @s dung.class matches 1 run function player:hud/end/withering
+	# execute if score @s dung.class matches 3 run function player:hud/end/hits_and_kills
+}
+
+"player:hud/cooldown/cooldown_bar" {
+	# Choose what cooldown objective to use based on the held item
+	let temp: score = val 0s;
+	if eq sco @s[] "item.id", 2s: set %temp, sco @s[] "cd.item.wrath";
+	if eq sco @s[] "item.id", 18s: set %temp, sco @s[] "cd.item.sdagger";
+	if eq sco @s[] "item.id", 39s: set %temp, sco @s[] "cd.item.gsword";
+	if eq sco @s[] "item.id", 52s: set %temp, sco @s[] "cd.item.cshard";
+	if eq sco @s[] "item.id", 69s {
+		set %temp, sco @s[] "cd.item.chainsaw";
+		div %temp, 5s;
+	};
+
+	let mod: score = null;
+	ife gte %temp, 1s {
+		set %mod, %temp;
+		mod %mod, 20s;
+	} {
+		xps @s[], 0, levels;
+		xps @s[], 0, points;
+		rm %mod;
+	};
+
+	xps @s[], 5, levels;
+
+	# Divide current cooldown by 20 to convert it from ticks to seconds
+	div %temp, 20s;
+	# Offset by one
+	if gte %temp, 1s:
+		add %temp, 1s;
+
+	# Choose what cooldown max to use based on the held item
+	let max: score = val 1s;
+	if eq sco @s[] "item.id", 2s: set %max, 30s;
+	if eq sco @s[] "item.id", 18s: set %max, 10s;
+	if eq sco @s[] "item.id", 39s: set %max, 2s;
+	if eq sco @s[] "item.id", 52s: set %max, 15s;
+
+	let set_xp: score = val %temp;
+
+	if eq %mod, 1s: xps @s[], 0, points;
+	if eq %mod, 2s: xps @s[], 1, points;
+	if eq %mod, 3s: xps @s[], 2, points;
+	if eq %mod, 4s: xps @s[], 3, points;
+	if eq %mod, 5s: xps @s[], 4, points;
+	if eq %mod, 6s: xps @s[], 5, points;
+	if eq %mod, 7s: xps @s[], 6, points;
+	if eq %mod, 8s: xps @s[], 7, points;
+	if eq %mod, 9s: xps @s[], 8, points;
+	if eq %mod, 10s: xps @s[], 9, points;
+	if eq %mod, 11s: xps @s[], 10, points;
+	if eq %mod, 12s: xps @s[], 11, points;
+	if eq %mod, 13s: xps @s[], 12, points;
+	if eq %mod, 14s: xps @s[], 13, points;
+	if eq %mod, 15s: xps @s[], 14, points;
+	if eq %mod, 16s: xps @s[], 15, points;
+	if eq %mod, 17s: xps @s[], 16, points;
+	if eq %mod, 18s: xps @s[], 17, points;
+	if eq %mod, 19s: xps @s[], 18, points;
+	if eq %mod, 0s {
+		xps @s[], 9999, levels;
+		xps @s[], 89000, points;
+	};
+
+	if eq %mod, 20s:
+		rm %mod;
+
+	xps @s[], 0, levels;
+
+	# Set the player level to the time left
+
+	call run "player:hud/cooldown/set_level", %set_xp;
+	if eq sco @s[] "item.id", 69s:
+		callx "items:abilities/berserk/chainsaw/cooldown";
+}
+
+# Utility to set the player level from a scoreboard value
+# We don't need to go very high with these so it's fine to leave them hardcoded
+"player:hud/cooldown/set_level" score {
+	if eq &0, 1s: xps @s[], 1, levels;
+	if eq &0, 2s: xps @s[], 2, levels;
+	if eq &0, 3s: xps @s[], 3, levels;
+	if eq &0, 4s: xps @s[], 4, levels;
+	if eq &0, 5s: xps @s[], 5, levels;
+	if eq &0, 6s: xps @s[], 6, levels;
+	if eq &0, 7s: xps @s[], 7, levels;
+	if eq &0, 8s: xps @s[], 8, levels;
+	if eq &0, 9s: xps @s[], 9, levels;
+	if eq &0, 10s: xps @s[], 10, levels;
+	if eq &0, 11s: xps @s[], 11, levels;
+	if eq &0, 12s: xps @s[], 12, levels;
+	if eq &0, 13s: xps @s[], 13, levels;
+	if eq &0, 14s: xps @s[], 14, levels;
+	if eq &0, 15s: xps @s[], 15, levels;
+	if eq &0, 16s: xps @s[], 16, levels;
+	if eq &0, 17s: xps @s[], 17, levels;
+	if eq &0, 18s: xps @s[], 18, levels;
+	if eq &0, 19s: xps @s[], 19, levels;
+	if eq &0, 20s: xps @s[], 20, levels;
+	if eq &0, 21s: xps @s[], 21, levels;
+	if eq &0, 22s: xps @s[], 22, levels;
+	if eq &0, 23s: xps @s[], 23, levels;
+	if eq &0, 24s: xps @s[], 24, levels;
+	if eq &0, 25s: xps @s[], 25, levels;
+	if eq &0, 26s: xps @s[], 26, levels;
+	if eq &0, 27s: xps @s[], 27, levels;
+	if eq &0, 28s: xps @s[], 28, levels;
+	if eq &0, 29s: xps @s[], 29, levels;
+	if eq &0, 30s: xps @s[], 30, levels;
+}
+
+### Ground sweep
+
+@preserve
+"items:ground_sweep/main" {
+	if not ent @s[tag="seent"] {
+		let item: nany = val prop "tag" ent @s[] "Item";
+		let clear: bool = cast bool prop "clear" %item;
+		if bool %clear: kill @s[];
+		let player: bool = cast bool prop "player_item" %item;
+		if bool %player: kill @s[];
+		let explorer: bool = cast bool prop "explorer_set" %item;
+		if bool %explorer: callx "items:set/drop";
+		let wither: bool = cast bool prop "wither_heart" %item;
+		if bool %wither:
+			taga @s[], "wither_heart";
+		if exi prop "ench" prop "Upgrades" %item:
+			taga @s[], "ench";
+		if exi prop "ench_book" %item:
+			taga @s[], "ench_book";
+		if exi prop "rarity" %item {
+			let rarity: score = cast bool prop "rarity" %item;
+			if eq %rarity, 0s: cmd "team join common @s";
+			if eq %rarity, 1s: cmd "team join uncommon @s";
+			if eq %rarity, 2s: cmd "team join rare @s";
+			if eq %rarity, 3s: cmd "team join epic @s";
+			if eq %rarity, 4s: cmd "team join legendary @s";
+			if eq %rarity, 5s: cmd "team join mythic @s";
+			if eq %rarity, 6s: cmd "team join supreme @s";
+			if and gte %rarity, 7s, lte %rarity, 8s: cmd "team join special @s";
+			if gte %rarity, 9s: cmd "team join hydar @s";
+			cmd "data merge entity @s {Glowing:1b}";
+		};
+		let cooldown: score = cast score prop "timer" %item;
+		if gte %cooldown, 1s:
+			set ent @s[] "PickupDelay", 32767ni;
+		if exi prop "coindata" %item:
+			callx "items:ground_sweep/coindata";
+		taga @s[], "seent";
+	};
+	if gt sco @s[] "cooldown", 0s {
+		sub sco @s[] "cooldown", 1s;
+		if eq sco @s[] "cooldown", 0s: kill @s[];
+	};
+}
