@@ -160,9 +160,6 @@ pub fn alloc_registers(
 	let mut out = GlobalRegAllocResult {
 		results: FxHashMap::default(),
 	};
-	// First we check every function to see if it has children.
-	// Functions with children have to use a less optimized register allocator
-	// until a better method is implemented
 	let mut chunks = FxHashMap::default();
 	for func in lir.functions.values() {
 		if let Some(parent) = &func.parent {
@@ -225,7 +222,7 @@ fn alloc_chunk_registers(
 		.get(&chunk.parent)
 		.expect("Parent should exist")
 		.block;
-	alloc_block_registers2(
+	alloc_block_registers(
 		true,
 		block,
 		&child_used_regs,
@@ -236,7 +233,7 @@ fn alloc_chunk_registers(
 
 	for child in &chunk.children {
 		let block = &lir.functions.get(child).expect("Child should exist").block;
-		alloc_block_registers2(
+		alloc_block_registers(
 			false,
 			block,
 			&child_used_regs,
@@ -262,7 +259,7 @@ fn alloc_chunk_registers(
 	Ok(())
 }
 
-fn alloc_block_registers2(
+fn alloc_block_registers(
 	is_root: bool,
 	block: &LIRBlock,
 	child_uses: &FxHashMap<ResourceLocation, Vec<&Identifier>>,
@@ -270,7 +267,11 @@ fn alloc_block_registers2(
 	out_locals: &mut FxHashMap<Identifier, u32>,
 	racx: &mut RegAllocCx,
 ) -> anyhow::Result<()> {
-	let last_uses = analyze_last_register_uses2(block, child_uses);
+	let last_uses = if is_root {
+		analyze_last_register_uses(block, child_uses)
+	} else {
+		FxHashMap::default()
+	};
 	for (i, instr) in block.contents.iter().enumerate() {
 		let mut used_regs = instr.get_used_regs();
 		// Get used from the child
@@ -326,7 +327,7 @@ fn alloc_block_registers2(
 	Ok(())
 }
 
-fn analyze_last_register_uses2(
+fn analyze_last_register_uses(
 	block: &LIRBlock,
 	child_uses: &FxHashMap<ResourceLocation, Vec<&Identifier>>,
 ) -> FxHashMap<usize, Vec<Identifier>> {
@@ -340,96 +341,6 @@ fn analyze_last_register_uses2(
 				used_regs.extend(child_regs.clone());
 			}
 		}
-		last_used_positions.insert(
-			i,
-			used_regs
-				.iter()
-				.filter(|x| !already_spent.contains(*x))
-				.map(|x| (*x).clone())
-				.collect(),
-		);
-		already_spent.extend(used_regs);
-	}
-
-	last_used_positions
-}
-
-/// Allocate the registers for a single block
-pub fn alloc_block_registers(
-	func_id: &str,
-	block: &LIRBlock,
-	racx: &mut RegAllocCx,
-) -> anyhow::Result<RegAllocResult> {
-	let func_id = func_id.to_string().replace([':', '/'], "_");
-	let mut out_regs = FxHashMap::default();
-	let mut out_locals = FxHashMap::default();
-
-	let last_uses = analyze_last_register_uses(block);
-
-	for (i, instr) in block.contents.iter().enumerate() {
-		let used_regs = instr.get_used_regs();
-		for reg_id in used_regs {
-			let reg = block
-				.regs
-				.get(reg_id)
-				.ok_or(anyhow!("Used register {reg_id} does not exist"))?;
-			match reg.ty {
-				DataType::Score(..) => {
-					if !out_regs.contains_key(reg_id) {
-						out_regs.insert(reg_id.clone(), racx.new_reg());
-					}
-				}
-				DataType::NBT(..) => {
-					if !out_locals.contains_key(reg_id) {
-						out_locals.insert(reg_id.clone(), racx.new_local());
-					}
-				}
-				_ => bail!("Type not supported"),
-			}
-		}
-
-		if let Some(regs) = last_uses.get(&i) {
-			for reg_id in regs.iter() {
-				let reg = block
-					.regs
-					.get(reg_id)
-					.ok_or(anyhow!("Used register {reg_id} does not exist"))?;
-				match reg.ty {
-					DataType::Score(..) => racx.regs.finish_using(
-						*out_regs
-							.get(reg_id)
-							.ok_or(anyhow!("Used register {reg_id} does not exist"))?,
-					),
-					DataType::NBT(..) => racx.locals.finish_using(
-						*out_locals
-							.get(reg_id)
-							.ok_or(anyhow!("Used register {reg_id} does not exist"))?,
-					),
-					_ => bail!("Type not supported"),
-				}
-			}
-		}
-	}
-
-	let out = RegAllocResult {
-		regs: out_regs
-			.iter()
-			.map(|(x, y)| (x.clone(), format_reg_fake_player(*y, &func_id)))
-			.collect(),
-		locals: out_locals
-			.iter()
-			.map(|(x, y)| (x.clone(), format_local_storage_entry(*y, &func_id)))
-			.collect(),
-	};
-
-	Ok(out)
-}
-
-fn analyze_last_register_uses(block: &LIRBlock) -> FxHashMap<usize, Vec<Identifier>> {
-	let mut last_used_positions = FxHashMap::default();
-	let mut already_spent = FxHashSet::default();
-	for (i, instr) in block.contents.iter().enumerate().rev() {
-		let used_regs = instr.get_used_regs();
 		last_used_positions.insert(
 			i,
 			used_regs
