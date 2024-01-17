@@ -10,3 +10,19 @@
 	if not bool sco @s[] "foo":
 		say "goodbye";
 }
+
+@preserve
+"test:not_and" {
+	if not and pred "foo:bar", pred "bar:foo":
+		say "Hello";
+}
+
+@preserve
+"test:or" {
+	# Simple case
+	if or pred "foo:bar", pred "bar:foo":
+		say "Hello";
+	# Nested
+	if or or pred "foo:bar", and pred "foo:bar2", pred "foo:bar3", pred "foo:bar4":
+		say "Hello2";
+}

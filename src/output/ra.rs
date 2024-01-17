@@ -1,9 +1,10 @@
 use anyhow::{anyhow, bail};
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use crate::common::mc::modifier::{IfModCondition, Modifier};
 use crate::common::{reg::GetUsedRegs, ty::DataType};
 use crate::common::{Identifier, ResourceLocation};
-use crate::lir::{LIRBlock, LIRInstrKind, LIR};
+use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
 
 use super::strip::FunctionMapping;
 use super::text::{format_local_storage_entry, format_reg_fake_player};
@@ -180,6 +181,7 @@ pub fn alloc_registers(
 
 	for (_, chunk) in chunks {
 		alloc_chunk_registers(chunk, lir, &mut racx, &mut out, func_mapping)?;
+		racx.finish_using_all();
 	}
 
 	Ok(out)
@@ -273,13 +275,7 @@ fn alloc_block_registers(
 		FxHashMap::default()
 	};
 	for (i, instr) in block.contents.iter().enumerate() {
-		let mut used_regs = instr.get_used_regs();
-		// Get used from the child
-		if let LIRInstrKind::Call(func) = &instr.kind {
-			if let Some(child_regs) = child_uses.get(func) {
-				used_regs.extend(child_regs.clone());
-			}
-		}
+		let used_regs = get_used_regs_ra(instr, child_uses);
 		for reg_id in used_regs {
 			let reg = block
 				.regs
@@ -334,13 +330,7 @@ fn analyze_last_register_uses(
 	let mut last_used_positions = FxHashMap::default();
 	let mut already_spent = FxHashSet::default();
 	for (i, instr) in block.contents.iter().enumerate().rev() {
-		let mut used_regs = instr.get_used_regs();
-		// Get used from the child
-		if let LIRInstrKind::Call(func) = &instr.kind {
-			if let Some(child_regs) = child_uses.get(func) {
-				used_regs.extend(child_regs.clone());
-			}
-		}
+		let used_regs = get_used_regs_ra(instr, child_uses);
 		last_used_positions.insert(
 			i,
 			used_regs
@@ -353,4 +343,29 @@ fn analyze_last_register_uses(
 	}
 
 	last_used_positions
+}
+
+/// Get used registers and registers of subfunction calls from an instruction.
+/// For use in ra purposes
+fn get_used_regs_ra<'r>(
+	instr: &'r LIRInstruction,
+	child_uses: &FxHashMap<ResourceLocation, Vec<&'r Identifier>>,
+) -> Vec<&'r Identifier> {
+	let mut used_regs = instr.get_used_regs();
+	// Get used from the child
+	if let LIRInstrKind::Call(func) = &instr.kind {
+		if let Some(child_regs) = child_uses.get(func) {
+			used_regs.extend(child_regs.clone());
+		}
+	}
+	for modi in &instr.modifiers {
+		if let Modifier::If { condition, .. } = modi {
+			if let IfModCondition::Function(func) = condition.as_ref() {
+				if let Some(child_regs) = child_uses.get(func) {
+					used_regs.extend(child_regs.clone());
+				}
+			}
+		}
+	}
+	used_regs
 }

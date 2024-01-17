@@ -31,6 +31,40 @@ macro_rules! lower {
 	};
 }
 
+struct LowerBlockCx<'lir> {
+	lir: &'lir mut LIR,
+	registers: RegisterList,
+	additional_reg_count: u32,
+	body_count: u32,
+	func_id: ResourceLocation,
+	sig: FunctionSignature,
+}
+
+impl<'lir> LowerBlockCx<'lir> {
+	fn new(lir: &'lir mut LIR, func_id: ResourceLocation, sig: FunctionSignature) -> Self {
+		Self {
+			lir,
+			registers: RegisterList::default(),
+			additional_reg_count: 0,
+			body_count: 0,
+			func_id,
+			sig,
+		}
+	}
+
+	fn new_additional_reg(&mut self) -> Identifier {
+		let old_val = self.additional_reg_count;
+		self.additional_reg_count += 1;
+		Identifier::from(format!("__lir_lower_{old_val}"))
+	}
+
+	fn new_body_fn(&mut self) -> FunctionInterface {
+		let old_val = self.body_count;
+		self.body_count += 1;
+		FunctionInterface::new(format!("{}_body_{old_val}", self.func_id).into())
+	}
+}
+
 /// Lower MIR to LIR
 pub fn lower_mir(mir: MIR) -> anyhow::Result<LIR> {
 	let mut lir = LIR::with_capacity(mir.functions.len());
@@ -318,40 +352,6 @@ fn lower_kind(
 	Ok(())
 }
 
-struct LowerBlockCx<'lir> {
-	lir: &'lir mut LIR,
-	registers: RegisterList,
-	additional_reg_count: u32,
-	body_count: u32,
-	func_id: ResourceLocation,
-	sig: FunctionSignature,
-}
-
-impl<'lir> LowerBlockCx<'lir> {
-	fn new(lir: &'lir mut LIR, func_id: ResourceLocation, sig: FunctionSignature) -> Self {
-		Self {
-			lir,
-			registers: RegisterList::default(),
-			additional_reg_count: 0,
-			body_count: 0,
-			func_id,
-			sig,
-		}
-	}
-
-	fn new_additional_reg(&mut self) -> Identifier {
-		let old_val = self.additional_reg_count;
-		self.additional_reg_count += 1;
-		Identifier::from(format!("__lir_lower_{old_val}"))
-	}
-
-	fn new_body_fn(&mut self) -> FunctionInterface {
-		let old_val = self.body_count;
-		self.body_count += 1;
-		FunctionInterface::new(format!("{}_body_{old_val}", self.func_id).into())
-	}
-}
-
 fn lower_assign(
 	left: MutableValue,
 	right: DeclareBinding,
@@ -468,6 +468,19 @@ fn lower_let_cond(
 	lir_instrs: &mut Vec<LIRInstruction>,
 	lbcx: &mut LowerBlockCx,
 ) -> anyhow::Result<()> {
+	let (prelude, conditions) = lower_condition(condition.clone(), lbcx)?;
+	lir_instrs.extend(prelude);
+	lower_let_cond_impl(left, conditions, lir_instrs, lbcx)?;
+
+	Ok(())
+}
+
+fn lower_let_cond_impl(
+	left: MutableValue,
+	conditions: Vec<(IfModCondition, bool)>,
+	lir_instrs: &mut Vec<LIRInstruction>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<()> {
 	let store_loc = match left.get_ty(&lbcx.registers, &lbcx.sig)? {
 		DataType::Score(..) => {
 			StoreModLocation::from_mut_score_val(&left.to_mutable_score_value()?)?
@@ -476,8 +489,6 @@ fn lower_let_cond(
 	};
 	let mut instr = LIRInstruction::new(LIRInstrKind::NoOp);
 	instr.modifiers.push(Modifier::StoreSuccess(store_loc));
-	let (prelude, conditions) = lower_condition(condition.clone(), lbcx)?;
-	lir_instrs.extend(prelude);
 	for (condition, negate) in conditions {
 		instr.modifiers.push(Modifier::If {
 			condition: Box::new(condition),
@@ -857,7 +868,7 @@ fn highest_power_of_2_factor(num: u8) -> u8 {
 /// modifiers, and whether to negate each of those modifiers
 fn lower_condition(
 	condition: Condition,
-	lbcx: &LowerBlockCx,
+	lbcx: &mut LowerBlockCx,
 ) -> anyhow::Result<(Vec<LIRInstruction>, Vec<(IfModCondition, bool)>)> {
 	let mut prelude = Vec::new();
 	let mut out = Vec::new();
@@ -898,14 +909,24 @@ fn lower_condition(
 		Condition::Not(condition) => {
 			let (other_prelude, condition) =
 				lower_condition(*condition, lbcx).context("Failed to lower not condition")?;
-			// We can't do !(x and y) yet because the only way to do it is to do !x or !y,
-			// and or is not supported yet
-			if condition.len() != 1 {
-				bail!("not and is not supported");
-			}
-			let (condition, negate) = condition.first().expect("Length is 1");
+			// For len != 1, we have to lower to the not of all the terms,
+			// based on DeMorgan's theorems
 			prelude.extend(other_prelude);
-			out.push((condition.clone(), !negate));
+			if condition.len() != 1 {
+				// Invert each
+				let terms = condition
+					.into_iter()
+					.map(|mut x| {
+						x.1 = !x.1;
+						vec![x]
+					})
+					.collect();
+				let cond = lower_or(terms, &mut prelude, lbcx)?;
+				out.push((cond, false));
+			} else {
+				let (condition, negate) = condition.first().expect("Length is 1");
+				out.push((condition.clone(), !negate));
+			}
 		}
 		Condition::And(l, r) => {
 			let (lp, lc) = lower_condition(*l, lbcx).context("Failed to lower and lhs")?;
@@ -914,6 +935,14 @@ fn lower_condition(
 			prelude.extend(rp);
 			out.extend(lc);
 			out.extend(rc);
+		}
+		Condition::Or(l, r) => {
+			let (lp, lc) = lower_condition(*l, lbcx).context("Failed to lower and lhs")?;
+			let (rp, rc) = lower_condition(*r, lbcx).context("Failed to lower and rhs")?;
+			prelude.extend(lp);
+			prelude.extend(rp);
+			let cond = lower_or(vec![lc, rc], &mut prelude, lbcx)?;
+			out.push((cond, false));
 		}
 		Condition::GreaterThan(l, r) => {
 			out.push((
@@ -1002,6 +1031,57 @@ fn lower_bool_cond(val: Value, check: bool, lbcx: &LowerBlockCx) -> anyhow::Resu
 		})),
 		_ => bail!("Condition does not allow this type"),
 	}
+}
+
+fn lower_or(
+	mut terms: Vec<Vec<(IfModCondition, bool)>>,
+	prelude: &mut Vec<LIRInstruction>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<IfModCondition> {
+	if terms.len() < 2 {
+		bail!("Missing terms for or condition");
+	}
+	/*
+		For now we only have one lowering method: assign registers
+		for the terms of the or to the conditions, then run an if function
+		to check the terms
+	*/
+	let or_reg = lbcx.new_additional_reg();
+	lbcx.registers.insert(
+		or_reg.clone(),
+		Register {
+			id: or_reg.clone(),
+			ty: DataType::Score(ScoreType::Bool),
+		},
+	);
+	let first_cond = terms.pop().expect("Len >= 2");
+	lower_let_cond_impl(MutableValue::Reg(or_reg.clone()), first_cond, prelude, lbcx)?;
+	let add_instr = lower_add(
+		MutableValue::Reg(or_reg.clone()),
+		Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(1))),
+		lbcx,
+	)?;
+	for term in terms {
+		let mut instr = LIRInstruction::new(add_instr.clone());
+		for cond in term {
+			instr.modifiers.push(Modifier::If {
+				condition: Box::new(cond.0),
+				negate: cond.1,
+			});
+		}
+		prelude.push(instr);
+	}
+
+	let out = IfModCondition::Score(IfScoreCondition::Range {
+		score: ScoreValue::Mutable(MutableScoreValue::Reg(or_reg)),
+		left: IfScoreRangeEnd::Fixed {
+			value: ScoreValue::Constant(ScoreTypeContents::Score(1)),
+			inclusive: true,
+		},
+		right: IfScoreRangeEnd::Infinite,
+	});
+
+	Ok(out)
 }
 
 fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LIRInstruction> {

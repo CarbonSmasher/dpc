@@ -1730,6 +1730,12 @@ fn parse_condition<'t>(
 			let r = parse_condition(toks).context("Failed to parse and rhs")?;
 			Ok(Condition::And(Box::new(l), Box::new(r)))
 		}
+		"or" => {
+			let l = parse_condition(toks).context("Failed to parse or lhs")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let r = parse_condition(toks).context("Failed to parse or rhs")?;
+			Ok(Condition::Or(Box::new(l), Box::new(r)))
+		}
 		"eq" => {
 			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;
 			Ok(Condition::Equal(l, r))
