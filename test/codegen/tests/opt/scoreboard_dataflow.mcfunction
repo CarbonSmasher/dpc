@@ -9,5 +9,4 @@ execute store result score %rtest_main1 _r run scoreboard players operation %rte
 
 # === test:op_to_cast === #
 scoreboard players set %rtest_op_to_cast0 _r 10
-scoreboard players add %rtest_op_to_cast0 _r 8
-execute store result storage dpc:r stest_op_to_cast0 int 1 run scoreboard players get %rtest_op_to_cast0 _r
+execute store result storage dpc:r stest_op_to_cast0 int 1 run scoreboard players add %rtest_op_to_cast0 _r 8

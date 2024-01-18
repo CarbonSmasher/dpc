@@ -6,6 +6,8 @@ use crate::{ir::IR, lir::LIR, mir::MIR};
 use self::analysis::inline_candidates::InlineCandidatesPass;
 use self::analysis::ir::ValidatePass;
 use self::opt::constant::{fold::ConstFoldPass, prop::ConstPropPass, ConstComboPass};
+use self::opt::dataflow::get::DataflowGetPass;
+use self::opt::dataflow::result::DataflowResultPass;
 use self::opt::dce::DCEPass;
 use self::opt::dse::DSEPass;
 use self::opt::func::cleanup_return::CleanupReturnPass;
@@ -17,7 +19,6 @@ use self::opt::modifiers::simplify::SimplifyModifiersPass;
 use self::opt::multifold::assign::MultifoldAssignPass;
 use self::opt::multifold::inst_combine::InstCombinePass;
 use self::opt::multifold::logic::MultifoldLogicPass;
-use self::opt::scoreboard_dataflow::ScoreboardDataflowPass;
 use self::opt::simplify::cleanup::CleanupPass;
 use self::opt::simplify::{lir::LIRSimplifyPass, mir::MIRSimplifyPass};
 
@@ -111,11 +112,12 @@ pub fn run_lir_passes(lir: &mut LIR, debug: bool) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn LIRPass>,
 		Box::new(LIRSimplifyPass),
-		Box::new(ScoreboardDataflowPass),
+		Box::new(DataflowResultPass),
 		Box::new(MergeModifiersPass),
 		Box::new(NullModifiersPass),
 		Box::new(SimplifyModifiersPass),
 		Box::new(MergeModifiersPass),
+		Box::new(DataflowGetPass),
 		Box::new(LIRSimplifyPass),
 	];
 

@@ -275,3 +275,19 @@ impl GetUsedRegs for LIRInstrKind {
 		}
 	}
 }
+
+impl LIRInstrKind {
+	pub fn get_simple_sb_op_lhs(&self) -> Option<&MutableScoreValue> {
+		match self {
+			LIRInstrKind::SetScore(left, ..)
+			| LIRInstrKind::AddScore(left, ..)
+			| LIRInstrKind::SubScore(left, ..)
+			| LIRInstrKind::MulScore(left, ..)
+			| LIRInstrKind::DivScore(left, ..)
+			| LIRInstrKind::ModScore(left, ..)
+			| LIRInstrKind::MinScore(left, ..)
+			| LIRInstrKind::MaxScore(left, ..) => Some(left),
+			_ => None,
+		}
+	}
+}

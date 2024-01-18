@@ -7,17 +7,17 @@ use crate::lir::{LIRBlock, LIRInstrKind, LIR};
 use crate::passes::{LIRPass, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
-use super::OptimizableValue;
+use super::super::OptimizableValue;
 
-pub struct ScoreboardDataflowPass;
+pub struct DataflowResultPass;
 
-impl Pass for ScoreboardDataflowPass {
+impl Pass for DataflowResultPass {
 	fn get_name(&self) -> &'static str {
-		"scoreboard_dataflow"
+		"result_dataflow"
 	}
 }
 
-impl LIRPass for ScoreboardDataflowPass {
+impl LIRPass for DataflowResultPass {
 	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
 		let mut flow_points = FxHashMap::default();
 		let mut finished_flow_points = Vec::new();
@@ -31,7 +31,7 @@ impl LIRPass for ScoreboardDataflowPass {
 			loop {
 				flow_points.clear();
 				finished_flow_points.clear();
-				let run_again = run_scoreboard_dataflow_iter(
+				let run_again = run_iter(
 					block,
 					&mut instrs_to_remove,
 					&mut flow_points,
@@ -49,7 +49,7 @@ impl LIRPass for ScoreboardDataflowPass {
 	}
 }
 
-fn run_scoreboard_dataflow_iter(
+fn run_iter(
 	block: &mut LIRBlock,
 	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
 	flow_points: &mut FxHashMap<OptimizableValue, SBDataflowPoint>,
