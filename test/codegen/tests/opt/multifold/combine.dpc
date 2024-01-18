@@ -34,5 +34,9 @@
 	pow %x, 2;
 	pow %x, 5;
 
+	abs %x;
+	abs %x;
+	abs %x;
+
 	use %x;
 }

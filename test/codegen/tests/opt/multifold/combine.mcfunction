@@ -1,6 +1,7 @@
 # === dpc:init === #
 scoreboard objectives add _r dummy
 scoreboard objectives add _l dummy
+scoreboard players set %l-1 _l -1
 scoreboard players set %l8 _l 8
 scoreboard players set %l10 _l 10
 
@@ -18,6 +19,7 @@ scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
 scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
 scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
 scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
+execute if score %rtest_func0 _r matches ..-1 run scoreboard players operation %rtest_func0 _r *= %l-1 _l
 
 # === test:main === #
 scoreboard players set atest_func0 _r 5

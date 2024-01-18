@@ -42,6 +42,8 @@ fn run_iter(block: &mut MIRBlock, removed_indices: &mut GrowSet) -> bool {
 	let mut add_subs = FxHashMap::<Identifier, AddSubCombiner>::default();
 	let mut muls = FxHashMap::<Identifier, MulCombiner>::default();
 	let mut mods = FxHashMap::<Identifier, ModCombiner>::default();
+	let mut abses = FxHashMap::<Identifier, AbsCombiner>::default();
+	let mut to_pows = FxHashMap::<Identifier, MulToPowCombiner>::default();
 	let mut pows = FxHashMap::<Identifier, PowCombiner>::default();
 	let mut nots = FxHashMap::<Identifier, NotCombiner>::default();
 
@@ -82,6 +84,16 @@ fn run_iter(block: &mut MIRBlock, removed_indices: &mut GrowSet) -> bool {
 					muls.insert(reg.clone(), MulCombiner::new(score.get_i32(), i));
 				}
 			}
+			MIRInstrKind::Mul {
+				left: MutableValue::Reg(reg),
+				right: Value::Mutable(MutableValue::Reg(reg2)),
+			} if reg == reg2 => {
+				if let Some(combiner) = to_pows.get_mut(reg) {
+					combiner.feed(i, 0);
+				} else {
+					to_pows.insert(reg.clone(), MulToPowCombiner::new(1, i));
+				}
+			}
 			MIRInstrKind::Mod {
 				left: MutableValue::Reg(reg),
 				right: Value::Constant(DataTypeContents::Score(score)),
@@ -99,6 +111,15 @@ fn run_iter(block: &mut MIRBlock, removed_indices: &mut GrowSet) -> bool {
 					combiner.feed(i, 0);
 				} else {
 					nots.insert(reg.clone(), NotCombiner::new(1, i));
+				}
+			}
+			MIRInstrKind::Abs {
+				val: MutableValue::Reg(reg),
+			} => {
+				if let Some(combiner) = abses.get_mut(reg) {
+					combiner.feed(i, 0);
+				} else {
+					abses.insert(reg.clone(), AbsCombiner::new(1, i));
 				}
 			}
 			MIRInstrKind::Pow {
@@ -120,6 +141,8 @@ fn run_iter(block: &mut MIRBlock, removed_indices: &mut GrowSet) -> bool {
 					mods.get_mut(reg).map(|x| x.finished = true);
 					nots.get_mut(reg).map(|x| x.finished = true);
 					pows.get_mut(reg).map(|x| x.finished = true);
+					to_pows.get_mut(reg).map(|x| x.finished = true);
+					abses.get_mut(reg).map(|x| x.finished = true);
 				}
 			}
 		}
@@ -130,62 +153,32 @@ fn run_iter(block: &mut MIRBlock, removed_indices: &mut GrowSet) -> bool {
 		|| !mods.is_empty()
 		|| !pows.is_empty()
 		|| !nots.is_empty()
+		|| !abses.is_empty()
+		|| !to_pows.is_empty()
 	{
 		let mut positions_to_remove = Vec::new();
-		for (reg, combiner) in add_subs {
-			if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
-				block
-					.contents
-					.get_mut(pos)
-					.expect("Instr at pos does not exist")
-					.kind = instr;
-				positions_to_remove.extend(to_remove);
-			}
-		}
 
-		for (reg, combiner) in muls {
-			if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
-				block
-					.contents
-					.get_mut(pos)
-					.expect("Instr at pos does not exist")
-					.kind = instr;
-				positions_to_remove.extend(to_remove);
-			}
+		macro_rules! finish_combiners {
+			($combiners:ident) => {
+				for (reg, combiner) in $combiners {
+					if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
+						block
+							.contents
+							.get_mut(pos)
+							.expect("Instr at pos does not exist")
+							.kind = instr;
+						positions_to_remove.extend(to_remove);
+					}
+				}
+			};
 		}
-
-		for (reg, combiner) in mods {
-			if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
-				block
-					.contents
-					.get_mut(pos)
-					.expect("Instr at pos does not exist")
-					.kind = instr;
-				positions_to_remove.extend(to_remove);
-			}
-		}
-
-		for (reg, combiner) in pows {
-			if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
-				block
-					.contents
-					.get_mut(pos)
-					.expect("Instr at pos does not exist")
-					.kind = instr;
-				positions_to_remove.extend(to_remove);
-			}
-		}
-
-		for (reg, combiner) in nots {
-			if let Some((pos, to_remove, instr)) = combiner.finish(reg) {
-				block
-					.contents
-					.get_mut(pos)
-					.expect("Instr at pos does not exist")
-					.kind = instr;
-				positions_to_remove.extend(to_remove);
-			}
-		}
+		finish_combiners!(add_subs);
+		finish_combiners!(muls);
+		finish_combiners!(mods);
+		finish_combiners!(to_pows);
+		finish_combiners!(abses);
+		finish_combiners!(pows);
+		finish_combiners!(nots);
 
 		if !positions_to_remove.is_empty() {
 			run_again = true;
@@ -292,6 +285,61 @@ combiner!(
 		self.to_remove.push(pos);
 	}),
 	Mod
+);
+
+combiner!(
+	AbsCombiner,
+	self,
+	pos,
+	amt,
+	(|| {
+		let _ = amt;
+		self.to_remove.push(pos);
+	}),
+	reg,
+	(|| {
+		let _ = self.val;
+		if self.to_remove.is_empty() {
+			None
+		} else {
+			Some((
+				self.pos,
+				self.to_remove,
+				MIRInstrKind::Abs {
+					val: MutableValue::Reg(reg),
+				},
+			))
+		}
+	})
+);
+
+// Combines muls by self into powers of two
+combiner!(
+	MulToPowCombiner,
+	self,
+	pos,
+	amt,
+	(|| {
+		let _ = amt;
+		self.val += 1;
+		self.to_remove.push(pos);
+	}),
+	reg,
+	(|| {
+		if self.to_remove.is_empty() {
+			None
+		} else {
+			Some((
+				self.pos,
+				self.to_remove,
+				MIRInstrKind::Pow {
+					base: MutableValue::Reg(reg),
+					// Make the exponent power of two
+					exp: (2_u8.pow(self.val as u32)),
+				},
+			))
+		}
+	})
 );
 
 combiner!(
