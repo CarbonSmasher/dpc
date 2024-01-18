@@ -69,7 +69,6 @@ fn known() {
 	let reg6_id = Identifier::from("swapl");
 	let reg7_id = Identifier::from("swapr");
 	let reg8_id = Identifier::from("arr");
-	let reg9_id = Identifier::from("arridx");
 	let reg10_id = Identifier::from("data");
 
 	let cmp1 = def_compound! {
@@ -191,15 +190,6 @@ fn known() {
 			right: DeclareBinding::Value(Value::Constant(DataTypeContents::NBT(
 				NBTTypeContents::Arr(create_nbyte_array(vec![5, 9, -2, 8, -121, 86])),
 			))),
-		};
-		InstrKind::Declare {
-			left: reg9_id.clone(),
-			ty: DataType::NBT(NBTType::Byte),
-			right: DeclareBinding::Index {
-				ty: DataType::NBT(NBTType::Byte),
-				val: Value::Mutable(MutableValue::Reg(reg8_id.clone())),
-				index: Value::Constant(DataTypeContents::Score(ScoreTypeContents::Score(3))),
-			},
 		};
 		InstrKind::Call {
 			call: CallInterface {

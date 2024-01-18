@@ -6,7 +6,7 @@ use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreDataType, StoreModLocation,
 };
 use crate::common::ty::{
-	get_op_tys, ArraySize, DataType, DataTypeContents, Double, ScoreType, ScoreTypeContents,
+	get_op_tys, DataType, DataTypeContents, Double, ScoreType, ScoreTypeContents,
 };
 use crate::common::ResourceLocation;
 use crate::common::{
@@ -411,32 +411,6 @@ fn lower_assign(
 
 				None
 			}
-		}
-		DeclareBinding::Index { ty, val, index } => {
-			let new_reg = lbcx.new_additional_reg();
-			// Declare the new register
-			let reg = Register {
-				id: new_reg.clone(),
-				ty: ty.clone(),
-			};
-			lbcx.registers.insert(new_reg.clone(), reg);
-
-			// Add the index instruction
-			match (val.get_ty(&lbcx.registers, &lbcx.sig)?, index) {
-				(DataType::NBT(..), Value::Constant(DataTypeContents::Score(score))) => {
-					let index = match score {
-						ScoreTypeContents::Score(val) => *val as ArraySize,
-						ScoreTypeContents::Bool(val) => *val as ArraySize,
-					};
-					out.push(LIRInstruction::new(LIRInstrKind::ConstIndexToScore {
-						score: MutableScoreValue::Reg(new_reg.clone()),
-						value: val.clone().to_nbt_value()?,
-						index,
-					}));
-				}
-				_ => bail!("Cannot use index declaration with these types"),
-			}
-			Some(Value::Mutable(MutableValue::Reg(new_reg)))
 		}
 		// Condition just becomes a simple execute store success {lhs} if {condition}
 		DeclareBinding::Condition(cond) => {

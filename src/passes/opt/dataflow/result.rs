@@ -134,11 +134,6 @@ fn run_iter(
 					}
 				}
 			}
-			LIRInstrKind::ConstIndexToScore { score: val, .. } => {
-				if let Some(val) = val.to_optimizable_value() {
-					finished_flow_points.extend(flow_points.remove(&val));
-				}
-			}
 			LIRInstrKind::Use(val) => {
 				if let Some(val) = val.to_optimizable_value() {
 					finished_flow_points.extend(flow_points.remove(&val));

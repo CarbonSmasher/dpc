@@ -169,10 +169,6 @@ impl GetSetOwned<Dependency> for LIRInstrKind {
 				// We can't remove the repetition dependency because
 				// we might be removing from a list index which will change
 			}
-			LIRInstrKind::ConstIndexToScore { score, value, .. } => {
-				score.append_set(set);
-				value.append_set(set);
-			}
 			LIRInstrKind::GetConst(..)
 			| LIRInstrKind::Comment(..)
 			| LIRInstrKind::NoOp

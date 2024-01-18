@@ -17,11 +17,7 @@ impl MIRInstrKind {
 					DeclareBinding::Null => Box::new(std::iter::empty()),
 					DeclareBinding::Value(val) => Box::new(val.get_used_regs_mut().into_iter()),
 					DeclareBinding::Cast(_, val) => Box::new(val.get_used_regs_mut().into_iter()),
-					DeclareBinding::Index { val, index, .. } => Box::new(
-						val.get_used_regs_mut()
-							.into_iter()
-							.chain(index.get_used_regs_mut()),
-					),
+
 					DeclareBinding::Condition(cond) => cond.iter_used_regs_mut(),
 				};
 				for reg in left.get_used_regs_mut().into_iter().chain(right_regs) {
@@ -121,9 +117,6 @@ impl MIRInstrKind {
 					DeclareBinding::Null => Box::new(std::iter::empty()),
 					DeclareBinding::Value(val) => Box::new(val.iter_mut_val().into_iter()),
 					DeclareBinding::Cast(_, val) => Box::new(iter::once(val)),
-					DeclareBinding::Index { val, index, .. } => {
-						Box::new(val.iter_mut_val().into_iter().chain(index.iter_mut_val()))
-					}
 					DeclareBinding::Condition(cond) => cond.iter_mut_vals(),
 				};
 				for reg in iter::once(left).chain(right_regs) {

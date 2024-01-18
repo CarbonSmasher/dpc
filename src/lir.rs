@@ -8,7 +8,7 @@ use crate::common::function::FunctionInterface;
 use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::Modifier;
 use crate::common::reg::GetUsedRegs;
-use crate::common::ty::{ArraySize, Double};
+use crate::common::ty::Double;
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
 use crate::common::{FunctionTrait, IRType, Identifier, RegisterList, ResourceLocation};
 
@@ -169,11 +169,6 @@ pub enum LIRInstrKind {
 	PushFrontData(MutableNBTValue, NBTValue),
 	InsertData(MutableNBTValue, NBTValue, i32),
 	RemoveData(MutableNBTValue),
-	ConstIndexToScore {
-		score: MutableScoreValue,
-		value: NBTValue,
-		index: ArraySize,
-	},
 	Use(MutableValue),
 	NoOp,
 	Call(ResourceLocation),
@@ -207,11 +202,6 @@ impl Debug for LIRInstrKind {
 			Self::PushFrontData(left, right) => format!("pushfd {left:?} {right:?}"),
 			Self::InsertData(left, right, i) => format!("insd {left:?} {right:?} {i}"),
 			Self::RemoveData(val) => format!("rmd {val:?}"),
-			Self::ConstIndexToScore {
-				score,
-				value,
-				index,
-			} => format!("idxcs {score:?} {value:?} {index}"),
 			Self::Use(val) => format!("use {val:?}"),
 			Self::NoOp => "no".into(),
 			Self::Call(fun) => format!("call {fun}"),
@@ -257,10 +247,6 @@ impl GetUsedRegs for LIRInstrKind {
 			}
 			LIRInstrKind::GetData(data, ..) | LIRInstrKind::RemoveData(data) => {
 				data.append_used_regs(regs);
-			}
-			LIRInstrKind::ConstIndexToScore { score, value, .. } => {
-				score.append_used_regs(regs);
-				value.append_used_regs(regs);
 			}
 			LIRInstrKind::Use(val) => val.append_used_regs(regs),
 			LIRInstrKind::NoOp

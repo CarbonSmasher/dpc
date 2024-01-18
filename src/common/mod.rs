@@ -24,11 +24,6 @@ pub enum DeclareBinding {
 	Null,
 	Value(Value),
 	Cast(DataType, MutableValue),
-	Index {
-		ty: DataType,
-		val: Value,
-		index: Value,
-	},
 	Condition(Condition),
 }
 
@@ -42,7 +37,6 @@ impl DeclareBinding {
 			Self::Null => None,
 			Self::Value(val) => Some(val.get_ty(regs, sig)?),
 			Self::Cast(ty, ..) => Some(ty.clone()),
-			Self::Index { ty, .. } => Some(ty.clone()),
 			Self::Condition(..) => Some(DataType::Score(ty::ScoreType::Bool)),
 		};
 
@@ -56,10 +50,6 @@ impl GetUsedRegs for DeclareBinding {
 			Self::Null => {}
 			Self::Value(val) => val.append_used_regs(regs),
 			Self::Cast(_, val) => val.append_used_regs(regs),
-			Self::Index { val, index, .. } => {
-				val.append_used_regs(regs);
-				index.append_used_regs(regs);
-			}
 			Self::Condition(cond) => cond.append_used_regs(regs),
 		}
 	}
@@ -71,7 +61,6 @@ impl Debug for DeclareBinding {
 			Self::Null => "null".to_string(),
 			Self::Value(val) => format!("{val:?}"),
 			Self::Cast(ty, val) => format!("cast {ty:?} {val:?}"),
-			Self::Index { val, index, ty } => format!("idx {ty:?} {val:?} {index:?}"),
 			Self::Condition(cond) => format!("cond {cond:?}"),
 		};
 		write!(f, "{text}")

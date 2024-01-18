@@ -5,14 +5,13 @@ pub mod util;
 
 use std::collections::HashSet;
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{bail, Context};
 
 use crate::common::mc::block::{CloneMaskMode, CloneMode, FillMode, SetBlockMode};
 use crate::common::mc::instr::MinecraftInstr;
-use crate::common::mc::modifier::{Modifier, StoreModLocation};
+use crate::common::mc::modifier::Modifier;
 use crate::common::mc::scoreboard_and_teams::Criterion;
 use crate::common::mc::{DatapackListMode, Score};
-use crate::common::ty::NBTTypeContents;
 use crate::common::val::MutableScoreValue;
 use crate::common::{val::NBTValue, val::ScoreValue, RegisterList};
 use crate::lir::{LIRBlock, LIRFunction, LIRInstrKind, LIRInstruction};
@@ -119,7 +118,7 @@ pub fn codegen_instr(
 ) -> anyhow::Result<Option<String>> {
 	let mut out = CommandBuilder::new();
 
-	let mut modifiers = Vec::new();
+	let modifiers = Vec::new();
 
 	let cmd = match &instr.kind {
 		LIRInstrKind::SetScore(left, right) => Some(match right {
@@ -280,27 +279,6 @@ pub fn codegen_instr(
 				rhs
 			)?)
 		}
-		LIRInstrKind::ConstIndexToScore {
-			score,
-			value,
-			index,
-		} => Some(match value {
-			NBTValue::Constant(val) => match val {
-				NBTTypeContents::Arr(arr) => {
-					let lit = arr
-						.const_index(*index)
-						.ok_or(anyhow!("Const index out of range"))?;
-					cgformat!(cbcx, "scoreboard players set ", score, lit)?
-				}
-				_ => bail!("Cannot index non-array type"),
-			},
-			NBTValue::Mutable(val) => {
-				modifiers.push(Modifier::StoreResult(StoreModLocation::from_mut_score_val(
-					score,
-				)?));
-				cgformat!(cbcx, "data get storage ", val)?
-			}
-		}),
 		LIRInstrKind::Call(fun) => {
 			let mut func_id = fun;
 			if let Some(mapping) = &cbcx.ccx.func_mapping {
