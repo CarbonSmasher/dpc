@@ -229,7 +229,9 @@ impl GetSetOwned<Dependency> for MinecraftInstr {
 			| MinecraftInstr::SetDatapackPriority { .. }
 			| MinecraftInstr::AddTime { .. }
 			| MinecraftInstr::StopServer
-			| MinecraftInstr::StopSound => {}
+			| MinecraftInstr::StopSound
+			| MinecraftInstr::ListDatapacks { .. }
+			| MinecraftInstr::WorldBorderSet { .. } => {}
 			MinecraftInstr::Banlist
 			| MinecraftInstr::GetDifficulty
 			| MinecraftInstr::WhitelistList
@@ -250,7 +252,8 @@ impl GetSetOwned<Dependency> for MinecraftInstr {
 			| MinecraftInstr::SetGameruleBool { .. }
 			| MinecraftInstr::SetGameruleInt { .. }
 			| MinecraftInstr::SetTime { .. }
-			| MinecraftInstr::SetTimePreset { .. } => {
+			| MinecraftInstr::SetTimePreset { .. }
+			| MinecraftInstr::SetDifficulty { .. } => {
 				depend_repetition = false;
 			}
 			MinecraftInstr::AddTag { target, .. }
@@ -271,7 +274,8 @@ impl GetSetOwned<Dependency> for MinecraftInstr {
 			| MinecraftInstr::ClearEffect { target, .. }
 			| MinecraftInstr::Enchant { target, .. }
 			| MinecraftInstr::RideDismount { target }
-			| MinecraftInstr::SetGamemode { target, .. } => {
+			| MinecraftInstr::SetGamemode { target, .. }
+			| MinecraftInstr::GiveItem { target, .. } => {
 				target.append_set(set);
 			}
 			MinecraftInstr::BanPlayers { targets, .. }
@@ -279,10 +283,56 @@ impl GetSetOwned<Dependency> for MinecraftInstr {
 			| MinecraftInstr::ClearItems { targets, .. }
 			| MinecraftInstr::Op { targets }
 			| MinecraftInstr::Deop { targets }
-			| MinecraftInstr::Kick { targets, .. } => {
+			| MinecraftInstr::Kick { targets, .. }
+			| MinecraftInstr::WhitelistAdd { targets }
+			| MinecraftInstr::WhitelistRemove { targets } => {
 				for tgt in targets {
 					tgt.append_set(set);
 				}
+			}
+			MinecraftInstr::SetSpawnpoint { targets, pos, .. } => {
+				for tgt in targets {
+					tgt.append_set(set);
+				}
+				pos.append_set(set);
+			}
+			MinecraftInstr::SetWorldSpawn { pos, .. }
+			| MinecraftInstr::WorldBorderCenter { pos } => {
+				pos.append_set(set);
+			}
+			MinecraftInstr::SummonEntity { pos, .. } => {
+				pos.append_set(set);
+			}
+			MinecraftInstr::TeleportToLocation { source, dest } => {
+				source.append_set(set);
+				dest.append_set(set);
+			}
+			MinecraftInstr::TeleportWithRotation {
+				source,
+				dest,
+				rotation,
+			} => {
+				source.append_set(set);
+				dest.append_set(set);
+				rotation.append_set(set);
+			}
+			MinecraftInstr::TeleportFacingEntity {
+				source,
+				dest,
+				facing,
+			} => {
+				source.append_set(set);
+				dest.append_set(set);
+				facing.append_set(set);
+			}
+			MinecraftInstr::TeleportFacingLocation {
+				source,
+				dest,
+				facing,
+			} => {
+				source.append_set(set);
+				dest.append_set(set);
+				facing.append_set(set);
 			}
 			MinecraftInstr::Locate { .. } => {
 				set.insert(Dependency(ModifierContext::Position));
@@ -315,7 +365,9 @@ impl GetSetOwned<Dependency> for MinecraftInstr {
 			}
 			MinecraftInstr::TeamMessage { .. }
 			| MinecraftInstr::Me { .. }
-			| MinecraftInstr::SpectateStop => {
+			| MinecraftInstr::SpectateStop
+			| MinecraftInstr::TriggerAdd { .. }
+			| MinecraftInstr::TriggerSet { .. } => {
 				set.insert(Dependency(ModifierContext::Executor));
 			}
 			MinecraftInstr::LootGive {
@@ -328,6 +380,10 @@ impl GetSetOwned<Dependency> for MinecraftInstr {
 			}
 			MinecraftInstr::LootInsert { pos, source }
 			| MinecraftInstr::LootReplaceBlock { pos, source, .. } => {
+				pos.append_set(set);
+				source.append_set(set);
+			}
+			MinecraftInstr::LootSpawn { pos, source } => {
 				pos.append_set(set);
 				source.append_set(set);
 			}
@@ -344,6 +400,10 @@ impl GetSetOwned<Dependency> for MinecraftInstr {
 			| MinecraftInstr::Spectate {
 				target,
 				spectator: vehicle,
+			}
+			| MinecraftInstr::TeleportToEntity {
+				source: target,
+				dest: vehicle,
 			} => {
 				target.append_set(set);
 				vehicle.append_set(set);
@@ -353,10 +413,6 @@ impl GetSetOwned<Dependency> for MinecraftInstr {
 			}
 			MinecraftInstr::SetWeather { .. } => {
 				set.insert(Dependency(ModifierContext::Dimension));
-			}
-			_ => {
-				set.insert(Dependency(ModifierContext::Everything));
-				depend_repetition = false;
 			}
 		}
 

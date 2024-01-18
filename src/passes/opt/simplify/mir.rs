@@ -454,6 +454,19 @@ fn run_iter(
 			simplify_condition(condition, &mut run_again);
 		}
 
+		// Nested ifs become and
+		if let MIRInstrKind::If { condition, body } = &mut instr.kind {
+			if let Some(MIRInstrKind::If {
+				condition: condition2,
+				body: body2,
+			}) = body.contents.only().map(|x| &x.kind)
+			{
+				let condition2 = condition2.clone();
+				*body = body2.clone();
+				*condition = Condition::And(Box::new(condition.clone()), Box::new(condition2));
+			}
+		}
+
 		for body in instr.kind.get_bodies_mut() {
 			run_again.merge(simplify_block(body, false));
 		}
@@ -497,6 +510,14 @@ fn simplify_condition(condition: &mut Condition, run_again: &mut RunAgain) {
 				}
 				run_again.yes();
 			}
+			(Condition::Not(boxed), cond) | (cond, Condition::Not(boxed))
+				if boxed.as_ref() == cond =>
+			{
+				*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+					ScoreTypeContents::Bool(false),
+				)));
+				run_again.yes();
+			}
 			(l, r) => {
 				if l == r {
 					*condition = l.clone();
@@ -528,6 +549,14 @@ fn simplify_condition(condition: &mut Condition, run_again: &mut RunAgain) {
 				} else {
 					*condition = inner.clone();
 				}
+				run_again.yes();
+			}
+			(Condition::Not(boxed), cond) | (cond, Condition::Not(boxed))
+				if boxed.as_ref() == cond =>
+			{
+				*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+					ScoreTypeContents::Bool(true),
+				)));
 				run_again.yes();
 			}
 			(l, r) => {

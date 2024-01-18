@@ -1,29 +1,31 @@
+use intset::GrowSet;
 use rustc_hash::FxHashMap;
 use tinyvec::TinyVec;
 
+use crate::common::block::Block;
 use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{DataTypeContents, ScoreTypeContents};
 use crate::common::{val::MutableValue, val::Value, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
-use crate::util::{remove_indices, HashSetEmptyTracker};
+use crate::util::remove_indices;
 
-pub struct InstCombinePass;
+pub struct MultifoldCombinePass;
 
-impl Pass for InstCombinePass {
+impl Pass for MultifoldCombinePass {
 	fn get_name(&self) -> &'static str {
-		"instruction_combine"
+		"multifold_combine"
 	}
 }
 
-impl MIRPass for InstCombinePass {
+impl MIRPass for MultifoldCombinePass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		for func in data.mir.functions.values_mut() {
 			let block = &mut func.block;
 
-			let mut removed_indices = HashSetEmptyTracker::new();
+			let mut removed_indices = block.get_index_set();
 			loop {
-				let run_again = run_instcombine_iter(block, &mut removed_indices);
+				let run_again = run_iter(block, &mut removed_indices);
 				if !run_again {
 					break;
 				}
@@ -35,12 +37,7 @@ impl MIRPass for InstCombinePass {
 	}
 }
 
-/// Runs an iteration of instruction combining. Returns true if another iteration
-/// should be run
-fn run_instcombine_iter(
-	block: &mut MIRBlock,
-	removed_indices: &mut HashSetEmptyTracker<usize>,
-) -> bool {
+fn run_iter(block: &mut MIRBlock, removed_indices: &mut GrowSet) -> bool {
 	let mut run_again = false;
 	let mut add_subs = FxHashMap::<Identifier, AddSubCombiner>::default();
 	let mut muls = FxHashMap::<Identifier, MulCombiner>::default();
@@ -51,7 +48,7 @@ fn run_instcombine_iter(
 	for (i, instr) in block.contents.iter().enumerate() {
 		// Even though this instruction hasn't actually been removed from the vec, we treat it
 		// as if it has to prevent doing the same work over and over and actually iterating indefinitely
-		if removed_indices.contains(&i) {
+		if removed_indices.contains(i) {
 			continue;
 		}
 		match &instr.kind {
@@ -194,7 +191,9 @@ fn run_instcombine_iter(
 			run_again = true;
 		}
 
-		removed_indices.extend(positions_to_remove);
+		for pos in positions_to_remove {
+			removed_indices.add(pos);
+		}
 	}
 
 	run_again

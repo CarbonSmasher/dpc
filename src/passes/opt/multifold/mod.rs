@@ -1,3 +1,3 @@
 pub mod assign;
-pub mod inst_combine;
+pub mod combine;
 pub mod logic;

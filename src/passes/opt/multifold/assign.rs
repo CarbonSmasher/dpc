@@ -31,7 +31,6 @@ impl MIRPass for MultifoldAssignPass {
 					break;
 				}
 			}
-			// block.contents = replace_and_expand_indices(block.contents, &replaced);
 			remove_indices(&mut block.contents, &removed);
 		}
 

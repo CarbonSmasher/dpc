@@ -1,3 +1,5 @@
+use intset::GrowSet;
+
 use super::reg::GetUsedRegs;
 
 /// Trait for the different types of blocks we use at different
@@ -11,6 +13,11 @@ pub trait Block {
 
 	fn instr_count(&self) -> usize {
 		self.contents().len()
+	}
+
+	// Get a growable set of instruction indices
+	fn get_index_set(&self) -> GrowSet {
+		GrowSet::with_capacity(self.instr_count())
 	}
 }
 
