@@ -109,7 +109,7 @@ impl GetCost for IfModCondition {
 			Self::DataEquals(..) | Self::DataExists(..) => 40.0,
 			Self::Biome(..) | Self::Loaded(..) | Self::Dimension(..) => 32.0,
 			Self::Function(..) => 20.0,
-			Self::Predicate(..) => 10.0,
+			Self::Predicate(..) => 15.0,
 			Self::Score(..) => 4.0,
 			Self::Const(..) => 0.0,
 		}

@@ -816,19 +816,28 @@ fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LI
 			.expect("If len is 1, instr should exist")
 			.clone()
 	} else {
-		let mut lir_block = LIRBlock::new(lbcx.registers.clone());
-		lir_block.contents = new_lir_instrs;
-		let interface = lbcx.new_body_fn();
-		lbcx.lir.functions.insert(
-			interface.id.clone(),
-			LIRFunction {
-				interface: interface.clone(),
-				block: lir_block,
-				parent: Some(lbcx.func_id.clone()),
-			},
-		);
-		LIRInstruction::new(LIRInstrKind::Call(interface.id))
+		let func = lower_subblock_impl(new_lir_instrs, lbcx)?;
+		LIRInstruction::new(LIRInstrKind::Call(func))
 	};
 
 	Ok(out)
+}
+
+/// Lower LIR instructions to a full subblock, and get the resulting function id
+fn lower_subblock_impl(
+	instrs: Vec<LIRInstruction>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<ResourceLocation> {
+	let mut lir_block = LIRBlock::new(lbcx.registers.clone());
+	lir_block.contents = instrs;
+	let interface = lbcx.new_body_fn();
+	lbcx.lir.functions.insert(
+		interface.id.clone(),
+		LIRFunction {
+			interface: interface.clone(),
+			block: lir_block,
+			parent: Some(lbcx.func_id.clone()),
+		},
+	);
+	Ok(interface.id)
 }

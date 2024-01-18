@@ -1,7 +1,8 @@
 use anyhow::{bail, Context};
 
-use super::{lower_add, LowerBlockCx};
+use super::{lower_add, lower_subblock_impl, LowerBlockCx};
 use crate::common::condition::Condition;
+use crate::common::cost::GetCost;
 use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
@@ -185,18 +186,36 @@ pub(super) fn lower_bool_cond(
 }
 
 pub(super) fn lower_or(
-	mut terms: Vec<Vec<(IfModCondition, bool)>>,
+	terms: Vec<Vec<(IfModCondition, bool)>>,
 	prelude: &mut Vec<LIRInstruction>,
 	lbcx: &mut LowerBlockCx,
 ) -> anyhow::Result<IfModCondition> {
 	if terms.len() < 2 {
 		bail!("Missing terms for or condition");
 	}
-	/*
-		For now we only have one lowering method: assign registers
-		for the terms of the or to the conditions, then run an if function
-		to check the terms
-	*/
+
+	// Choose the best method based on some heuristics
+	const MAX_COST_FOR_INLINE: f32 = 40.0;
+	let use_if_func = terms
+		.iter()
+		.flatten()
+		.fold(0.0, |acc, x| acc + x.0.get_cost())
+		>= MAX_COST_FOR_INLINE;
+
+	if use_if_func {
+		lower_or_if_function(terms, lbcx)
+	} else {
+		lower_or_inline_scores(terms, prelude, lbcx)
+	}
+}
+
+/// Lower an or using the inline operation method.
+/// This will do a saturating or of all the conditions using the scoreboard
+fn lower_or_inline_scores(
+	mut terms: Vec<Vec<(IfModCondition, bool)>>,
+	prelude: &mut Vec<LIRInstruction>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<IfModCondition> {
 	let or_reg = lbcx.new_additional_reg();
 	lbcx.registers.insert(
 		or_reg.clone(),
@@ -233,6 +252,29 @@ pub(super) fn lower_or(
 	});
 
 	Ok(out)
+}
+
+/// Lower an or using an if function call. This method will
+/// short-circuit if any condition is false, which makes it better
+/// for more expensive conditions
+fn lower_or_if_function(
+	terms: Vec<Vec<(IfModCondition, bool)>>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<IfModCondition> {
+	let mut func_instrs = Vec::new();
+	let return_instr = LIRInstrKind::ReturnValue(1);
+	for term in terms {
+		let mut instr = LIRInstruction::new(return_instr.clone());
+		for cond in term {
+			instr.modifiers.push(Modifier::If {
+				condition: Box::new(cond.0),
+				negate: cond.1,
+			});
+		}
+		func_instrs.push(instr);
+	}
+	let if_function = lower_subblock_impl(func_instrs, lbcx)?;
+	Ok(IfModCondition::Function(if_function))
 }
 
 pub(super) fn lower_let_cond(

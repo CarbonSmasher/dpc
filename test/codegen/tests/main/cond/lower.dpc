@@ -25,4 +25,10 @@
 	# Nested
 	if or or pred "foo:bar", and pred "foo:bar2", pred "foo:bar3", pred "foo:bar4":
 		say "Hello2";
+
+	# Should be put in an if function
+	if or exi stg "foo:bar" "foo", exi stg "foo:bar" "foo" {
+		say "Hello3";
+		say "Hello4";
+	};
 }
