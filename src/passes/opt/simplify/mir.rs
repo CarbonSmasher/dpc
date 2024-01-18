@@ -498,8 +498,46 @@ fn simplify_condition(condition: &mut Condition, run_again: &mut RunAgain) {
 				run_again.yes();
 			}
 			(l, r) => {
-				simplify_condition(l, run_again);
-				simplify_condition(r, run_again);
+				if l == r {
+					*condition = l.clone();
+					run_again.yes();
+				} else {
+					simplify_condition(l, run_again);
+					simplify_condition(r, run_again);
+				}
+			}
+		},
+		Condition::Or(l, r) => match (l.as_mut(), r.as_mut()) {
+			(Condition::Bool(Value::Constant(DataTypeContents::Score(b))), inner)
+			| (inner, Condition::Bool(Value::Constant(DataTypeContents::Score(b)))) => {
+				if b.get_i32() == 1 {
+					*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+						ScoreTypeContents::Bool(true),
+					)));
+				} else {
+					*condition = inner.clone();
+				}
+				run_again.yes();
+			}
+			(Condition::NotBool(Value::Constant(DataTypeContents::Score(b))), inner)
+			| (inner, Condition::NotBool(Value::Constant(DataTypeContents::Score(b)))) => {
+				if b.get_i32() == 0 {
+					*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+						ScoreTypeContents::Bool(true),
+					)));
+				} else {
+					*condition = inner.clone();
+				}
+				run_again.yes();
+			}
+			(l, r) => {
+				if l == r {
+					*condition = l.clone();
+					run_again.yes();
+				} else {
+					simplify_condition(l, run_again);
+					simplify_condition(r, run_again);
+				}
 			}
 		},
 		_ => {}
