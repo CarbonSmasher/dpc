@@ -6,3 +6,9 @@
 	let y: score = val %x;
 	use %y;
 }
+
+"test:op_to_cast" {
+	let x: score = val 10s;
+	add %x, 8s;
+	let y: nint = cast nint %x;
+}

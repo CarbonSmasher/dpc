@@ -6,3 +6,8 @@ scoreboard players set %l8 _l 8
 # === test:main === #
 scoreboard players set %rtest_main0 _r 7
 execute store result score %rtest_main1 _r run scoreboard players operation %rtest_main0 _r *= %l8 _l
+
+# === test:op_to_cast === #
+scoreboard players set %rtest_op_to_cast0 _r 10
+scoreboard players add %rtest_op_to_cast0 _r 8
+execute store result storage dpc:r stest_op_to_cast0 int 1 run scoreboard players get %rtest_op_to_cast0 _r
