@@ -1,5 +1,6 @@
 pub mod block;
 pub mod condition;
+pub mod cost;
 pub mod function;
 pub mod mc;
 pub mod op;

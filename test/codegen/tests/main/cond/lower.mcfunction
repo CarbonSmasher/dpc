@@ -18,6 +18,6 @@ execute if predicate foo:bar run scoreboard players add %rtest_or0 _r 1
 execute if score %rtest_or0 _r matches 1.. run say Hello
 execute store success score %rtest_or0 _r if predicate foo:bar2 if predicate foo:bar3
 execute if predicate foo:bar run scoreboard players add %rtest_or0 _r 1
-execute store success score %rtest_or1 _r if predicate foo:bar4
-execute if score %rtest_or0 _r matches 1.. run scoreboard players add %rtest_or1 _r 1
+execute store success score %rtest_or1 _r if score %rtest_or0 _r matches 1..
+execute if predicate foo:bar4 run scoreboard players add %rtest_or1 _r 1
 execute if score %rtest_or1 _r matches 1.. run say Hello2

@@ -19,6 +19,7 @@ use self::opt::modifiers::simplify::SimplifyModifiersPass;
 use self::opt::multifold::assign::MultifoldAssignPass;
 use self::opt::multifold::combine::MultifoldCombinePass;
 use self::opt::multifold::logic::MultifoldLogicPass;
+use self::opt::order::conditions::ReorderConditionsPass;
 use self::opt::simplify::cleanup::CleanupPass;
 use self::opt::simplify::{lir::LIRSimplifyPass, mir::MIRSimplifyPass};
 
@@ -86,6 +87,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(DSEPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(DCEPass),
+		Box::new(ReorderConditionsPass),
 		Box::new(UnusedArgsPass),
 	];
 

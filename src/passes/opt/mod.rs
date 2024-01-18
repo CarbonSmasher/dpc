@@ -10,6 +10,7 @@ pub mod dse;
 pub mod func;
 pub mod modifiers;
 pub mod multifold;
+pub mod order;
 pub mod simplify;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
