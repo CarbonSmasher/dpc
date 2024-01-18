@@ -124,7 +124,15 @@ pub fn codegen_modifier(
 				IfModCondition::Predicate(pred) => {
 					Some(cgformat!(cbcx, keyword, " predicate ", pred)?)
 				}
-				IfModCondition::Function(fun) => Some(cgformat!(cbcx, keyword, " function ", fun)?),
+				IfModCondition::Function(fun) => {
+					let mut func_id = fun;
+					if let Some(mapping) = &cbcx.ccx.func_mapping {
+						if let Some(new_id) = mapping.0.get(&func_id) {
+							func_id = new_id.clone();
+						}
+					}
+					Some(cgformat!(cbcx, keyword, " function ", func_id)?)
+				}
 				IfModCondition::Biome(pos, biome) => {
 					Some(cgformat!(cbcx, keyword, " biome ", pos, " ", biome)?)
 				}
