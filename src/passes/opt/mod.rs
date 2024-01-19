@@ -12,6 +12,7 @@ pub mod modifiers;
 pub mod multifold;
 pub mod order;
 pub mod simplify;
+pub mod ty;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum OptimizableValue {

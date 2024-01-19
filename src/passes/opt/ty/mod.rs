@@ -1,0 +1,92 @@
+use crate::common::block::Block;
+use crate::common::ty::{DataType, ScoreType};
+use crate::common::val::MutableValue;
+use crate::common::{Register, RegisterList};
+use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::passes::util::RunAgain;
+use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::util::remove_indices;
+
+use intset::GrowSet;
+
+/// Does optimizations on values based on type information
+pub struct TypeBasedOptimizationPass;
+
+impl Pass for TypeBasedOptimizationPass {
+	fn get_name(&self) -> &'static str {
+		"type_based_optimization"
+	}
+}
+
+impl MIRPass for TypeBasedOptimizationPass {
+	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
+		for func in data.mir.functions.values_mut() {
+			run_block(&mut func.block);
+		}
+
+		Ok(())
+	}
+}
+
+fn run_block(block: &mut MIRBlock) -> RunAgain {
+	let mut out = RunAgain::new();
+	let mut instrs_to_remove = block.get_index_set();
+	loop {
+		let run_again = run_iter(block, &mut instrs_to_remove);
+		out.merge(run_again);
+		if !run_again {
+			break;
+		}
+	}
+	remove_indices(&mut block.contents, &instrs_to_remove);
+	out
+}
+
+fn run_iter(block: &mut MIRBlock, instrs_to_remove: &mut GrowSet) -> RunAgain {
+	let mut run_again = RunAgain::new();
+
+	let mut regs = RegisterList::default();
+
+	for (i, instr) in block.contents.iter_mut().enumerate() {
+		if instrs_to_remove.contains(i) {
+			continue;
+		}
+		if let MIRInstrKind::Declare { left, ty } = &instr.kind {
+			regs.insert(
+				left.clone(),
+				Register {
+					id: left.clone(),
+					ty: ty.clone(),
+				},
+			);
+		};
+		let remove = match &instr.kind {
+			// Bool is already 0 or 1, don't need to abs it
+			MIRInstrKind::Abs {
+				val: MutableValue::Reg(reg),
+			} => {
+				if let Some(Register {
+					ty: DataType::Score(ScoreType::Bool),
+					..
+				}) = regs.get(reg)
+				{
+					true
+				} else {
+					false
+				}
+			}
+			_ => false,
+		};
+
+		if remove {
+			instrs_to_remove.add(i);
+			run_again.yes();
+		}
+
+		for body in instr.kind.get_bodies_mut() {
+			run_again.merge(run_block(body));
+		}
+	}
+
+	run_again
+}

@@ -22,6 +22,7 @@ use self::opt::multifold::logic::MultifoldLogicPass;
 use self::opt::order::conditions::ReorderConditionsPass;
 use self::opt::simplify::cleanup::CleanupPass;
 use self::opt::simplify::{lir::LIRSimplifyPass, mir::MIRSimplifyPass};
+use self::opt::ty::TypeBasedOptimizationPass;
 
 pub mod analysis;
 pub mod opt;
@@ -65,6 +66,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(InlineCandidatesPass),
 		Box::new(SimpleInlinePass),
 		Box::new(DCEPass),
+		Box::new(TypeBasedOptimizationPass),
 		Box::new(UnusedArgsPass),
 		Box::new(MIRSimplifyPass),
 		Box::new(ConstComboPass),
