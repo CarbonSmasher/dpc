@@ -6,10 +6,10 @@ DPC begins by processing IR, which is either given in code when used as a librar
 
 ```
 "foo:main/main" {
-	let x: score = 7;
-	let y: score = x;
-	sub y, x;
-	if eq x, 8: call "foo:main/bar";
+	let x: score = val 7s;
+	let y: score = %x;
+	sub %y, %x;
+	if eq %x, 8s: call run "foo:main/bar";
 }
 
 "foo:main/bar" {
@@ -66,6 +66,7 @@ Right now, the main thing that needs to be done is the implementation of all the
    - [ ] Macro types
    - [ ] Global storage
    - [ ] Structural types
+   - [ ] Return propagation
  - [ ] Minecraft instructions and features
    - [ ] Command instructions
      - [x] Most commands
@@ -81,7 +82,7 @@ Right now, the main thing that needs to be done is the implementation of all the
    - [ ] Some modifiers
  - [ ] Compilation / usage
    - [x] Datapack target
-   - [ ] Fine control over passes run
+   - [x] Fine control over passes run
    - [ ] Command block target
    - [ ] Version targeting
    - [ ] Overlays
@@ -107,8 +108,9 @@ Right now, the main thing that needs to be done is the implementation of all the
    - [ ] Macro optimizations
    - [x] Modifier merging
    - [x] Modifier simplification
+   - [x] Cost analysis
    - [ ] Modifier combination
-   - [ ] Null modifier removal
+   - [x] Null modifier removal
    - [ ] Modifier-selector optimizations
    - [ ] NBT access merging / caching
    - [ ] Value numbering
