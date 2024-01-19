@@ -444,13 +444,7 @@ fn run_iter(
 			run_again.yes();
 		}
 
-		if let MIRInstrKind::If { condition, .. }
-		| MIRInstrKind::IfElse { condition, .. }
-		| MIRInstrKind::Assign {
-			right: DeclareBinding::Condition(condition),
-			..
-		} = &mut instr.kind
-		{
+		if let Some(condition) = instr.kind.get_condition_mut() {
 			simplify_condition(condition, &mut run_again);
 		}
 

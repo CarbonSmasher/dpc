@@ -1,7 +1,6 @@
 use crate::common::condition::Condition;
 use crate::common::cost::GetCost;
-use crate::common::DeclareBinding;
-use crate::mir::{MIRBlock, MIRInstrKind};
+use crate::mir::MIRBlock;
 use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
@@ -40,13 +39,7 @@ fn run_iter(block: &mut MIRBlock) -> RunAgain {
 	let mut run_again = RunAgain::new();
 
 	for instr in &mut block.contents {
-		if let MIRInstrKind::If { condition, .. }
-		| MIRInstrKind::IfElse { condition, .. }
-		| MIRInstrKind::Assign {
-			right: DeclareBinding::Condition(condition),
-			..
-		} = &mut instr.kind
-		{
+		if let Some(condition) = instr.kind.get_condition_mut() {
 			reorder(condition);
 		}
 

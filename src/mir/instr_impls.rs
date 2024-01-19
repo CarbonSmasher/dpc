@@ -1,5 +1,6 @@
 use std::iter;
 
+use crate::common::condition::Condition;
 use crate::common::reg::GetUsedRegs;
 use crate::common::val::{MutableValue, Value};
 use crate::common::{DeclareBinding, Identifier};
@@ -253,6 +254,18 @@ impl MIRInstrKind {
 			| Self::Or { left, .. }
 			| Self::Not { value: left, .. }
 			| Self::Abs { val: left, .. } => Some(left),
+			_ => None,
+		}
+	}
+
+	pub fn get_condition_mut(&mut self) -> Option<&mut Condition> {
+		match self {
+			Self::Assign {
+				right: DeclareBinding::Condition(condition),
+				..
+			}
+			| Self::If { condition, .. }
+			| Self::IfElse { condition, .. } => Some(condition),
 			_ => None,
 		}
 	}

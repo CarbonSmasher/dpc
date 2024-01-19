@@ -1,6 +1,7 @@
 use crate::common::block::Block;
-use crate::common::ty::{DataType, ScoreType};
-use crate::common::val::MutableValue;
+use crate::common::condition::Condition;
+use crate::common::ty::{DataType, DataTypeContents, ScoreType};
+use crate::common::val::{MutableValue, Value};
 use crate::common::{Register, RegisterList};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::util::RunAgain;
@@ -83,10 +84,40 @@ fn run_iter(block: &mut MIRBlock, instrs_to_remove: &mut GrowSet) -> RunAgain {
 			run_again.yes();
 		}
 
+		if let Some(condition) = instr.kind.get_condition_mut() {
+			visit_condition(condition, &regs);
+		}
+
 		for body in instr.kind.get_bodies_mut() {
 			run_again.merge(run_block(body));
 		}
 	}
 
 	run_again
+}
+
+fn visit_condition(condition: &mut Condition, regs: &RegisterList) {
+	match condition {
+		Condition::And(l, r) | Condition::Or(l, r) => {
+			visit_condition(l, regs);
+			visit_condition(r, regs);
+		}
+		Condition::Equal(
+			Value::Mutable(MutableValue::Reg(l)),
+			Value::Constant(DataTypeContents::Score(r)),
+		) => {
+			if let Some(Register {
+				ty: DataType::Score(ScoreType::Bool),
+				..
+			}) = regs.get(l)
+			{
+				if r.get_i32() == 1 {
+					*condition = Condition::Bool(Value::Mutable(MutableValue::Reg(l.clone())));
+				} else if r.get_i32() == 0 {
+					*condition = Condition::NotBool(Value::Mutable(MutableValue::Reg(l.clone())));
+				}
+			}
+		}
+		_ => {}
+	}
 }

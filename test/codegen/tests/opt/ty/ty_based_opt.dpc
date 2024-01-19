@@ -1,0 +1,15 @@
+# mir_passes
+
+@preserve
+"test:main" {}
+
+@preserve
+"test:eq_to_bool" {
+	# Even though this is an eq check,
+	# it should be converted to bool because of the
+	# register type and then the condition should be
+	# propagated from a multifold
+	let x: bool = cond pred "foo:bar";
+	if eq %x, 1s:
+		say "Hello";
+}
