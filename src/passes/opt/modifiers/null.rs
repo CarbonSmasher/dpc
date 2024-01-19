@@ -2,8 +2,8 @@ use intset::GrowSet;
 use rustc_hash::FxHashSet;
 
 use crate::common::mc::modifier::Modifier;
-use crate::lir::{LIRInstrKind, LIR};
-use crate::passes::{LIRPass, Pass};
+use crate::lir::LIRInstrKind;
+use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::util::{remove_indices, GetSetOwned};
 
 use super::{Dependency, Modified, ModifierContext};
@@ -17,8 +17,8 @@ impl Pass for NullModifiersPass {
 }
 
 impl LIRPass for NullModifiersPass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		for func in lir.functions.values_mut() {
+	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
+		for func in data.lir.functions.values_mut() {
 			let block = &mut func.block;
 
 			for instr in &mut block.contents {

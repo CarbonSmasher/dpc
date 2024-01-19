@@ -3,8 +3,8 @@ use rustc_hash::FxHashMap;
 use crate::common::reg::GetUsedRegs;
 use crate::common::val::{MutableNBTValue, NBTValue, ScoreValue};
 use crate::common::{val::MutableScoreValue, Identifier};
-use crate::lir::{LIRBlock, LIRInstrKind, LIR};
-use crate::passes::{LIRPass, Pass};
+use crate::lir::{LIRBlock, LIRInstrKind};
+use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct CopyPropPass;
@@ -16,11 +16,11 @@ impl Pass for CopyPropPass {
 }
 
 impl LIRPass for CopyPropPass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
+	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
 		let mut reg_mapping = FxHashMap::default();
 		let mut instrs_to_remove = HashSetEmptyTracker::new();
 
-		for func in lir.functions.values_mut() {
+		for func in data.lir.functions.values_mut() {
 			instrs_to_remove.clear();
 
 			let block = &mut func.block;

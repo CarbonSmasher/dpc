@@ -2,9 +2,9 @@ use rustc_hash::FxHashMap;
 
 use crate::common::reg::GetUsedRegs;
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue};
-use crate::lir::{LIRBlock, LIRInstrKind, LIR};
+use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::mir::{MIRBlock, MIRInstrKind};
-use crate::passes::{LIRPass, MIRPass, MIRPassData, Pass};
+use crate::passes::{LIRPass, LIRPassData, MIRPass, MIRPassData, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct DSEPass;
@@ -89,9 +89,9 @@ impl Pass for LIRDSEPass {
 }
 
 impl LIRPass for LIRDSEPass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
+	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
 		let mut instrs_to_remove = HashSetEmptyTracker::new();
-		for func in lir.functions.values_mut() {
+		for func in data.lir.functions.values_mut() {
 			let block = &mut func.block;
 
 			instrs_to_remove.clear();

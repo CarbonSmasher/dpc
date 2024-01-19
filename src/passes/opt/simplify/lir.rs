@@ -2,9 +2,9 @@ use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::Modifier;
 use crate::common::ty::ScoreTypeContents;
 use crate::common::val::ScoreValue;
-use crate::lir::{LIRBlock, LIRInstrKind, LIR};
+use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::passes::util::RunAgain;
-use crate::passes::{LIRPass, Pass};
+use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct LIRSimplifyPass;
@@ -16,8 +16,8 @@ impl Pass for LIRSimplifyPass {
 }
 
 impl LIRPass for LIRSimplifyPass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		for func in lir.functions.values_mut() {
+	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
+		for func in data.lir.functions.values_mut() {
 			simplify_block(&mut func.block);
 		}
 

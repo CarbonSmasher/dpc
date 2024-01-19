@@ -6,7 +6,7 @@ use dpc::ir::IR;
 use dpc::output::datapack::Datapack;
 use dpc::output::strip::StripMode;
 use dpc::parse::lex::{lex, Token};
-use dpc::project::{ProjectSettings, ProjectSettingsBuilder};
+use dpc::project::{OptimizationLevel, ProjectSettings, ProjectSettingsBuilder};
 use dpc::{codegen_ir, CodegenIRSettings};
 use itertools::Itertools;
 
@@ -23,7 +23,7 @@ pub fn get_control_comment(
 		mir_passes: false,
 		lir_passes: false,
 	};
-	let project = ProjectSettingsBuilder::new("dpc");
+	let mut project = ProjectSettingsBuilder::new("dpc");
 
 	let lexed = lex(contents).context("Failed to lex text")?;
 	let Some(first) = lexed.first() else { return Ok((default, project.build(), false)) };
@@ -40,6 +40,18 @@ pub fn get_control_comment(
 		StripMode::None
 	};
 	let split = comment.contains("split");
+	if comment.contains("o0") {
+		project = project.op_level(OptimizationLevel::None);
+	}
+	if comment.contains("o1") {
+		project = project.op_level(OptimizationLevel::Basic);
+	}
+	if comment.contains("o2") {
+		project = project.op_level(OptimizationLevel::More);
+	}
+	if comment.contains("o3") {
+		project = project.op_level(OptimizationLevel::Full);
+	}
 
 	let settings = CodegenIRSettings {
 		debug,

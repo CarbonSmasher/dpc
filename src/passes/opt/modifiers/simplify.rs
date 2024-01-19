@@ -1,7 +1,7 @@
 use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
 use crate::common::val::ScoreValue;
-use crate::lir::{LIRInstrKind, LIR};
-use crate::passes::{LIRPass, Pass};
+use crate::lir::LIRInstrKind;
+use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct SimplifyModifiersPass;
@@ -13,10 +13,10 @@ impl Pass for SimplifyModifiersPass {
 }
 
 impl LIRPass for SimplifyModifiersPass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
+	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
 		let mut mods_to_remove = HashSetEmptyTracker::new();
 
-		for func in lir.functions.values_mut() {
+		for func in data.lir.functions.values_mut() {
 			let block = &mut func.block;
 
 			for instr in &mut block.contents {

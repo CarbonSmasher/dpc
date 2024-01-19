@@ -404,6 +404,7 @@ fn fuzz() {
 }
 
 fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
+	let proj = ProjectSettings::new("dpc".into());
 	if debug {
 		println!("IR:");
 		dbg!(&ir.functions);
@@ -417,7 +418,7 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 		dbg!(&mir.functions);
 	}
 
-	run_mir_passes(&mut mir, debug).context("MIR passes failed")?;
+	run_mir_passes(&mut mir, &proj, debug).context("MIR passes failed")?;
 	if debug {
 		println!("Optimized MIR:");
 		dbg!(&mir.functions);
@@ -436,7 +437,7 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 		println!("LIR:");
 		dbg!(&lir.functions);
 	}
-	run_lir_passes(&mut lir, debug).context("LIR passes failed")?;
+	run_lir_passes(&mut lir, &proj, debug).context("LIR passes failed")?;
 	if debug {
 		println!("Optimized LIR:");
 		dbg!(&lir.functions);
@@ -450,8 +451,7 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 	println!("Removed percent: {pct}%");
 
 	println!("Doing codegen...");
-	let datapack =
-		link(lir, &ProjectSettings::new("dpc".into())).context("Failed to link datapack")?;
+	let datapack = link(lir, &proj).context("Failed to link datapack")?;
 	if debug {
 		dbg!(datapack);
 	}

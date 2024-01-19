@@ -1,8 +1,8 @@
 use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
 use crate::common::mc::pos::{AbsOrRelCoord, Coordinates};
 use crate::common::ty::Double;
-use crate::lir::{LIRInstruction, LIR};
-use crate::passes::{LIRPass, Pass};
+use crate::lir::LIRInstruction;
+use crate::passes::{LIRPass, LIRPassData, Pass};
 
 pub struct MergeModifiersPass;
 
@@ -13,8 +13,8 @@ impl Pass for MergeModifiersPass {
 }
 
 impl LIRPass for MergeModifiersPass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		for func in lir.functions.values_mut() {
+	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
+		for func in data.lir.functions.values_mut() {
 			let block = &mut func.block;
 
 			for instr in &mut block.contents {

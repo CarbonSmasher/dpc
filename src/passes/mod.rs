@@ -1,6 +1,7 @@
 use rustc_hash::FxHashSet;
 
 use crate::common::ResourceLocation;
+use crate::project::ProjectSettings;
 use crate::{ir::IR, lir::LIR, mir::MIR};
 
 use self::analysis::inline_candidates::InlineCandidatesPass;
@@ -53,12 +54,13 @@ pub trait MIRPass: Pass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()>;
 }
 
-pub struct MIRPassData<'mir> {
+pub struct MIRPassData<'mir, 'proj> {
 	pub mir: &'mir mut MIR,
 	pub inline_candidates: FxHashSet<ResourceLocation>,
+	pub proj: &'proj ProjectSettings,
 }
 
-pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
+pub fn run_mir_passes(mir: &mut MIR, proj: &ProjectSettings, debug: bool) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn MIRPass>,
 		Box::new(CleanupPass),
@@ -97,6 +99,7 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 	let mut data = MIRPassData {
 		mir,
 		inline_candidates: FxHashSet::default(),
+		proj,
 	};
 
 	for mut pass in passes {
@@ -110,10 +113,15 @@ pub fn run_mir_passes(mir: &mut MIR, debug: bool) -> anyhow::Result<()> {
 }
 
 pub trait LIRPass: Pass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()>;
+	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()>;
 }
 
-pub fn run_lir_passes(lir: &mut LIR, debug: bool) -> anyhow::Result<()> {
+pub struct LIRPassData<'lir, 'proj> {
+	pub lir: &'lir mut LIR,
+	pub proj: &'proj ProjectSettings,
+}
+
+pub fn run_lir_passes(lir: &mut LIR, proj: &ProjectSettings, debug: bool) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn LIRPass>,
 		Box::new(LIRSimplifyPass),
@@ -128,29 +136,16 @@ pub fn run_lir_passes(lir: &mut LIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(LIRSimplifyPass),
 	];
 
+	let mut data = LIRPassData { lir, proj };
+
 	for mut pass in passes {
 		if debug {
 			println!("Running pass {}", pass.get_name());
 		}
-		pass.run_pass(lir)?;
+		pass.run_pass(&mut data)?;
 	}
 
 	Ok(())
-}
-
-struct LIRBlockPassRunner;
-
-impl Pass for LIRBlockPassRunner {
-	fn get_name(&self) -> &'static str {
-		"lir_block_passes"
-	}
-}
-
-impl LIRPass for LIRBlockPassRunner {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		let _ = lir;
-		Ok(())
-	}
 }
 
 struct NullPass;
@@ -170,8 +165,8 @@ impl MIRPass for NullPass {
 }
 
 impl LIRPass for NullPass {
-	fn run_pass(&mut self, lir: &mut LIR) -> anyhow::Result<()> {
-		let _ = lir;
+	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
+		let _ = data;
 		Ok(())
 	}
 }
