@@ -1,12 +1,17 @@
 use crate::common::val::Value;
 use crate::mir::MIRInstrKind;
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 
 pub struct CleanupReturnPass;
 
 impl Pass for CleanupReturnPass {
 	fn get_name(&self) -> &'static str {
 		"cleanup_return"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

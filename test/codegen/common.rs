@@ -24,6 +24,9 @@ pub fn get_control_comment(
 		lir_passes: false,
 	};
 	let mut project = ProjectSettingsBuilder::new("dpc");
+	// We start at full since we want all the optimizations to interact,
+	// and if we don't want any optimizations we can just turn off passes
+	project = project.op_level(OptimizationLevel::Full);
 
 	let lexed = lex(contents).context("Failed to lex text")?;
 	let Some(first) = lexed.first() else { return Ok((default, project.build(), false)) };

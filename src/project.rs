@@ -45,7 +45,7 @@ impl ProjectSettingsBuilder {
 }
 
 /// Different optimization levels that can be used
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub enum OptimizationLevel {
 	/// No optimizations will occur. The only transformations that will
 	/// happen to the IR will be necessary ones to make it correct.

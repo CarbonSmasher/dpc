@@ -4,6 +4,7 @@ use rustc_hash::FxHashSet;
 use crate::common::mc::modifier::Modifier;
 use crate::lir::LIRInstrKind;
 use crate::passes::{LIRPass, LIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, GetSetOwned};
 
 use super::{Dependency, Modified, ModifierContext};
@@ -13,6 +14,10 @@ pub struct NullModifiersPass;
 impl Pass for NullModifiersPass {
 	fn get_name(&self) -> &'static str {
 		"null_modifiers"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

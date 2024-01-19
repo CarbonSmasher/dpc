@@ -6,6 +6,7 @@ use crate::common::DeclareBinding;
 use crate::common::{val::MutableValue, val::Value, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct MultifoldLogicPass;
@@ -13,6 +14,10 @@ pub struct MultifoldLogicPass;
 impl Pass for MultifoldLogicPass {
 	fn get_name(&self) -> &'static str {
 		"multifold_logic"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

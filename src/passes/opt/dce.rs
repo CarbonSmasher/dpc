@@ -1,6 +1,7 @@
 use rustc_hash::FxHashSet;
 
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 
 use super::get_instr_calls;
 
@@ -9,6 +10,10 @@ pub struct DCEPass;
 impl Pass for DCEPass {
 	fn get_name(&self) -> &'static str {
 		"dead_code_elimination"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Basic
 	}
 }
 

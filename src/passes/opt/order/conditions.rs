@@ -3,6 +3,7 @@ use crate::common::cost::GetCost;
 use crate::mir::MIRBlock;
 use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 
 /// Reorders and + or conditions based on the cost of their terms
 pub struct ReorderConditionsPass;
@@ -10,6 +11,10 @@ pub struct ReorderConditionsPass;
 impl Pass for ReorderConditionsPass {
 	fn get_name(&self) -> &'static str {
 		"reorder_conditions"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

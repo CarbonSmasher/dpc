@@ -34,13 +34,16 @@ pub trait IRPass: Pass {
 	fn run_pass(&mut self, ir: &mut IR) -> anyhow::Result<()>;
 }
 
-pub fn run_ir_passes(ir: &mut IR, debug: bool) -> anyhow::Result<()> {
+pub fn run_ir_passes(ir: &mut IR, proj: &ProjectSettings, debug: bool) -> anyhow::Result<()> {
 	let passes = [
 		Box::new(NullPass) as Box<dyn IRPass>,
 		Box::new(ValidatePass),
 	];
 
 	for mut pass in passes {
+		if !pass.should_run(proj) {
+			continue;
+		}
 		if debug {
 			println!("Running pass {}", pass.get_name());
 		}
@@ -103,6 +106,9 @@ pub fn run_mir_passes(mir: &mut MIR, proj: &ProjectSettings, debug: bool) -> any
 	};
 
 	for mut pass in passes {
+		if !pass.should_run(proj) {
+			continue;
+		}
 		if debug {
 			println!("Running pass {}", pass.get_name());
 		}
@@ -139,6 +145,9 @@ pub fn run_lir_passes(lir: &mut LIR, proj: &ProjectSettings, debug: bool) -> any
 	let mut data = LIRPassData { lir, proj };
 
 	for mut pass in passes {
+		if !pass.should_run(proj) {
+			continue;
+		}
 		if debug {
 			println!("Running pass {}", pass.get_name());
 		}
@@ -182,5 +191,10 @@ pub trait Pass {
 
 	fn made_changes(&self) -> bool {
 		false
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		let _ = proj;
+		true
 	}
 }

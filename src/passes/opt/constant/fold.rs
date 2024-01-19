@@ -10,6 +10,7 @@ use crate::common::val::{MutableValue, Value};
 use crate::common::{DeclareBinding, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 use super::{ConstAnalyzer, ConstAnalyzerResult, ConstAnalyzerValue};
@@ -35,6 +36,10 @@ impl Default for ConstFoldPass {
 impl Pass for ConstFoldPass {
 	fn get_name(&self) -> &'static str {
 		"const_fold"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

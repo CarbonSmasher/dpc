@@ -3,12 +3,17 @@ use crate::common::mc::pos::{AbsOrRelCoord, Coordinates};
 use crate::common::ty::Double;
 use crate::lir::LIRInstruction;
 use crate::passes::{LIRPass, LIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 
 pub struct MergeModifiersPass;
 
 impl Pass for MergeModifiersPass {
 	fn get_name(&self) -> &'static str {
 		"merge_modifiers"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

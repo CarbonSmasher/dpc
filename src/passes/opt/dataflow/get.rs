@@ -4,6 +4,7 @@ use crate::common::reg::GetUsedRegs;
 use crate::common::{val::MutableScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::passes::{LIRPass, LIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct DataflowGetPass;
@@ -11,6 +12,10 @@ pub struct DataflowGetPass;
 impl Pass for DataflowGetPass {
 	fn get_name(&self) -> &'static str {
 		"get_dataflow"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Full
 	}
 }
 

@@ -8,6 +8,7 @@ use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::opt::are_blocks_equivalent;
 use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker, Only};
 
 use num_traits::Zero;
@@ -17,6 +18,10 @@ pub struct MIRSimplifyPass;
 impl Pass for MIRSimplifyPass {
 	fn get_name(&self) -> &'static str {
 		"simplify_mir"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Basic
 	}
 }
 

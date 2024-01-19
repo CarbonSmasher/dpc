@@ -5,6 +5,7 @@ use crate::common::val::{MutableNBTValue, NBTValue, ScoreValue};
 use crate::common::{val::MutableScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::passes::{LIRPass, LIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct CopyPropPass;
@@ -12,6 +13,10 @@ pub struct CopyPropPass;
 impl Pass for CopyPropPass {
 	fn get_name(&self) -> &'static str {
 		"copy_propagation"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Basic
 	}
 }
 

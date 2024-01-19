@@ -3,6 +3,7 @@ use crate::common::reg::GetUsedRegs;
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::remove_indices;
 
 use intset::GrowSet;
@@ -18,6 +19,10 @@ pub struct CleanupPass;
 impl Pass for CleanupPass {
 	fn get_name(&self) -> &'static str {
 		"cleanup"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Basic
 	}
 }
 

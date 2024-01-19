@@ -5,6 +5,7 @@ use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue};
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{LIRPass, LIRPassData, MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct DSEPass;
@@ -12,6 +13,10 @@ pub struct DSEPass;
 impl Pass for DSEPass {
 	fn get_name(&self) -> &'static str {
 		"dead_store_elimination"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Basic
 	}
 }
 

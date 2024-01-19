@@ -8,6 +8,7 @@ use crate::common::DeclareBinding;
 use crate::common::{val::MutableValue, val::Value, Identifier};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker, Only};
 
 pub struct MultifoldAssignPass;
@@ -15,6 +16,10 @@ pub struct MultifoldAssignPass;
 impl Pass for MultifoldAssignPass {
 	fn get_name(&self) -> &'static str {
 		"multifold_assign"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

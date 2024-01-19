@@ -5,6 +5,7 @@ use crate::common::val::ScoreValue;
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::passes::util::RunAgain;
 use crate::passes::{LIRPass, LIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct LIRSimplifyPass;
@@ -12,6 +13,10 @@ pub struct LIRSimplifyPass;
 impl Pass for LIRSimplifyPass {
 	fn get_name(&self) -> &'static str {
 		"simplify_lir"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Basic
 	}
 }
 

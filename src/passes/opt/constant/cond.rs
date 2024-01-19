@@ -5,6 +5,7 @@ use crate::common::DeclareBinding;
 use crate::common::{condition::Condition, ty::DataTypeContents, val::Value};
 use crate::mir::{MIRBlock, MIRInstrKind, MIRInstruction};
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::replace_and_expand_indices;
 
 pub struct ConstConditionPass {
@@ -28,6 +29,10 @@ impl Default for ConstConditionPass {
 impl Pass for ConstConditionPass {
 	fn get_name(&self) -> &'static str {
 		"const_condition"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Basic
 	}
 }
 

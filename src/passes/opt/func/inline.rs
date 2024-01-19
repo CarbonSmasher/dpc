@@ -9,6 +9,7 @@ use crate::lower::{cleanup_fn_id, fmt_lowered_arg};
 use crate::mir::{MIRBlock, MIRFunction, MIRInstrKind, MIRInstruction};
 use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::replace_and_expand_indices;
 
 pub struct SimpleInlinePass;
@@ -16,6 +17,10 @@ pub struct SimpleInlinePass;
 impl Pass for SimpleInlinePass {
 	fn get_name(&self) -> &'static str {
 		"simple_inline"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 
@@ -44,7 +49,7 @@ fn run_block(
 	is_root: bool,
 ) -> anyhow::Result<RunAgain> {
 	let mut out = RunAgain::new();
-	
+
 	loop {
 		let mut instrs_to_remove_set = GrowSet::with_capacity(block.contents.len());
 		let mut instrs_to_remove = Vec::new();

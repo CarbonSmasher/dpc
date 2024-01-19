@@ -409,7 +409,7 @@ fn run(mut ir: IR, debug: bool) -> anyhow::Result<()> {
 		println!("IR:");
 		dbg!(&ir.functions);
 	}
-	run_ir_passes(&mut ir, debug).context("IR passes failed")?;
+	run_ir_passes(&mut ir, &proj, debug).context("IR passes failed")?;
 
 	let mut mir = lower_ir(ir).context("Failed to lower IR")?;
 	let init_count = mir.instr_count();

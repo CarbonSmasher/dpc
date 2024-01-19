@@ -7,6 +7,7 @@ use crate::common::function::CallInterface;
 use crate::common::val::MutableValue;
 use crate::passes::opt::get_instr_calls_mut;
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::remove_indices;
 
 pub struct UnusedArgsPass;
@@ -14,6 +15,10 @@ pub struct UnusedArgsPass;
 impl Pass for UnusedArgsPass {
 	fn get_name(&self) -> &'static str {
 		"unused_args"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Full
 	}
 }
 

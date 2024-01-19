@@ -6,6 +6,7 @@ use crate::common::{Register, RegisterList};
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::remove_indices;
 
 use intset::GrowSet;
@@ -16,6 +17,10 @@ pub struct TypeBasedOptimizationPass;
 impl Pass for TypeBasedOptimizationPass {
 	fn get_name(&self) -> &'static str {
 		"type_based_optimization"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

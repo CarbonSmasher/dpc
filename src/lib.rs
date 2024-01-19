@@ -31,7 +31,7 @@ pub fn codegen_ir(
 		dbg!(&ir.functions);
 	}
 	if settings.ir_passes {
-		run_ir_passes(&mut ir, settings.debug).context("IR passes failed")?;
+		run_ir_passes(&mut ir, project, settings.debug).context("IR passes failed")?;
 	}
 
 	let mut mir = lower_ir(ir).context("Failed to lower IR")?;

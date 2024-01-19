@@ -2,6 +2,7 @@ use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRange
 use crate::common::val::ScoreValue;
 use crate::lir::LIRInstrKind;
 use crate::passes::{LIRPass, LIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct SimplifyModifiersPass;
@@ -9,6 +10,10 @@ pub struct SimplifyModifiersPass;
 impl Pass for SimplifyModifiersPass {
 	fn get_name(&self) -> &'static str {
 		"simplify_modifiers"
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::More
 	}
 }
 

@@ -4,6 +4,7 @@ use crate::common::val::{MutableValue, Value};
 use crate::common::DeclareBinding;
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::{MIRPass, MIRPassData, Pass};
+use crate::project::{OptimizationLevel, ProjectSettings};
 
 use super::{ConstAnalyzerValue, StoringConstAnalyzer};
 
@@ -32,6 +33,10 @@ impl Pass for ConstPropPass {
 
 	fn made_changes(&self) -> bool {
 		self.made_changes
+	}
+
+	fn should_run(&self, proj: &ProjectSettings) -> bool {
+		proj.op_level >= OptimizationLevel::Basic
 	}
 }
 
