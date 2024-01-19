@@ -1,6 +1,10 @@
 use super::{
 	condition::Condition,
-	mc::modifier::{IfModCondition, Modifier},
+	mc::{
+		entity::{SelectorParameter, SelectorType, TargetSelector},
+		modifier::{IfModCondition, Modifier},
+		EntityTarget,
+	},
 	val::{MutableValue, Value},
 };
 
@@ -29,7 +33,7 @@ impl GetCost for Condition {
 			Self::And(l, r) | Self::Or(l, r) => l.get_cost() + r.get_cost(),
 			Self::Not(cond) => cond.get_cost(),
 			Self::Entity(..) => 40.0,
-			Self::Biome(..) | Self::Loaded(..) | Self::Dimension(..) => 32.0,
+			Self::Biome(..) | Self::Loaded(..) | Self::Dimension(..) => 18.0,
 			Self::Predicate(..) => 12.0,
 			Self::GreaterThan(l, r)
 			| Self::GreaterThanOrEqual(l, r)
@@ -112,6 +116,49 @@ impl GetCost for IfModCondition {
 			Self::Predicate(..) => 15.0,
 			Self::Score(..) => 4.0,
 			Self::Const(..) => 0.0,
+		}
+	}
+}
+
+impl GetCost for EntityTarget {
+	fn get_cost(&self) -> f32 {
+		match self {
+			Self::Player(..) => 2.0,
+			Self::Selector(sel) => sel.get_cost(),
+		}
+	}
+}
+
+impl GetCost for TargetSelector {
+	fn get_cost(&self) -> f32 {
+		let mut out = 5.0;
+		out += self
+			.params
+			.iter()
+			.fold(0.0, |accum, x| accum + x.get_cost());
+		out += match self.selector {
+			SelectorType::AllEntities => 20.0,
+			SelectorType::AllPlayers => 10.0,
+			SelectorType::NearestPlayer | SelectorType::RandomPlayer => 4.0,
+			SelectorType::This => 1.0,
+		};
+
+		out
+	}
+}
+
+impl GetCost for SelectorParameter {
+	fn get_cost(&self) -> f32 {
+		match self {
+			Self::NBT { .. } => 20.0,
+			Self::Distance { .. }
+			| Self::Gamemode { .. }
+			| Self::Name { .. }
+			| Self::Tag { .. }
+			| Self::Type { .. }
+			| Self::Predicate { .. }
+			| Self::NoTags => 7.0,
+			Self::Sort(..) | Self::Limit(..) => 1.0,
 		}
 	}
 }
