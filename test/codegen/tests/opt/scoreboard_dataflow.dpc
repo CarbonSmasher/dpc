@@ -12,3 +12,12 @@
 	add %x, 8s;
 	let y: nint = cast nint %x;
 }
+
+"test:copy_prop" {
+	# Also tests LIR DSE
+	let x: score = val sco @s[] "foo";
+	let y: score = val %x;
+	let z: score = val sco @s[] "bar";
+	add %z, %y;
+	use %z;
+}

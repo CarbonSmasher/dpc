@@ -5,6 +5,7 @@
 	let foo: score = val -44s;
 	let bar: bool = null;
 	call %bar run "test:fn", 7s, %foo, "foo";
+	use %bar;
 }
 
 "test:fn" score score nstr : bool {

@@ -276,4 +276,23 @@ impl LIRInstrKind {
 			_ => None,
 		}
 	}
+
+	pub fn get_op_rhs_reg_mut(&mut self) -> Option<&mut Identifier> {
+		match self {
+			LIRInstrKind::SetScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
+			| LIRInstrKind::AddScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
+			| LIRInstrKind::SubScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
+			| LIRInstrKind::MulScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
+			| LIRInstrKind::DivScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
+			| LIRInstrKind::ModScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
+			| LIRInstrKind::MinScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
+			| LIRInstrKind::MaxScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right))) => Some(right),
+			LIRInstrKind::SetData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)))
+			| LIRInstrKind::MergeData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)))
+			| LIRInstrKind::InsertData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)), ..)
+			| LIRInstrKind::PushData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)))
+			| LIRInstrKind::PushFrontData(_, NBTValue::Mutable(MutableNBTValue::Reg(right))) => Some(right),
+			_ => None,
+		}
+	}
 }

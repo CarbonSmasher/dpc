@@ -6,10 +6,11 @@ use crate::{ir::IR, lir::LIR, mir::MIR};
 use self::analysis::inline_candidates::InlineCandidatesPass;
 use self::analysis::ir::ValidatePass;
 use self::opt::constant::{fold::ConstFoldPass, prop::ConstPropPass, ConstComboPass};
+use self::opt::dataflow::copy_prop::CopyPropPass;
 use self::opt::dataflow::get::DataflowGetPass;
 use self::opt::dataflow::result::DataflowResultPass;
 use self::opt::dce::DCEPass;
-use self::opt::dse::DSEPass;
+use self::opt::dse::{DSEPass, LIRDSEPass};
 use self::opt::func::cleanup_return::CleanupReturnPass;
 use self::opt::func::inline::SimpleInlinePass;
 use self::opt::func::unused_args::UnusedArgsPass;
@@ -122,6 +123,8 @@ pub fn run_lir_passes(lir: &mut LIR, debug: bool) -> anyhow::Result<()> {
 		Box::new(SimplifyModifiersPass),
 		Box::new(MergeModifiersPass),
 		Box::new(DataflowGetPass),
+		Box::new(CopyPropPass),
+		Box::new(LIRDSEPass),
 		Box::new(LIRSimplifyPass),
 	];
 
