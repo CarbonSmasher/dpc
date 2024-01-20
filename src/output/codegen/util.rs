@@ -53,7 +53,7 @@ pub fn get_mut_score_val_score(
 		}
 		MutableScoreValue::CallArg(arg, func, ..) => {
 			let func_id = cleanup_fn_id(func);
-			let arg = format_arg_local_storage_entry(*arg, &func_id);
+			let arg = format_arg_fake_player(*arg, &func_id);
 			cbcx.ccx
 				.add_requirement(CodegenRequirement::UseRegObjective);
 			Score::new(EntityTarget::Player(arg), REG_OBJECTIVE.into())
@@ -66,7 +66,7 @@ pub fn get_mut_score_val_score(
 		}
 		MutableScoreValue::CallReturnValue(ret, func, ..) => {
 			let func_id = cleanup_fn_id(func);
-			let ret = format_ret_local_storage_entry(*ret, &func_id);
+			let ret = format_ret_fake_player(*ret, &func_id);
 			cbcx.ccx
 				.add_requirement(CodegenRequirement::UseRegObjective);
 			Score::new(EntityTarget::Player(ret), REG_OBJECTIVE.into())
@@ -130,7 +130,7 @@ pub fn get_mut_nbt_val_loc(
 		}
 		MutableNBTValue::CallReturnValue(ret, func, ..) => {
 			let func_id = cleanup_fn_id(func);
-			let ret = format_arg_local_storage_entry(*ret, &func_id);
+			let ret = format_ret_local_storage_entry(*ret, &func_id);
 			cbcx.ccx.add_requirement(CodegenRequirement::UseRegStorage);
 			FullDataLocation {
 				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),

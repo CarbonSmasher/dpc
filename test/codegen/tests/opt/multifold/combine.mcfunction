@@ -22,5 +22,5 @@ scoreboard players operation %rtest_func0 _r *= %rtest_func1 _r
 execute if score %rtest_func0 _r matches ..-1 run scoreboard players operation %rtest_func0 _r *= %l-1 _l
 
 # === test:main === #
-scoreboard players set atest_func0 _r 5
+scoreboard players set %atest_func0 _r 5
 function test:func

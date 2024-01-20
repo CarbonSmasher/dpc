@@ -31,5 +31,5 @@ scoreboard players operation %rtest_main0 _r %= %l1 _l
 scoreboard players set @s foo 1
 scoreboard players set @s foo 0
 data modify entity @s name.bar set value 7b
-data modify storage dpc:r stest_main0 set from entity @s foo
+data modify storage dpc:r rtest_main0 set from entity @s foo
 execute store result entity foo bar float .7 run data get entity @s foo 9

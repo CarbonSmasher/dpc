@@ -10,7 +10,7 @@ execute unless entity @s[tag=seent] run function items:ground_sweep/main_body_1
 execute if score @s cooldown matches 1.. run function items:ground_sweep/main_body_2
 
 # === items:ground_sweep/main_body_0 === #
-execute store result score %ritems_ground_sweep_main4 _r run data get storage dpc:r sitems_ground_sweep_main0.rarity
+execute store result score %ritems_ground_sweep_main4 _r run data get storage dpc:r ritems_ground_sweep_main0.rarity
 execute if score %ritems_ground_sweep_main4 _r matches 0 run team join common @s
 execute if score %ritems_ground_sweep_main4 _r matches 1 run team join uncommon @s
 execute if score %ritems_ground_sweep_main4 _r matches 2 run team join rare @s
@@ -23,21 +23,21 @@ execute if score %ritems_ground_sweep_main4 _r matches 9.. run team join hydar @
 data merge entity @s {Glowing:1b}
 
 # === items:ground_sweep/main_body_1 === #
-data modify storage dpc:r sitems_ground_sweep_main0 set from entity @s Item.tag
-execute store result score %ritems_ground_sweep_main0 _r run data get storage dpc:r sitems_ground_sweep_main0.clear
+data modify storage dpc:r ritems_ground_sweep_main0 set from entity @s Item.tag
+execute store result score %ritems_ground_sweep_main0 _r run data get storage dpc:r ritems_ground_sweep_main0.clear
 execute if score %ritems_ground_sweep_main0 _r matches 1 run kill
-execute store result score %ritems_ground_sweep_main1 _r run data get storage dpc:r sitems_ground_sweep_main0.player_item
+execute store result score %ritems_ground_sweep_main1 _r run data get storage dpc:r ritems_ground_sweep_main0.player_item
 execute if score %ritems_ground_sweep_main1 _r matches 1 run kill
-execute store result score %ritems_ground_sweep_main2 _r run data get storage dpc:r sitems_ground_sweep_main0.explorer_set
+execute store result score %ritems_ground_sweep_main2 _r run data get storage dpc:r ritems_ground_sweep_main0.explorer_set
 execute if score %ritems_ground_sweep_main2 _r matches 1 run function items:set/drop
-execute store result score %ritems_ground_sweep_main3 _r run data get storage dpc:r sitems_ground_sweep_main0.wither_heart
+execute store result score %ritems_ground_sweep_main3 _r run data get storage dpc:r ritems_ground_sweep_main0.wither_heart
 execute if score %ritems_ground_sweep_main3 _r matches 1 run tag @s add wither_heart
-execute if data storage dpc:r sitems_ground_sweep_main0.Upgrades.ench run tag @s add ench
-execute if data storage dpc:r sitems_ground_sweep_main0.ench_book run tag @s add ench_book
-execute if data storage dpc:r sitems_ground_sweep_main0.rarity run function items:ground_sweep/main_body_0
-execute store result score %ritems_ground_sweep_main4 _r run data get storage dpc:r sitems_ground_sweep_main0.timer
+execute if data storage dpc:r ritems_ground_sweep_main0.Upgrades.ench run tag @s add ench
+execute if data storage dpc:r ritems_ground_sweep_main0.ench_book run tag @s add ench_book
+execute if data storage dpc:r ritems_ground_sweep_main0.rarity run function items:ground_sweep/main_body_0
+execute store result score %ritems_ground_sweep_main4 _r run data get storage dpc:r ritems_ground_sweep_main0.timer
 execute if score %ritems_ground_sweep_main4 _r matches 1.. run data modify entity @s PickupDelay set value 32767
-execute if data storage dpc:r sitems_ground_sweep_main0.coindata run function items:ground_sweep/coindata
+execute if data storage dpc:r ritems_ground_sweep_main0.coindata run function items:ground_sweep/coindata
 tag @s add seent
 
 # === items:ground_sweep/main_body_2 === #
@@ -85,7 +85,7 @@ execute if score %rplayer_hud_cooldown_cooldown_bar2 _r matches 19 run xp set @s
 execute if score %rplayer_hud_cooldown_cooldown_bar2 _r matches 0 run function player:hud/cooldown/cooldown_bar_body_3
 execute if score %rplayer_hud_cooldown_cooldown_bar2 _r matches 20 run scoreboard players reset %rplayer_hud_cooldown_cooldown_bar2
 xp set @s 0 levels
-scoreboard players operation aplayer_hud_cooldown_set_level0 _r = %rplayer_hud_cooldown_cooldown_bar1 _r
+scoreboard players operation %aplayer_hud_cooldown_set_level0 _r = %rplayer_hud_cooldown_cooldown_bar1 _r
 function player:hud/cooldown/set_level
 execute if score @s item.id matches 69 run function items:abilities/berserk/chainsaw/cooldown
 
@@ -165,7 +165,7 @@ execute unless entity @s[tag=seent] run function items:ground_sweep/main_body_1
 execute if score @s cooldown matches 1.. run function items:ground_sweep/main_body_2
 
 # === items:ground_sweep/main_body_0 === #
-execute store result score %ritems_ground_sweep_main4 _r run data get storage dpc:r sitems_ground_sweep_main0.rarity
+execute store result score %ritems_ground_sweep_main4 _r run data get storage dpc:r ritems_ground_sweep_main0.rarity
 execute if score %ritems_ground_sweep_main4 _r matches 0 run team join common @s
 execute if score %ritems_ground_sweep_main4 _r matches 1 run team join uncommon @s
 execute if score %ritems_ground_sweep_main4 _r matches 2 run team join rare @s
@@ -178,21 +178,21 @@ execute if score %ritems_ground_sweep_main4 _r matches 9.. run team join hydar @
 data merge entity @s {Glowing:1b}
 
 # === items:ground_sweep/main_body_1 === #
-data modify storage dpc:r sitems_ground_sweep_main0 set from entity @s Item.tag
-execute store result score %ritems_ground_sweep_main0 _r run data get storage dpc:r sitems_ground_sweep_main0.clear
+data modify storage dpc:r ritems_ground_sweep_main0 set from entity @s Item.tag
+execute store result score %ritems_ground_sweep_main0 _r run data get storage dpc:r ritems_ground_sweep_main0.clear
 execute if score %ritems_ground_sweep_main0 _r matches 1 run kill
-execute store result score %ritems_ground_sweep_main1 _r run data get storage dpc:r sitems_ground_sweep_main0.player_item
+execute store result score %ritems_ground_sweep_main1 _r run data get storage dpc:r ritems_ground_sweep_main0.player_item
 execute if score %ritems_ground_sweep_main1 _r matches 1 run kill
-execute store result score %ritems_ground_sweep_main2 _r run data get storage dpc:r sitems_ground_sweep_main0.explorer_set
+execute store result score %ritems_ground_sweep_main2 _r run data get storage dpc:r ritems_ground_sweep_main0.explorer_set
 execute if score %ritems_ground_sweep_main2 _r matches 1 run function items:set/drop
-execute store result score %ritems_ground_sweep_main3 _r run data get storage dpc:r sitems_ground_sweep_main0.wither_heart
+execute store result score %ritems_ground_sweep_main3 _r run data get storage dpc:r ritems_ground_sweep_main0.wither_heart
 execute if score %ritems_ground_sweep_main3 _r matches 1 run tag @s add wither_heart
-execute if data storage dpc:r sitems_ground_sweep_main0.Upgrades.ench run tag @s add ench
-execute if data storage dpc:r sitems_ground_sweep_main0.ench_book run tag @s add ench_book
-execute if data storage dpc:r sitems_ground_sweep_main0.rarity run function items:ground_sweep/main_body_0
-execute store result score %ritems_ground_sweep_main4 _r run data get storage dpc:r sitems_ground_sweep_main0.timer
+execute if data storage dpc:r ritems_ground_sweep_main0.Upgrades.ench run tag @s add ench
+execute if data storage dpc:r ritems_ground_sweep_main0.ench_book run tag @s add ench_book
+execute if data storage dpc:r ritems_ground_sweep_main0.rarity run function items:ground_sweep/main_body_0
+execute store result score %ritems_ground_sweep_main4 _r run data get storage dpc:r ritems_ground_sweep_main0.timer
 execute if score %ritems_ground_sweep_main4 _r matches 1.. run data modify entity @s PickupDelay set value 32767
-execute if data storage dpc:r sitems_ground_sweep_main0.coindata run function items:ground_sweep/coindata
+execute if data storage dpc:r ritems_ground_sweep_main0.coindata run function items:ground_sweep/coindata
 tag @s add seent
 
 # === items:ground_sweep/main_body_2 === #

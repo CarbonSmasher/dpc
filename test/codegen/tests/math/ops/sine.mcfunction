@@ -6,15 +6,15 @@ scoreboard players set %l1800 _l 1800
 scoreboard players set %l3600 _l 3600
 
 # === test:main === #
-scoreboard players set atest_sine0 _r 104
+scoreboard players set %atest_sine0 _r 104
 function test:sine
-scoreboard players operation %rtest_main0 _r = rtest_sine0 _r
-scoreboard players set atest_sine0 _r 104
+scoreboard players operation %rtest_main0 _r = %Rtest_sine0 _r
+scoreboard players set %atest_sine0 _r 104
 function test:sine
-scoreboard players operation %rtest_main0 _r = rtest_sine0 _r
-scoreboard players set atest_sine0 _r 1660
+scoreboard players operation %rtest_main0 _r = %Rtest_sine0 _r
+scoreboard players set %atest_sine0 _r 1660
 function test:sine
-scoreboard players operation %rtest_main0 _r = rtest_sine0 _r
+scoreboard players operation %rtest_main0 _r = %Rtest_sine0 _r
 
 # === test:sine === #
 scoreboard players operation %rtest_sine0 _r = %atest_sine0 _r
