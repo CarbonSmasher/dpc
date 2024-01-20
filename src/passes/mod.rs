@@ -131,6 +131,8 @@ pub fn run_lir_passes(lir: &mut LIR, proj: &ProjectSettings, debug: bool) -> any
 	let passes = [
 		Box::new(NullPass) as Box<dyn LIRPass>,
 		Box::new(LIRSimplifyPass),
+		Box::new(CopyPropPass),
+		Box::new(LIRDSEPass),
 		Box::new(DataflowResultPass),
 		Box::new(MergeModifiersPass),
 		Box::new(NullModifiersPass),

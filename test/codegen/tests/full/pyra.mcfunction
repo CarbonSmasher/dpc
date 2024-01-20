@@ -239,37 +239,36 @@ execute if score %rplayer_hud_refresh2 _r matches 19 run xp set @s 18 points
 execute if score %rplayer_hud_refresh2 _r matches 0 run function player:hud/refresh_body_3
 execute if score %rplayer_hud_refresh2 _r matches 20 run scoreboard players reset %rplayer_hud_refresh2
 xp set @s 0 levels
-scoreboard players operation %rplayer_hud_refresh2 _r = %rplayer_hud_refresh1 _r
-execute if score %rplayer_hud_refresh2 _r matches 1 run xp set @s 1 levels
-execute if score %rplayer_hud_refresh2 _r matches 2 run xp set @s 2 levels
-execute if score %rplayer_hud_refresh2 _r matches 3 run xp set @s 3 levels
-execute if score %rplayer_hud_refresh2 _r matches 4 run xp set @s 4 levels
-execute if score %rplayer_hud_refresh2 _r matches 5 run xp set @s 5 levels
-execute if score %rplayer_hud_refresh2 _r matches 6 run xp set @s 6 levels
-execute if score %rplayer_hud_refresh2 _r matches 7 run xp set @s 7 levels
-execute if score %rplayer_hud_refresh2 _r matches 8 run xp set @s 8 levels
-execute if score %rplayer_hud_refresh2 _r matches 9 run xp set @s 9 levels
-execute if score %rplayer_hud_refresh2 _r matches 10 run xp set @s 10 levels
-execute if score %rplayer_hud_refresh2 _r matches 11 run xp set @s 11 levels
-execute if score %rplayer_hud_refresh2 _r matches 12 run xp set @s 12 levels
-execute if score %rplayer_hud_refresh2 _r matches 13 run xp set @s 13 levels
-execute if score %rplayer_hud_refresh2 _r matches 14 run xp set @s 14 levels
-execute if score %rplayer_hud_refresh2 _r matches 15 run xp set @s 15 levels
-execute if score %rplayer_hud_refresh2 _r matches 16 run xp set @s 16 levels
-execute if score %rplayer_hud_refresh2 _r matches 17 run xp set @s 17 levels
-execute if score %rplayer_hud_refresh2 _r matches 18 run xp set @s 18 levels
-execute if score %rplayer_hud_refresh2 _r matches 19 run xp set @s 19 levels
-execute if score %rplayer_hud_refresh2 _r matches 20 run xp set @s 20 levels
-execute if score %rplayer_hud_refresh2 _r matches 21 run xp set @s 21 levels
-execute if score %rplayer_hud_refresh2 _r matches 22 run xp set @s 22 levels
-execute if score %rplayer_hud_refresh2 _r matches 23 run xp set @s 23 levels
-execute if score %rplayer_hud_refresh2 _r matches 24 run xp set @s 24 levels
-execute if score %rplayer_hud_refresh2 _r matches 25 run xp set @s 25 levels
-execute if score %rplayer_hud_refresh2 _r matches 26 run xp set @s 26 levels
-execute if score %rplayer_hud_refresh2 _r matches 27 run xp set @s 27 levels
-execute if score %rplayer_hud_refresh2 _r matches 28 run xp set @s 28 levels
-execute if score %rplayer_hud_refresh2 _r matches 29 run xp set @s 29 levels
-execute if score %rplayer_hud_refresh2 _r matches 30 run xp set @s 30 levels
+execute if score %rplayer_hud_refresh1 _r matches 1 run xp set @s 1 levels
+execute if score %rplayer_hud_refresh1 _r matches 2 run xp set @s 2 levels
+execute if score %rplayer_hud_refresh1 _r matches 3 run xp set @s 3 levels
+execute if score %rplayer_hud_refresh1 _r matches 4 run xp set @s 4 levels
+execute if score %rplayer_hud_refresh1 _r matches 5 run xp set @s 5 levels
+execute if score %rplayer_hud_refresh1 _r matches 6 run xp set @s 6 levels
+execute if score %rplayer_hud_refresh1 _r matches 7 run xp set @s 7 levels
+execute if score %rplayer_hud_refresh1 _r matches 8 run xp set @s 8 levels
+execute if score %rplayer_hud_refresh1 _r matches 9 run xp set @s 9 levels
+execute if score %rplayer_hud_refresh1 _r matches 10 run xp set @s 10 levels
+execute if score %rplayer_hud_refresh1 _r matches 11 run xp set @s 11 levels
+execute if score %rplayer_hud_refresh1 _r matches 12 run xp set @s 12 levels
+execute if score %rplayer_hud_refresh1 _r matches 13 run xp set @s 13 levels
+execute if score %rplayer_hud_refresh1 _r matches 14 run xp set @s 14 levels
+execute if score %rplayer_hud_refresh1 _r matches 15 run xp set @s 15 levels
+execute if score %rplayer_hud_refresh1 _r matches 16 run xp set @s 16 levels
+execute if score %rplayer_hud_refresh1 _r matches 17 run xp set @s 17 levels
+execute if score %rplayer_hud_refresh1 _r matches 18 run xp set @s 18 levels
+execute if score %rplayer_hud_refresh1 _r matches 19 run xp set @s 19 levels
+execute if score %rplayer_hud_refresh1 _r matches 20 run xp set @s 20 levels
+execute if score %rplayer_hud_refresh1 _r matches 21 run xp set @s 21 levels
+execute if score %rplayer_hud_refresh1 _r matches 22 run xp set @s 22 levels
+execute if score %rplayer_hud_refresh1 _r matches 23 run xp set @s 23 levels
+execute if score %rplayer_hud_refresh1 _r matches 24 run xp set @s 24 levels
+execute if score %rplayer_hud_refresh1 _r matches 25 run xp set @s 25 levels
+execute if score %rplayer_hud_refresh1 _r matches 26 run xp set @s 26 levels
+execute if score %rplayer_hud_refresh1 _r matches 27 run xp set @s 27 levels
+execute if score %rplayer_hud_refresh1 _r matches 28 run xp set @s 28 levels
+execute if score %rplayer_hud_refresh1 _r matches 29 run xp set @s 29 levels
+execute if score %rplayer_hud_refresh1 _r matches 30 run xp set @s 30 levels
 execute if score @s item.id matches 69 run function items:abilities/berserk/chainsaw/cooldown
 data remove storage dungeons:items tempCenterText
 data merge storage dungeons:items {tempCenterText:'[{"score":{"name":"@s","objective":"stat.total.def"},"color":"green"},{"text":"❈ Defense   ","color":"green"}]'}
