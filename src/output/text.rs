@@ -6,7 +6,7 @@ pub const LIT_OBJECTIVE: &str = "_l";
 pub const REG_STORAGE_LOCATION: &str = "dpc:r";
 
 pub fn format_reg_fake_player(num: u32, func_id: &str) -> String {
-	format!("%r{func_id}{num}")
+	format!("%r{func_id}.{num}")
 }
 
 pub fn format_lit_fake_player(num: i32) -> String {
@@ -14,23 +14,23 @@ pub fn format_lit_fake_player(num: i32) -> String {
 }
 
 pub fn format_arg_fake_player(num: u16, func_id: &str) -> String {
-	format!("%a{func_id}{num}")
+	format!("%a{func_id}.{num}")
 }
 
 pub fn format_ret_fake_player(num: u16, func_id: &str) -> String {
-	format!("%R{func_id}{num}")
+	format!("%R{func_id}.{num}")
 }
 
 pub fn format_local_storage_entry(num: u32, func_id: &str) -> String {
-	format!("r{func_id}{num}")
+	format!("r{func_id}_{num}")
 }
 
 pub fn format_arg_local_storage_entry(num: u16, func_id: &str) -> String {
-	format!("a{func_id}{num}")
+	format!("a{func_id}_{num}")
 }
 
 pub fn format_ret_local_storage_entry(num: u16, func_id: &str) -> String {
-	format!("R{func_id}{num}")
+	format!("R{func_id}_{num}")
 }
 
 pub fn format_local_storage_path(entry: &str) -> String {

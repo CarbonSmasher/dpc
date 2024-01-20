@@ -8,26 +8,26 @@ scoreboard players set %l1 _l 1
 return 7
 
 # === test:main === #
-scoreboard players set %rtest_main0 _r 7
-scoreboard players operation %rtest_main0 _r = %rtest_main0 _r
-scoreboard players add %rtest_main0 _r 1
-scoreboard players remove %rtest_main0 _r 1
-scoreboard players operation %rtest_main0 _r *= %l1 _l
-scoreboard players operation %rtest_main0 _r /= %l1 _l
-scoreboard players operation %rtest_main0 _r %= %l1 _l
-scoreboard players operation %rtest_main0 _r < %l1 _l
-scoreboard players operation %rtest_main0 _r > %l1 _l
-scoreboard players set %rtest_main1 _r 3
-scoreboard players operation %rtest_main0 _r >< %rtest_main1 _r
-scoreboard players reset %rtest_main0
-execute if score %rtest_main0 _r matches ..-1 run scoreboard players operation %rtest_main0 _r *= %l-1 _l
-execute store success score %rtest_main0 _r if score %rtest_main0 _r matches 0
-scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
-execute if score %rtest_main1 _r matches 1 run scoreboard players set %rtest_main0 _r 1
-scoreboard players operation %rtest_main1 _r = %rtest_main0 _r
-scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
-scoreboard players operation %rtest_main0 _r *= %rtest_main1 _r
-scoreboard players get %rtest_main0 _r
+scoreboard players set %rtest_main.0 _r 7
+scoreboard players operation %rtest_main.0 _r = %rtest_main.0 _r
+scoreboard players add %rtest_main.0 _r 1
+scoreboard players remove %rtest_main.0 _r 1
+scoreboard players operation %rtest_main.0 _r *= %l1 _l
+scoreboard players operation %rtest_main.0 _r /= %l1 _l
+scoreboard players operation %rtest_main.0 _r %= %l1 _l
+scoreboard players operation %rtest_main.0 _r < %l1 _l
+scoreboard players operation %rtest_main.0 _r > %l1 _l
+scoreboard players set %rtest_main.1 _r 3
+scoreboard players operation %rtest_main.0 _r >< %rtest_main.1 _r
+scoreboard players reset %rtest_main.0
+execute if score %rtest_main.0 _r matches ..-1 run scoreboard players operation %rtest_main.0 _r *= %l-1 _l
+execute store success score %rtest_main.0 _r if score %rtest_main.0 _r matches 0
+scoreboard players operation %rtest_main.0 _r *= %rtest_main.1 _r
+execute if score %rtest_main.1 _r matches 1 run scoreboard players set %rtest_main.0 _r 1
+scoreboard players operation %rtest_main.1 _r = %rtest_main.0 _r
+scoreboard players operation %rtest_main.0 _r *= %rtest_main.1 _r
+scoreboard players operation %rtest_main.0 _r *= %rtest_main.1 _r
+scoreboard players get %rtest_main.0 _r
 say foo
 me foo
 tm foo
@@ -72,8 +72,8 @@ scoreboard objectives add bar foo.bar
 setworldspawn 0 ~6 8 ~3
 summon minecraft:zombie ~ ~ ~ {CustomName:"Foo"}
 summon minecraft:zombie
-scoreboard players set %atest_foo0 _r 7
-data modify storage dpc:r atest_foo1 set value 82
+scoreboard players set %atest_foo.0 _r 7
+data modify storage dpc:r atest_foo_1 set value 82
 function test:foo
 function #minecraft:tick
 give @s stick{foo:3b} 6
