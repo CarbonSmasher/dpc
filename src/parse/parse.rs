@@ -27,7 +27,7 @@ use crate::common::ty::{
 	NBTCompoundType, NBTCompoundTypeContents, NBTType, NBTTypeContents, ScoreType,
 	ScoreTypeContents,
 };
-use crate::common::val::{MutableValue, Value};
+use crate::common::val::{ArgRetIndex, MutableValue, Value};
 use crate::common::DeclareBinding;
 use crate::ir::{Block, InstrKind, Instruction};
 
@@ -688,7 +688,7 @@ fn parse_instr_impl<'t>(
 		}
 		"retv" => {
 			let idx = consume_extract!(toks, Num, { bail!("Missing return index") });
-			let idx: u16 = (*idx).try_into().context("Return index is not a u16")?;
+			let idx: ArgRetIndex = (*idx).try_into().context("Return index is not a usize")?;
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let val = parse_val(toks).context("Failed to parse return value")?;
 			Ok(InstrKind::ReturnValue {

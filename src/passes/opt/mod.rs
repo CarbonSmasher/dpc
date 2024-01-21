@@ -1,5 +1,5 @@
 use crate::common::function::CallInterface;
-use crate::common::val::{MutableScoreValue, MutableValue};
+use crate::common::val::{ArgRetIndex, MutableScoreValue, MutableValue};
 use crate::common::Identifier;
 use crate::mir::{MIRBlock, MIRInstrKind};
 
@@ -17,7 +17,7 @@ pub mod ty;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum OptimizableValue {
 	Reg(Identifier),
-	Arg(u16),
+	Arg(ArgRetIndex),
 }
 
 impl MutableValue {

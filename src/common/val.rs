@@ -103,10 +103,10 @@ pub enum MutableValue {
 	Data(FullDataLocation),
 	Property(Box<MutableValue>, String),
 	Index(Box<MutableValue>, ArraySize),
-	Arg(u16),
-	CallArg(u16, ResourceLocation, DataType),
-	ReturnValue(u16),
-	CallReturnValue(u16, ResourceLocation, DataType),
+	Arg(ArgRetIndex),
+	CallArg(ArgRetIndex, ResourceLocation, DataType),
+	ReturnValue(ArgRetIndex),
+	CallReturnValue(ArgRetIndex, ResourceLocation, DataType),
 }
 
 impl MutableValue {
@@ -273,10 +273,10 @@ pub enum MutableScoreValue {
 	Score(Score),
 	Reg(Identifier),
 
-	Arg(u16),
-	CallArg(u16, ResourceLocation, DataType),
-	ReturnValue(u16),
-	CallReturnValue(u16, ResourceLocation, DataType),
+	Arg(ArgRetIndex),
+	CallArg(ArgRetIndex, ResourceLocation, DataType),
+	ReturnValue(ArgRetIndex),
+	CallReturnValue(ArgRetIndex, ResourceLocation, DataType),
 }
 
 impl MutableScoreValue {
@@ -362,10 +362,10 @@ pub enum MutableNBTValue {
 	Reg(Identifier),
 	Property(Box<MutableNBTValue>, String),
 	Index(Box<MutableNBTValue>, ArraySize),
-	Arg(u16),
-	CallArg(u16, ResourceLocation, DataType),
-	ReturnValue(u16),
-	CallReturnValue(u16, ResourceLocation, DataType),
+	Arg(ArgRetIndex),
+	CallArg(ArgRetIndex, ResourceLocation, DataType),
+	ReturnValue(ArgRetIndex),
+	CallReturnValue(ArgRetIndex, ResourceLocation, DataType),
 }
 
 impl MutableNBTValue {
@@ -414,3 +414,5 @@ impl Debug for MutableNBTValue {
 		write!(f, "{text}")
 	}
 }
+
+pub type ArgRetIndex = usize;

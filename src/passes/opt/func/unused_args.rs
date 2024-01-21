@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::function::CallInterface;
-use crate::common::val::MutableValue;
+use crate::common::val::{ArgRetIndex, MutableValue};
 use crate::passes::opt::get_instr_calls_mut;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 use crate::project::{OptimizationLevel, ProjectSettings};
@@ -47,13 +47,13 @@ impl MIRPass for UnusedArgsPass {
 			// correct
 			let mut unused_args = Vec::new();
 			let mut new_mapping = HashMap::new();
-			let mut counter: u16 = 0;
+			let mut counter: ArgRetIndex = 0;
 			for i in 0..func.interface.sig.params.len() {
-				if !used_args.contains(&(i as u16)) {
+				if !used_args.contains(&(i as ArgRetIndex)) {
 					unused_args.push(i);
 					counter += 1;
 				} else {
-					new_mapping.insert(i as u16, i as u16 - counter);
+					new_mapping.insert(i as ArgRetIndex, i as ArgRetIndex - counter);
 				}
 			}
 			// Remap

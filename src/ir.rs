@@ -10,6 +10,7 @@ use crate::common::mc::modifier::StoreModLocation;
 use crate::common::mc::pos::DoubleCoordinates;
 use crate::common::mc::EntityTarget;
 use crate::common::ty::{DataType, Double};
+use crate::common::val::ArgRetIndex;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
 use crate::common::{FunctionTrait, IRType};
 
@@ -231,7 +232,7 @@ pub enum InstrKind {
 	},
 	MC(MinecraftInstr),
 	ReturnValue {
-		index: u16,
+		index: ArgRetIndex,
 		value: Value,
 	},
 	Return {
