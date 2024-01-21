@@ -46,17 +46,36 @@ fn run_mir_iter(block: &mut MIRBlock, instrs_to_remove: &mut HashSetEmptyTracker
 	let mut dead_stores = Vec::new();
 
 	for (i, instr) in block.contents.iter().enumerate() {
-		if let MIRInstrKind::Assign {
-			left: MutableValue::Reg(id),
-			..
-		} = &instr.kind
-		{
-			if !instrs_to_remove.contains(&i) {
+		if !instrs_to_remove.contains(&i) {
+			if let MIRInstrKind::Assign {
+				left: MutableValue::Reg(id),
+				..
+			} = &instr.kind
+			{
 				// If the candidate already exists, then that is a dead store that can be removed
 				if let Some(candidate) = elim_candidates.get(id) {
 					dead_stores.push(*candidate);
 				}
 				elim_candidates.insert(id.clone(), i);
+			}
+
+			if let MIRInstrKind::Remove {
+				val: MutableValue::Reg(id),
+				..
+			} = &instr.kind
+			{
+				elim_candidates.insert(id.clone(), i);
+			}
+
+			if let MIRInstrKind::Call { call } = &instr.kind {
+				for val in &call.ret {
+					if let MutableValue::Reg(reg) = val {
+						// If the candidate already exists, then that is a dead store that can be removed
+						if let Some(candidate) = elim_candidates.get(reg) {
+							dead_stores.push(*candidate);
+						}
+					}
+				}
 			}
 		}
 
