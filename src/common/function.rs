@@ -165,6 +165,15 @@ impl Debug for CallInterface {
 			}
 		}
 		write!(f, ")")?;
+		if !self.ret.is_empty() {
+			write!(f, " -> ")?;
+		}
+		for (i, ret) in self.ret.iter().enumerate() {
+			ret.fmt(f)?;
+			if i != self.ret.len() - 1 {
+				write!(f, ",")?;
+			}
+		}
 
 		Ok(())
 	}
