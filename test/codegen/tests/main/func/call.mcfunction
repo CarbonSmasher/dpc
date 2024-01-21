@@ -2,8 +2,7 @@
 scoreboard objectives add _r dummy
 
 # === test:fn === #
-scoreboard players operation %rtest_fn.0 _r = %atest_fn.0 _r
-scoreboard players operation %rtest_fn.0 _r *= %atest_fn.1 _r
+scoreboard players operation %atest_fn.0 _r *= %atest_fn.1 _r
 data modify entity @s DisplayName set from storage dpc:r atest_fn_2
 
 # === test:main === #

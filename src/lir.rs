@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use crate::common::block::Block;
 use crate::common::function::FunctionInterface;
 use crate::common::mc::instr::MinecraftInstr;
-use crate::common::mc::modifier::Modifier;
+use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
 use crate::common::reg::GetUsedRegs;
 use crate::common::ty::Double;
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
@@ -293,6 +293,71 @@ impl LIRInstrKind {
 			| LIRInstrKind::PushData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)))
 			| LIRInstrKind::PushFrontData(_, NBTValue::Mutable(MutableNBTValue::Reg(right))) => Some(right),
 			_ => None,
+		}
+	}
+
+	pub fn replace_mut_score_vals<'a, F: Fn(&'a mut MutableScoreValue)>(&'a mut self, f: &F) {
+		match self {
+			LIRInstrKind::SetScore(left, right)
+			| LIRInstrKind::AddScore(left, right)
+			| LIRInstrKind::SubScore(left, right)
+			| LIRInstrKind::MulScore(left, right)
+			| LIRInstrKind::DivScore(left, right)
+			| LIRInstrKind::ModScore(left, right)
+			| LIRInstrKind::MinScore(left, right)
+			| LIRInstrKind::MaxScore(left, right) => {
+				f(left);
+				if let ScoreValue::Mutable(right) = right {
+					f(right);
+				}
+			}
+			LIRInstrKind::ResetScore(val) => {
+				f(val);
+			}
+			_ => {}
+		}
+	}
+}
+
+impl LIRInstruction {
+	pub fn replace_mut_score_vals<'a, F: Fn(&'a mut MutableScoreValue)>(&'a mut self, f: &F) {
+		self.kind.replace_mut_score_vals(f);
+		for modi in &mut self.modifiers {
+			match modi {
+				Modifier::If { condition, .. } => match condition.as_mut() {
+					IfModCondition::Score(cond) => match cond {
+						IfScoreCondition::Single { left, right } => {
+							if let ScoreValue::Mutable(left) = left {
+								f(left);
+							}
+							if let ScoreValue::Mutable(right) = right {
+								f(right);
+							}
+						}
+						IfScoreCondition::Range { score, left, right } => {
+							if let ScoreValue::Mutable(score) = score {
+								f(score);
+							}
+							if let IfScoreRangeEnd::Fixed {
+								value: ScoreValue::Mutable(left),
+								..
+							} = left
+							{
+								f(left);
+							}
+							if let IfScoreRangeEnd::Fixed {
+								value: ScoreValue::Mutable(right),
+								..
+							} = right
+							{
+								f(right);
+							}
+						}
+					},
+					_ => {}
+				},
+				_ => {}
+			}
 		}
 	}
 }

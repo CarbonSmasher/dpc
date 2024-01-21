@@ -7,6 +7,7 @@ use crate::{ir::IR, lir::LIR, mir::MIR};
 use self::analysis::inline_candidates::InlineCandidatesPass;
 use self::analysis::ir::ValidatePass;
 use self::opt::constant::{fold::ConstFoldPass, prop::ConstPropPass, ConstComboPass};
+use self::opt::dataflow::copy_elide::CopyElisionPass;
 use self::opt::dataflow::copy_prop::CopyPropPass;
 use self::opt::dataflow::get::DataflowGetPass;
 use self::opt::dataflow::result::DataflowResultPass;
@@ -132,6 +133,7 @@ pub fn run_lir_passes(lir: &mut LIR, proj: &ProjectSettings, debug: bool) -> any
 		Box::new(NullPass) as Box<dyn LIRPass>,
 		Box::new(LIRSimplifyPass),
 		Box::new(CopyPropPass),
+		Box::new(CopyElisionPass),
 		Box::new(LIRDSEPass),
 		Box::new(DataflowResultPass),
 		Box::new(MergeModifiersPass),
