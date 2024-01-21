@@ -1,4 +1,4 @@
-use crate::common::{Identifier, val::ArgRetIndex};
+use crate::common::{val::ArgRetIndex, Identifier};
 
 pub mod ir_to_mir;
 pub mod mir_to_lir;

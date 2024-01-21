@@ -1,5 +1,5 @@
 use crate::common::ResourceLocation;
-use crate::mir::MIR;
+use crate::mir::{MIRInstrKind, MIR};
 use crate::passes::opt::get_instr_calls;
 use crate::passes::{MIRPass, MIRPassData, Pass};
 
@@ -20,16 +20,24 @@ impl MIRPass for InlineCandidatesPass {
 			set: FxHashSet::default(),
 		};
 		let mut checked = FxHashSet::default();
-		for func in data.mir.functions.keys() {
+		for (func_id, func) in &data.mir.functions {
 			checked.clear();
-			data.inline_candidates.insert(func.clone());
+			data.inline_candidates.insert(func_id.clone());
 			check_recursion(
-				func,
+				func_id,
 				data.mir,
 				&mut data.inline_candidates,
 				&mut call_stack,
 				&mut checked,
 			)?;
+			if func.block.contents.iter().any(|x| {
+				matches!(
+					x.kind,
+					MIRInstrKind::Return { .. } | MIRInstrKind::ReturnRun { .. }
+				)
+			}) {
+				data.inline_candidates.remove(func_id);
+			}
 		}
 
 		Ok(())
