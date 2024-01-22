@@ -1,5 +1,6 @@
 use crate::common::block::Block;
 use crate::common::reg::GetUsedRegs;
+use crate::common::DeclareBinding;
 use crate::mir::{MIRBlock, MIRInstrKind};
 use crate::passes::util::RunAgain;
 use crate::passes::{MIRPass, MIRPassData, Pass};
@@ -64,6 +65,10 @@ fn run_iter(block: &mut MIRBlock, instrs_to_remove: &mut GrowSet) -> RunAgain {
 		}
 		let remove = match &instr.kind {
 			MIRInstrKind::Declare { left, .. } => !used_regs.contains(left),
+			MIRInstrKind::Assign {
+				right: DeclareBinding::Null,
+				..
+			} => true,
 			MIRInstrKind::NoOp => true,
 			_ => false,
 		};
