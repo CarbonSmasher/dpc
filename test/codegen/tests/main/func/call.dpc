@@ -6,10 +6,22 @@
 	let bar: bool = null;
 	call %bar run "test:fn", 7s, %foo, "foo";
 	use %bar;
+
+	let x: score = val sco @s[] "foo";
+	mul %x, 10s;
+	mod %x, 6s;
+	call run "test:fn2", %x;
 }
 
 "test:fn" score score nstr : bool {
 	let x: score = val &0;
 	mul %x, &1;
 	set ent @s[] "DisplayName", &2;
+}
+
+"test:fn2" score {
+	let x: score = val &0;
+	add %x, 3s;
+	div %x, 3s;
+	use %x;
 }
