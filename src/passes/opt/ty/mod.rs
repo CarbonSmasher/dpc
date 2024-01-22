@@ -87,6 +87,42 @@ fn run_iter(block: &mut MIRBlock, instrs_to_remove: &mut GrowSet) -> RunAgain {
 		if remove {
 			instrs_to_remove.add(i);
 			run_again.yes();
+			continue;
+		}
+
+		let repl = match &instr.kind {
+			// Mul of two bools -> and
+			MIRInstrKind::Mul {
+				left: MutableValue::Reg(l),
+				right: Value::Mutable(MutableValue::Reg(r)),
+			} => {
+				if let Some(Register {
+					ty: DataType::Score(ScoreType::Bool),
+					..
+				}) = regs.get(l)
+				{
+					if let Some(Register {
+						ty: DataType::Score(ScoreType::Bool),
+						..
+					}) = regs.get(r)
+					{
+						Some(MIRInstrKind::And {
+							left: MutableValue::Reg(l.clone()),
+							right: Value::Mutable(MutableValue::Reg(r.clone())),
+						})
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			_ => None,
+		};
+
+		if let Some(repl) = repl {
+			instr.kind = repl;
+			run_again.yes();
 		}
 
 		if let Some(condition) = instr.kind.get_condition_mut() {
