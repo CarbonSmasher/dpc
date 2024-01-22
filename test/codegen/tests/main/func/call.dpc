@@ -25,3 +25,13 @@
 	div %x, 3s;
 	use %x;
 }
+
+"test:multiple_ret" : score {
+	let x: score = val sco @s[] "foo";
+	mul %x, 10s;
+	retv 0, %x;
+	add %x, 2s;
+	if pred "foo:bar":
+		retv 0, %x;
+	use %x;
+}

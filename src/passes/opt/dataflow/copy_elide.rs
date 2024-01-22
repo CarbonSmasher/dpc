@@ -29,6 +29,7 @@ impl LIRPass for CopyElisionPass {
 		let mut used_args = FxHashSet::default();
 		let mut call_ret_mapping = FxHashMap::default();
 		let mut call_arg_mapping = FxHashMap::default();
+		let mut ret_mapping = FxHashMap::default();
 
 		for func in data.lir.functions.values_mut() {
 			let block = &mut func.block;
@@ -40,6 +41,7 @@ impl LIRPass for CopyElisionPass {
 				used_args.clear();
 				call_ret_mapping.clear();
 				call_arg_mapping.clear();
+				ret_mapping.clear();
 
 				let run_again = run_iter(
 					block,
@@ -47,6 +49,7 @@ impl LIRPass for CopyElisionPass {
 					&mut used_args,
 					&mut call_ret_mapping,
 					&mut call_arg_mapping,
+					&mut ret_mapping,
 					&mut instrs_to_remove,
 				);
 				if !run_again {
@@ -67,6 +70,7 @@ fn run_iter(
 	used_args: &mut FxHashSet<usize>,
 	call_ret_mapping: &mut FxHashMap<Identifier, MutableScoreValue>,
 	call_arg_mapping: &mut FxHashMap<Identifier, MutableScoreValue>,
+	ret_mapping: &mut FxHashMap<Identifier, MutableScoreValue>,
 	instrs_to_remove: &mut GrowSet,
 ) -> bool {
 	let mut run_again = false;
@@ -78,19 +82,27 @@ fn run_iter(
 				MutableScoreValue::Reg(l),
 				ScoreValue::Mutable(MutableScoreValue::Arg(r)),
 			) => {
-				if !used_args.contains(r) {
-					arg_mapping.insert(l.clone(), MutableScoreValue::Arg(*r));
-					// We don't want to create weird assign arg to self instructions, continue
-					continue;
+				if instr.modifiers.is_empty() {
+					if !used_args.contains(r) {
+						arg_mapping.insert(l.clone(), MutableScoreValue::Arg(*r));
+						// We don't want to create weird assign arg to self instructions, continue
+						continue;
+					}
+				} else {
+					arg_mapping.remove(l);
 				}
 			}
 			LIRInstrKind::SetScore(
 				MutableScoreValue::Reg(l),
 				ScoreValue::Mutable(r @ MutableScoreValue::CallReturnValue(..)),
 			) => {
-				call_ret_mapping.insert(l.clone(), r.clone());
-				// We don't want to create weird assign ret to self instructions, continue
-				continue;
+				if instr.modifiers.is_empty() {
+					call_ret_mapping.insert(l.clone(), r.clone());
+					// We don't want to create weird assign ret to self instructions, continue
+					continue;
+				} else {
+					call_ret_mapping.remove(l);
+				}
 			}
 			// Remove any other assignments to regs since now the reg
 			// isn't the arg or ret anymore
@@ -138,12 +150,31 @@ fn run_iter(
 				l @ MutableScoreValue::CallArg(..),
 				ScoreValue::Mutable(MutableScoreValue::Reg(r)),
 			) => {
-				call_arg_mapping.insert(r.clone(), l.clone());
-				// We have to remove this assignment since it is now assigning
-				// to an invalid register
-				instrs_to_remove.add(i);
-				// We don't want to create weird assign arg to self instructions, continue
-				continue;
+				if instr.modifiers.is_empty() {
+					call_arg_mapping.insert(r.clone(), l.clone());
+					// We have to remove this assignment since it is now assigning
+					// to an invalid register
+					instrs_to_remove.add(i);
+					// We don't want to create weird assign arg to self instructions, continue
+					continue;
+				} else {
+					call_arg_mapping.remove(r);
+				}
+			}
+			LIRInstrKind::SetScore(
+				l @ MutableScoreValue::ReturnValue(..),
+				ScoreValue::Mutable(MutableScoreValue::Reg(r)),
+			) => {
+				if instr.modifiers.is_empty() {
+					ret_mapping.insert(r.clone(), l.clone());
+					// We have to remove this assignment since it is now assigning
+					// to an invalid register
+					instrs_to_remove.add(i);
+					// We don't want to create weird assign arg to self instructions, continue
+					continue;
+				} else {
+					ret_mapping.remove(r);
+				}
 			}
 			_ => {}
 		}
@@ -155,6 +186,11 @@ fn run_iter(
 			if let MutableScoreValue::Reg(reg) = val {
 				if let Some(call_arg) = call_arg_mapping.get(reg) {
 					*val = call_arg.clone();
+					*run_again_2.borrow_mut() = true;
+					return;
+				}
+				if let Some(ret) = ret_mapping.get(reg) {
+					*val = ret.clone();
 					*run_again_2.borrow_mut() = true;
 					return;
 				}

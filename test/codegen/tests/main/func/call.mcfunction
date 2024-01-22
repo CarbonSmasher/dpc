@@ -24,3 +24,9 @@ scoreboard players operation %atest_fn2.0 _r = @s foo
 scoreboard players operation %atest_fn2.0 _r *= %l10 _l
 scoreboard players operation %atest_fn2.0 _r %= %l6 _l
 function test:fn2
+
+# === test:multiple_ret === #
+scoreboard players operation %Rtest_multiple_ret.0 _r = @s foo
+scoreboard players operation %Rtest_multiple_ret.0 _r *= %l10 _l
+scoreboard players add %rtest_multiple_ret.0 _r 2
+execute if predicate foo:bar run scoreboard players operation %Rtest_multiple_ret.0 _r = %rtest_multiple_ret.0 _r
