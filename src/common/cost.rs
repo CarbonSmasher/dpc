@@ -33,6 +33,7 @@ impl GetCost for Condition {
 			Self::And(l, r) | Self::Or(l, r) => l.get_cost() + r.get_cost(),
 			Self::Not(cond) => cond.get_cost(),
 			Self::Entity(..) => 40.0,
+			Self::Function(..) => 20.0,
 			Self::Biome(..) | Self::Loaded(..) | Self::Dimension(..) => 18.0,
 			Self::Predicate(..) => 12.0,
 			Self::GreaterThan(l, r)

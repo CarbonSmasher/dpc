@@ -25,6 +25,7 @@ pub enum Condition {
 	Biome(IntCoordinates, ResourceLocationTag),
 	Loaded(IntCoordinates),
 	Dimension(ResourceLocation),
+	Function(ResourceLocationTag),
 }
 
 impl Condition {
@@ -50,7 +51,8 @@ impl Condition {
 			| Self::Predicate(..)
 			| Self::Biome(..)
 			| Self::Loaded(..)
-			| Self::Dimension(..) => Box::new(iter::empty()),
+			| Self::Dimension(..)
+			| Self::Function(..) => Box::new(iter::empty()),
 		}
 	}
 
@@ -72,7 +74,15 @@ impl Condition {
 			| Self::Predicate(..)
 			| Self::Biome(..)
 			| Self::Loaded(..)
-			| Self::Dimension(..) => Box::new(iter::empty()),
+			| Self::Dimension(..)
+			| Self::Function(..) => Box::new(iter::empty()),
+		}
+	}
+
+	pub fn has_side_effects(&self) -> bool {
+		match self {
+			Self::Function(..) => true,
+			_ => false,
 		}
 	}
 }
@@ -102,7 +112,8 @@ impl GetUsedRegs for Condition {
 			| Self::Predicate(..)
 			| Self::Biome(..)
 			| Self::Loaded(..)
-			| Self::Dimension(..) => {}
+			| Self::Dimension(..)
+			| Self::Function(..) => {}
 		}
 	}
 }
@@ -126,6 +137,7 @@ impl Debug for Condition {
 			Self::Biome(loc, biome) => write!(f, "bio {loc:?} {biome}"),
 			Self::Loaded(loc) => write!(f, "load {loc:?}"),
 			Self::Dimension(dim) => write!(f, "dim {dim}"),
+			Self::Function(func) => write!(f, "fn {func}"),
 		}
 	}
 }

@@ -165,6 +165,9 @@ pub(super) fn lower_condition(
 		Condition::Dimension(dim) => {
 			out.push((IfModCondition::Dimension(dim), false));
 		}
+		Condition::Function(func) => {
+			out.push((IfModCondition::Function(func), false));
+		}
 	};
 
 	Ok((prelude, out))

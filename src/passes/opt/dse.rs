@@ -49,14 +49,17 @@ fn run_mir_iter(block: &mut MIRBlock, instrs_to_remove: &mut HashSetEmptyTracker
 		if !instrs_to_remove.contains(&i) {
 			if let MIRInstrKind::Assign {
 				left: MutableValue::Reg(id),
-				..
+				right,
 			} = &instr.kind
 			{
-				// If the candidate already exists, then that is a dead store that can be removed
-				if let Some(candidate) = elim_candidates.get(id) {
-					dead_stores.push(*candidate);
+				// We can't remove stores that have side effects
+				if !right.has_side_effects() {
+					// If the candidate already exists, then that is a dead store that can be removed
+					if let Some(candidate) = elim_candidates.get(id) {
+						dead_stores.push(*candidate);
+					}
+					elim_candidates.insert(id.clone(), i);
 				}
-				elim_candidates.insert(id.clone(), i);
 			}
 
 			if let MIRInstrKind::Remove {

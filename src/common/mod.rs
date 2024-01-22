@@ -43,6 +43,13 @@ impl DeclareBinding {
 
 		Ok(out)
 	}
+
+	pub fn has_side_effects(&self) -> bool {
+		match self {
+			Self::Condition(cond) => cond.has_side_effects(),
+			_ => false,
+		}
+	}
 }
 
 impl GetUsedRegs for DeclareBinding {
