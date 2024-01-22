@@ -9,7 +9,9 @@ use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
 use crate::common::reg::GetUsedRegs;
 use crate::common::ty::Double;
-use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue};
+use crate::common::val::{
+	ArgRetIndex, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue,
+};
 use crate::common::{FunctionTrait, IRType, Identifier, RegisterList, ResourceLocation};
 
 #[derive(Debug, Clone)]
@@ -315,6 +317,27 @@ impl LIRInstrKind {
 				f(val);
 			}
 			_ => {}
+		}
+	}
+
+	pub fn get_read_score_arg(&self) -> Option<&ArgRetIndex> {
+		match self {
+			LIRInstrKind::SetScore(_, right)
+			| LIRInstrKind::AddScore(_, right)
+			| LIRInstrKind::SubScore(_, right)
+			| LIRInstrKind::MulScore(_, right)
+			| LIRInstrKind::DivScore(_, right)
+			| LIRInstrKind::ModScore(_, right)
+			| LIRInstrKind::MinScore(_, right)
+			| LIRInstrKind::MaxScore(_, right) => {
+				if let ScoreValue::Mutable(MutableScoreValue::Arg(arg)) = right {
+					Some(arg)
+				} else {
+					None
+				}
+			}
+			LIRInstrKind::ResetScore(MutableScoreValue::Arg(arg)) => Some(arg),
+			_ => None,
 		}
 	}
 }

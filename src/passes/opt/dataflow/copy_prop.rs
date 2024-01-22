@@ -6,7 +6,6 @@ use crate::common::{val::MutableScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::project::{OptimizationLevel, ProjectSettings};
-use crate::util::{remove_indices, HashSetEmptyTracker};
 
 pub struct CopyPropPass;
 
@@ -23,40 +22,27 @@ impl Pass for CopyPropPass {
 impl LIRPass for CopyPropPass {
 	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
 		let mut reg_mapping = FxHashMap::default();
-		let mut instrs_to_remove = HashSetEmptyTracker::new();
 
 		for func in data.lir.functions.values_mut() {
-			instrs_to_remove.clear();
-
 			let block = &mut func.block;
 
 			loop {
 				reg_mapping.clear();
-				let run_again = run_iter(block, &mut instrs_to_remove, &mut reg_mapping);
+				let run_again = run_iter(block, &mut reg_mapping);
 				if !run_again {
 					break;
 				}
 			}
-
-			remove_indices(&mut block.contents, &instrs_to_remove);
 		}
 
 		Ok(())
 	}
 }
 
-fn run_iter(
-	block: &mut LIRBlock,
-	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
-	reg_mapping: &mut FxHashMap<Identifier, Identifier>,
-) -> bool {
+fn run_iter(block: &mut LIRBlock, reg_mapping: &mut FxHashMap<Identifier, Identifier>) -> bool {
 	let mut run_again = false;
 
-	for (i, instr) in block.contents.iter_mut().enumerate() {
-		if instrs_to_remove.contains(&i) {
-			continue;
-		}
-
+	for instr in &mut block.contents {
 		let mut dont_remove = Vec::new();
 
 		if let LIRInstrKind::SetScore(

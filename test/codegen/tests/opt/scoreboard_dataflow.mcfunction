@@ -1,7 +1,18 @@
 # === dpc:init === #
 scoreboard objectives add _r dummy
 scoreboard objectives add _l dummy
+scoreboard players set %l5 _l 5
 scoreboard players set %l8 _l 8
+scoreboard players set %l10 _l 10
+
+# === test:copy_elision === #
+function test:copy_elision_fn
+
+# === test:copy_elision_fn === #
+scoreboard players operation %rtest_copy_elision_fn.0 _r = %atest_copy_elision_fn.0 _r
+scoreboard players operation %atest_copy_elision_fn.0 _r *= %l5 _l
+scoreboard players operation %rtest_copy_elision_fn.0 _r = %atest_copy_elision_fn.0 _r
+scoreboard players operation %atest_copy_elision_fn.0 _r *= %l10 _l
 
 # === test:copy_prop === #
 scoreboard players operation %rtest_copy_prop.0 _r = @s foo

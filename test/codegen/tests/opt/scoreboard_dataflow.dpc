@@ -21,3 +21,16 @@
 	add %z, %y;
 	use %z;
 }
+
+"test:copy_elision" {
+	call run "test:copy_elision_fn";
+}
+
+"test:copy_elision_fn" score {
+	let x: score = val &0;
+	mul %x, 5s;
+	use %x;
+	let y: score = val &0;
+	mul %y, 10s;
+	use %y;
+}

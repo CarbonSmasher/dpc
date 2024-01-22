@@ -67,34 +67,12 @@ fn run_iter(
 			continue;
 		}
 		match &instr.kind {
-			LIRInstrKind::SetScore(left, right) => {
-				if let MutableScoreValue::Reg(left) = left {
-					if let ScoreValue::Mutable(right) = right {
-						if let Some(right) = right.to_optimizable_value() {
-							if let Some(point) = flow_points.get_mut(&right) {
-								point.store_regs.push(left.clone());
-								instrs_to_remove.insert(i);
-							} else {
-								finished_flow_points.extend(
-									flow_points.remove(&OptimizableValue::Reg(left.clone())),
-								);
-								flow_points.insert(
-									OptimizableValue::Reg(left.clone()),
-									SBDataflowPoint {
-										pos: i,
-										store_regs: Vec::new(),
-									},
-								);
-								finished_flow_points.extend(flow_points.remove(&right));
-								flow_points.insert(
-									right,
-									SBDataflowPoint {
-										pos: i,
-										store_regs: Vec::new(),
-									},
-								);
-							}
-						}
+			LIRInstrKind::SetScore(MutableScoreValue::Reg(left), right) => {
+				if let ScoreValue::Mutable(MutableScoreValue::Reg(right)) = right {
+					if let Some(point) = flow_points.get_mut(&OptimizableValue::Reg(right.clone()))
+					{
+						point.store_regs.push(left.clone());
+						instrs_to_remove.insert(i);
 					} else {
 						finished_flow_points
 							.extend(flow_points.remove(&OptimizableValue::Reg(left.clone())));
@@ -105,7 +83,26 @@ fn run_iter(
 								store_regs: Vec::new(),
 							},
 						);
+						finished_flow_points
+							.extend(flow_points.remove(&OptimizableValue::Reg(right.clone())));
+						flow_points.insert(
+							OptimizableValue::Reg(right.clone()),
+							SBDataflowPoint {
+								pos: i,
+								store_regs: Vec::new(),
+							},
+						);
 					}
+				} else {
+					finished_flow_points
+						.extend(flow_points.remove(&OptimizableValue::Reg(left.clone())));
+					flow_points.insert(
+						OptimizableValue::Reg(left.clone()),
+						SBDataflowPoint {
+							pos: i,
+							store_regs: Vec::new(),
+						},
+					);
 				}
 			}
 			LIRInstrKind::AddScore(left, right)
@@ -170,8 +167,6 @@ fn run_iter(
 					.into_iter()
 					.map(|x| Modifier::StoreResult(StoreModLocation::Reg(x, 1.0))),
 			);
-		} else {
-			continue;
 		}
 	}
 
