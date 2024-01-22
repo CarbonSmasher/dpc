@@ -31,4 +31,8 @@
 		say "Hello3";
 		say "Hello4";
 	};
+
+	# Should be lowered to simple adds, but not the eq
+	if or bool sco @s[] "foo", or bool sco @s[] "bar", eq sco @s[] "foo", 1s:
+		say "Hello5";
 }

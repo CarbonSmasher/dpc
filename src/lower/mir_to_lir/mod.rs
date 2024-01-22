@@ -15,7 +15,7 @@ use crate::mir::{MIRBlock, MIRInstrKind, MIR};
 
 use cond::lower_let_cond;
 
-use self::cond::{lower_bool_cond, lower_condition};
+use self::cond::{lower_bool_cond, lower_condition, LoweringCondition};
 
 mod cond;
 
@@ -188,10 +188,7 @@ fn lower_kind(
 				ScoreValue::Constant(ScoreTypeContents::Bool(true)),
 			));
 			let cond = lower_bool_cond(right, true, lbcx)?;
-			instr.modifiers.push(Modifier::If {
-				condition: Box::new(cond),
-				negate: false,
-			});
+			instr.modifiers.push(cond.to_if_mod());
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
@@ -239,12 +236,7 @@ fn lower_kind(
 
 			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower if body")?;
 
-			let prepend = conditions
-				.into_iter()
-				.map(|(condition, negate)| Modifier::If {
-					condition: Box::new(condition),
-					negate,
-				});
+			let prepend = conditions.into_iter().map(LoweringCondition::to_if_mod);
 			instr.modifiers = prepend.chain(instr.modifiers.into_iter()).collect();
 			lir_instrs.push(instr);
 		}
@@ -267,25 +259,16 @@ fn lower_kind(
 
 			let mut first =
 				lower_subblock(*first, lbcx).context("Failed to lower if else first body")?;
-			first.modifiers.push(Modifier::If {
-				condition: Box::new(lower_bool_cond(
-					Value::Mutable(condition_reg_val.clone()),
-					true,
-					lbcx,
-				)?),
-				negate: false,
-			});
+			first.modifiers.push(
+				lower_bool_cond(Value::Mutable(condition_reg_val.clone()), true, lbcx)?.to_if_mod(),
+			);
 			lir_instrs.push(first);
 			let mut second =
 				lower_subblock(*second, lbcx).context("Failed to lower if else second body")?;
-			second.modifiers.push(Modifier::If {
-				condition: Box::new(lower_bool_cond(
-					Value::Mutable(condition_reg_val.clone()),
-					false,
-					lbcx,
-				)?),
-				negate: false,
-			});
+			second.modifiers.push(
+				lower_bool_cond(Value::Mutable(condition_reg_val.clone()), false, lbcx)?
+					.to_if_mod(),
+			);
 			lir_instrs.push(second);
 		}
 		MIRInstrKind::As { target, body } => {
