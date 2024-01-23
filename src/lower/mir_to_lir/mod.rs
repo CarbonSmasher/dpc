@@ -176,12 +176,7 @@ fn lower_kind(
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::And { left, right } => {
-			lower!(
-				lir_instrs,
-				MulScore,
-				left.to_mutable_score_value()?,
-				right.to_score_value()?
-			);
+			lir_instrs.push(LIRInstruction::new(lower_mul(left, right, lbcx)?));
 		}
 		MIRInstrKind::Or { left, right } => {
 			let mut instr = LIRInstruction::new(LIRInstrKind::SetScore(
@@ -191,6 +186,15 @@ fn lower_kind(
 			let cond = lower_bool_cond(right, true, lbcx)?;
 			instr.modifiers.push(cond.to_if_mod());
 			lir_instrs.push(instr);
+		}
+		MIRInstrKind::Xor { left, right } => {
+			lir_instrs.push(LIRInstruction::new(lower_sub(left.clone(), right, lbcx)?));
+			// We mul by self to do a quicker abs
+			lir_instrs.push(LIRInstruction::new(lower_mul(
+				left.clone(),
+				Value::Mutable(left),
+				lbcx,
+			)?));
 		}
 		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
 		MIRInstrKind::GetConst { value } => lower!(lir_instrs, GetConst, value),

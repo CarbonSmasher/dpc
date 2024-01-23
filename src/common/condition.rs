@@ -12,6 +12,7 @@ pub enum Condition {
 	Not(Box<Condition>),
 	And(Box<Condition>, Box<Condition>),
 	Or(Box<Condition>, Box<Condition>),
+	Xor(Box<Condition>, Box<Condition>),
 	Equal(Value, Value),
 	Exists(Value),
 	GreaterThan(Value, Value),
@@ -44,7 +45,7 @@ impl Condition {
 				Box::new(val.get_used_regs_mut().into_iter())
 			}
 			Self::Not(condition) => condition.iter_used_regs_mut(),
-			Self::And(l, r) | Self::Or(l, r) => {
+			Self::And(l, r) | Self::Or(l, r) | Self::Xor(l, r) => {
 				Box::new(l.iter_used_regs_mut().chain(r.iter_used_regs_mut()))
 			}
 			Self::Entity(..)
@@ -67,7 +68,7 @@ impl Condition {
 				Box::new(val.iter_mut_val().into_iter())
 			}
 			Self::Not(condition) => condition.iter_mut_vals(),
-			Self::And(l, r) | Self::Or(l, r) => {
+			Self::And(l, r) | Self::Xor(l, r) | Self::Or(l, r) => {
 				Box::new(l.iter_mut_vals().chain(r.iter_mut_vals()))
 			}
 			Self::Entity(..)
@@ -104,7 +105,7 @@ impl GetUsedRegs for Condition {
 			Self::Not(condition) => {
 				condition.append_used_regs(regs);
 			}
-			Self::And(l, r) | Self::Or(l, r) => {
+			Self::And(l, r) | Self::Or(l, r) | Self::Xor(l, r) => {
 				l.append_used_regs(regs);
 				r.append_used_regs(regs);
 			}
@@ -126,6 +127,7 @@ impl Debug for Condition {
 			Self::Not(condition) => write!(f, "not {condition:?}"),
 			Self::And(l, r) => write!(f, "and {l:?} {r:?}"),
 			Self::Or(l, r) => write!(f, "or {l:?} {r:?}"),
+			Self::Xor(l, r) => write!(f, "xor {l:?} {r:?}"),
 			Self::GreaterThan(l, r) => write!(f, "{l:?} > {r:?}"),
 			Self::GreaterThanOrEqual(l, r) => write!(f, "{l:?} >= {r:?}"),
 			Self::LessThan(l, r) => write!(f, "{l:?} < {r:?}"),

@@ -210,6 +210,10 @@ pub enum InstrKind {
 		left: MutableValue,
 		right: Value,
 	},
+	Xor {
+		left: MutableValue,
+		right: Value,
+	},
 	Use {
 		val: MutableValue,
 	},
@@ -274,6 +278,7 @@ impl Debug for InstrKind {
 			Self::Not { value } => format!("not {value:?}"),
 			Self::And { left, right } => format!("and {left:?}, {right:?}"),
 			Self::Or { left, right } => format!("or {left:?}, {right:?}"),
+			Self::Xor { left, right } => format!("xor {left:?}, {right:?}"),
 			Self::Use { val } => format!("use {val:?}"),
 			Self::Call { call } => format!("call {call:?}"),
 			Self::CallExtern { func } => format!("callx {func}"),

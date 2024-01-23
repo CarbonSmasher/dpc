@@ -30,7 +30,7 @@ pub trait GetRelativeCost: GetCost {
 impl GetCost for Condition {
 	fn get_cost(&self) -> f32 {
 		match self {
-			Self::And(l, r) | Self::Or(l, r) => l.get_cost() + r.get_cost(),
+			Self::And(l, r) | Self::Or(l, r) | Self::Xor(l, r) => l.get_cost() + r.get_cost(),
 			Self::Not(cond) => cond.get_cost(),
 			Self::Entity(..) => 40.0,
 			Self::Function(..) => 20.0,

@@ -24,6 +24,8 @@ execute if score %rtest_main.0 _r matches ..-1 run scoreboard players operation 
 execute store success score %rtest_main.0 _r if score %rtest_main.0 _r matches 0
 scoreboard players operation %rtest_main.0 _r *= %rtest_main.1 _r
 execute if score %rtest_main.1 _r matches 1 run scoreboard players set %rtest_main.0 _r 1
+scoreboard players operation %rtest_main.0 _r -= %rtest_main.1 _r
+scoreboard players operation %rtest_main.0 _r *= %rtest_main.0 _r
 scoreboard players operation %rtest_main.1 _r = %rtest_main.0 _r
 scoreboard players operation %rtest_main.0 _r *= %rtest_main.1 _r
 scoreboard players operation %rtest_main.0 _r *= %rtest_main.1 _r

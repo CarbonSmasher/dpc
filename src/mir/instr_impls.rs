@@ -37,7 +37,8 @@ impl MIRInstrKind {
 			| Self::PushFront { left, right }
 			| Self::Insert { left, right, .. }
 			| Self::And { left, right }
-			| Self::Or { left, right } => {
+			| Self::Or { left, right }
+			| Self::Xor { left, right } => {
 				for reg in left
 					.get_used_regs_mut()
 					.into_iter()
@@ -133,7 +134,8 @@ impl MIRInstrKind {
 			| Self::PushFront { left, right }
 			| Self::Insert { left, right, .. }
 			| Self::And { left, right }
-			| Self::Or { left, right } => {
+			| Self::Or { left, right }
+			| Self::Xor { left, right } => {
 				for reg in iter::once(left).chain(right.iter_mut_val()) {
 					f(reg);
 				}
@@ -272,7 +274,8 @@ impl GetUsedRegs for MIRInstrKind {
 			| Self::PushFront { left, right }
 			| Self::Insert { left, right, .. }
 			| Self::And { left, right }
-			| Self::Or { left, right } => {
+			| Self::Or { left, right }
+			| Self::Xor { left, right } => {
 				left.append_used_regs(regs);
 				right.append_used_regs(regs);
 			}

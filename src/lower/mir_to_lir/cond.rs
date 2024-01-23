@@ -93,6 +93,9 @@ pub(super) fn lower_condition(
 			let cond = lower_or(vec![lc, rc], &mut prelude, lbcx)?;
 			out.push(cond);
 		}
+		Condition::Xor(..) => {
+			bail!("Xor lowering is not implemented yet");
+		}
 		Condition::GreaterThan(l, r) => {
 			out.push(LoweringCondition::new(IfModCondition::Score(
 				IfScoreCondition::Range {

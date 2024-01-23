@@ -204,6 +204,10 @@ fn parse_instr_impl<'t>(
 			let (l, r) = parse_simple_op(toks)?;
 			Ok(InstrKind::Or { left: l, right: r })
 		}
+		"xor" => {
+			let (l, r) = parse_simple_op(toks)?;
+			Ok(InstrKind::Xor { left: l, right: r })
+		}
 		"swap" => {
 			let (l, r) = parse_swap(toks)?;
 			Ok(InstrKind::Swap { left: l, right: r })
@@ -1697,7 +1701,7 @@ fn parse_modifier<'t>(
 		}
 		other => bail!("Unknown modifier {other}"),
 	};
-	
+
 	Ok(modif)
 }
 
@@ -1731,6 +1735,12 @@ fn parse_condition<'t>(
 			consume_expect!(toks, Comma, { bail!("Missing comma") });
 			let r = parse_condition(toks).context("Failed to parse or rhs")?;
 			Ok(Condition::Or(Box::new(l), Box::new(r)))
+		}
+		"xor" => {
+			let l = parse_condition(toks).context("Failed to parse xor lhs")?;
+			consume_expect!(toks, Comma, { bail!("Missing comma") });
+			let r = parse_condition(toks).context("Failed to parse xor rhs")?;
+			Ok(Condition::Xor(Box::new(l), Box::new(r)))
 		}
 		"eq" => {
 			let (l, r) = parse_simple_condition(toks).context("Failed to parse condition")?;

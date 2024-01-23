@@ -58,7 +58,7 @@ fn run_iter(block: &mut MIRBlock) -> RunAgain {
 
 fn reorder(condition: &mut Condition) {
 	match condition {
-		Condition::And(l, r) | Condition::Or(l, r) => {
+		Condition::And(l, r) | Condition::Or(l, r) | Condition::Xor(l, r) => {
 			reorder(l);
 			reorder(r);
 			if l.get_cost() > r.get_cost() {

@@ -141,6 +141,20 @@ fn const_eval_result(condition: &mut Condition) -> Option<bool> {
 				None
 			}
 		}
+		Condition::Or(l, r) => {
+			if let (Some(l), Some(r)) = (const_eval_result(l), const_eval_result(r)) {
+				Some(l || r)
+			} else {
+				None
+			}
+		}
+		Condition::Xor(l, r) => {
+			if let (Some(l), Some(r)) = (const_eval_result(l), const_eval_result(r)) {
+				Some(l ^ r)
+			} else {
+				None
+			}
+		}
 		_ => {
 			if let Some(result) = const_eval_condition(condition) {
 				*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
@@ -185,6 +199,20 @@ fn const_eval_condition(condition: &Condition) -> Option<bool> {
 		Condition::And(l, r) => {
 			if let (Some(l), Some(r)) = (const_eval_condition(l), const_eval_condition(r)) {
 				Some(l && r)
+			} else {
+				None
+			}
+		}
+		Condition::Or(l, r) => {
+			if let (Some(l), Some(r)) = (const_eval_condition(l), const_eval_condition(r)) {
+				Some(l || r)
+			} else {
+				None
+			}
+		}
+		Condition::Xor(l, r) => {
+			if let (Some(l), Some(r)) = (const_eval_condition(l), const_eval_condition(r)) {
+				Some(l ^ r)
 			} else {
 				None
 			}

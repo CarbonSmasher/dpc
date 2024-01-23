@@ -568,6 +568,17 @@ fn simplify_condition(condition: &mut Condition, run_again: &mut RunAgain) {
 				}
 			}
 		},
+		Condition::Xor(l, r) => {
+			if l == r {
+				*condition = Condition::Bool(Value::Constant(DataTypeContents::Score(
+					ScoreTypeContents::Bool(true),
+				)));
+				run_again.yes();
+			} else {
+				simplify_condition(l, run_again);
+				simplify_condition(r, run_again);
+			}
+		}
 		_ => {}
 	}
 }
