@@ -5,6 +5,7 @@ use crate::common::mc::modifier::{IfModCondition, Modifier};
 use crate::common::{reg::GetUsedRegs, ty::DataType};
 use crate::common::{Identifier, ResourceLocation};
 use crate::lir::{LIRBlock, LIRInstrKind, LIRInstruction, LIR};
+use crate::project::{OptimizationLevel, ProjectSettings};
 
 use super::strip::FunctionMapping;
 use super::text::{format_local_storage_entry, format_reg_fake_player};
@@ -156,6 +157,7 @@ impl Default for RegAllocResult {
 pub fn alloc_registers(
 	lir: &LIR,
 	func_mapping: &Option<FunctionMapping>,
+	project: &ProjectSettings,
 ) -> anyhow::Result<GlobalRegAllocResult> {
 	let mut racx = RegAllocCx::new();
 	let mut out = GlobalRegAllocResult {
@@ -180,7 +182,7 @@ pub fn alloc_registers(
 	}
 
 	for (_, chunk) in chunks {
-		alloc_chunk_registers(chunk, lir, &mut racx, &mut out, func_mapping)?;
+		alloc_chunk_registers(chunk, lir, &mut racx, &mut out, func_mapping, project)?;
 		racx.finish_using_all();
 	}
 
@@ -200,6 +202,7 @@ fn alloc_chunk_registers(
 	racx: &mut RegAllocCx,
 	global: &mut GlobalRegAllocResult,
 	func_mapping: &Option<FunctionMapping>,
+	project: &ProjectSettings,
 ) -> anyhow::Result<()> {
 	let mut parent_id = &chunk.parent;
 	if let Some(mapping) = func_mapping {
@@ -230,6 +233,7 @@ fn alloc_chunk_registers(
 		&child_used_regs,
 		&mut out_regs,
 		&mut out_locals,
+		project,
 		racx,
 	)?;
 
@@ -241,6 +245,7 @@ fn alloc_chunk_registers(
 			&child_used_regs,
 			&mut out_regs,
 			&mut out_locals,
+			project,
 			racx,
 		)?;
 	}
@@ -267,9 +272,10 @@ fn alloc_block_registers(
 	child_uses: &FxHashMap<ResourceLocation, Vec<&Identifier>>,
 	out_regs: &mut FxHashMap<Identifier, u32>,
 	out_locals: &mut FxHashMap<Identifier, u32>,
+	project: &ProjectSettings,
 	racx: &mut RegAllocCx,
 ) -> anyhow::Result<()> {
-	let last_uses = if is_root {
+	let last_uses = if is_root && project.op_level >= OptimizationLevel::More {
 		analyze_last_register_uses(block, child_uses)
 	} else {
 		FxHashMap::default()

@@ -21,7 +21,7 @@ pub fn link(lir: LIR, project: &ProjectSettings) -> anyhow::Result<Datapack> {
 	// Strip the LIR
 	let mapping = self::strip::strip(&lir, project);
 
-	let ra = alloc_registers(&lir, &mapping)?;
+	let ra = alloc_registers(&lir, &mapping, project)?;
 	let mut ccx = CodegenCx::new(project, mapping, ra);
 	for (func_id, func) in lir.functions {
 		let mut func_id = func_id.clone();
