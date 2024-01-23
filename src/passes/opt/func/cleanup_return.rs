@@ -36,20 +36,21 @@ impl MIRPass for CleanupReturnPass {
 				block.contents.truncate(rem_pos + 1);
 			}
 
-			// Remove a ret 1 at the end of the block
-			let mut rem_last = false;
-			if let Some(last) = block.contents.last() {
-				if let MIRInstrKind::Return {
-					value: Value::Constant(val),
-				} = &last.kind
-				{
-					if let Some(1) = val.try_get_i32() {
+			// Remove a ret const at the end of the block,
+			// if the function does not use it's result
+			if func.interface.annotations.unused_result {
+				let mut rem_last = false;
+				if let Some(last) = block.contents.last() {
+					if let MIRInstrKind::Return {
+						value: Value::Constant(..),
+					} = &last.kind
+					{
 						rem_last = true;
 					}
 				}
-			}
-			if rem_last {
-				block.contents.pop();
+				if rem_last {
+					block.contents.pop();
+				}
 			}
 		}
 

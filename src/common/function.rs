@@ -184,6 +184,7 @@ pub struct FunctionAnnotations {
 	pub preserve: bool,
 	pub no_inline: bool,
 	pub no_strip: bool,
+	pub unused_result: bool,
 }
 
 impl FunctionAnnotations {
@@ -192,6 +193,7 @@ impl FunctionAnnotations {
 			preserve: false,
 			no_inline: false,
 			no_strip: false,
+			unused_result: false,
 		}
 	}
 }
