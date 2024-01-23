@@ -11,9 +11,7 @@ categories = ["games"]
 default-run = "dpc"
 
 [workspace]
-members = [
-	"bind/py",
-]
+members = ["bind/py"]
 
 [[bin]]
 name = "cg_gen"
