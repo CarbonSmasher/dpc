@@ -34,3 +34,10 @@
 	mul %y, 10s;
 	use %y;
 }
+
+"test:copy_elision_add" score score : score {
+	let x: score = val &0;
+	let y: score = val &1;
+	add %x, %y;
+	retv 0, %x;
+}

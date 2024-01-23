@@ -8,6 +8,10 @@ scoreboard players set %l10 _l 10
 # === test:copy_elision === #
 function test:copy_elision_fn
 
+# === test:copy_elision_add === #
+scoreboard players operation %atest_copy_elision_add.0 _r += %atest_copy_elision_add.1 _r
+scoreboard players operation %Rtest_copy_elision_add.0 _r = %atest_copy_elision_add.0 _r
+
 # === test:copy_elision_fn === #
 scoreboard players operation %rtest_copy_elision_fn.0 _r = %atest_copy_elision_fn.0 _r
 scoreboard players operation %atest_copy_elision_fn.0 _r *= %l5 _l
