@@ -87,14 +87,11 @@ impl MIRInstrKind {
 				first.replace_regs(f);
 				second.replace_regs(f);
 			}
-			Self::As { body, .. }
-			| Self::At { body, .. }
-			| Self::Positioned { body, .. }
-			| Self::ReturnRun { body } => {
+			Self::Modify { modifier, body } => {
+				modifier.replace_regs(f);
 				body.replace_regs(f);
 			}
-			Self::StoreResult { location, body } | Self::StoreSuccess { location, body } => {
-				location.replace_regs(&f);
+			Self::ReturnRun { body } => {
 				body.replace_regs(f);
 			}
 			Self::ReturnValue { value, .. } | Self::Return { value } => {
@@ -184,12 +181,7 @@ impl MIRInstrKind {
 				first.replace_mut_vals(f);
 				second.replace_mut_vals(f);
 			}
-			Self::As { body, .. }
-			| Self::At { body, .. }
-			| Self::Positioned { body, .. }
-			| Self::StoreResult { body, .. }
-			| Self::StoreSuccess { body, .. }
-			| Self::ReturnRun { body } => {
+			Self::Modify { body, .. } | Self::ReturnRun { body } => {
 				body.replace_mut_vals(f);
 			}
 			Self::NoOp
@@ -211,12 +203,7 @@ impl MIRInstrKind {
 
 	pub fn get_bodies(&self) -> Vec<&MIRBlock> {
 		match self {
-			Self::As { body, .. }
-			| Self::At { body, .. }
-			| Self::If { body, .. }
-			| Self::StoreResult { body, .. }
-			| Self::StoreSuccess { body, .. }
-			| Self::Positioned { body, .. } => vec![body],
+			Self::Modify { body, .. } | Self::If { body, .. } => vec![body],
 			Self::IfElse { first, second, .. } => vec![first, second],
 			_ => Vec::new(),
 		}
@@ -224,12 +211,7 @@ impl MIRInstrKind {
 
 	pub fn get_bodies_mut<'a>(&'a mut self) -> Vec<&'a mut MIRBlock> {
 		match self {
-			Self::As { body, .. }
-			| Self::At { body, .. }
-			| Self::If { body, .. }
-			| Self::StoreResult { body, .. }
-			| Self::StoreSuccess { body, .. }
-			| Self::Positioned { body, .. } => vec![body],
+			Self::Modify { body, .. } | Self::If { body, .. } => vec![body],
 			Self::IfElse { first, second, .. } => vec![first, second],
 			_ => Vec::new(),
 		}
@@ -321,14 +303,11 @@ impl GetUsedRegs for MIRInstrKind {
 				first.append_used_regs(regs);
 				second.append_used_regs(regs);
 			}
-			Self::As { body, .. }
-			| Self::At { body, .. }
-			| Self::Positioned { body, .. }
-			| Self::ReturnRun { body } => body.append_used_regs(regs),
-			Self::StoreResult { location, body } | Self::StoreSuccess { location, body } => {
-				location.append_used_regs(regs);
+			Self::Modify { modifier, body } => {
+				modifier.append_used_regs(regs);
 				body.append_used_regs(regs);
 			}
+			Self::ReturnRun { body } => body.append_used_regs(regs),
 			Self::Declare { .. }
 			| Self::NoOp
 			| Self::GetConst { .. }

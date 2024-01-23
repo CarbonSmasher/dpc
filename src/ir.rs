@@ -6,9 +6,7 @@ use crate::common::block::Block as BlockTrait;
 use crate::common::condition::Condition;
 use crate::common::function::{CallInterface, FunctionInterface};
 use crate::common::mc::instr::MinecraftInstr;
-use crate::common::mc::modifier::StoreModLocation;
-use crate::common::mc::pos::DoubleCoordinates;
-use crate::common::mc::EntityTarget;
+use crate::common::mc::modifier::MIRModifier;
 use crate::common::ty::{DataType, Double};
 use crate::common::val::ArgRetIndex;
 use crate::common::{val::MutableValue, val::Value, DeclareBinding, Identifier, ResourceLocation};
@@ -247,24 +245,8 @@ pub enum InstrKind {
 	Comment {
 		comment: String,
 	},
-	As {
-		target: EntityTarget,
-		body: Box<Block>,
-	},
-	At {
-		target: EntityTarget,
-		body: Box<Block>,
-	},
-	StoreResult {
-		location: StoreModLocation,
-		body: Box<Block>,
-	},
-	StoreSuccess {
-		location: StoreModLocation,
-		body: Box<Block>,
-	},
-	Positioned {
-		position: DoubleCoordinates,
+	Modify {
+		modifier: MIRModifier,
 		body: Box<Block>,
 	},
 }
@@ -307,11 +289,7 @@ impl Debug for InstrKind {
 			Self::ReturnRun { body } => format!("retr {body:?}"),
 			Self::Command { command } => format!("cmd {command}"),
 			Self::Comment { comment } => format!("cmt {comment}"),
-			Self::As { target, body } => format!("as {target:?}: {body:?}"),
-			Self::At { target, body } => format!("at {target:?}: {body:?}"),
-			Self::StoreResult { location, body } => format!("str {location:?}: {body:?}"),
-			Self::StoreSuccess { location, body } => format!("sts {location:?}: {body:?}"),
-			Self::Positioned { position, body } => format!("pos {position:?}: {body:?}"),
+			Self::Modify { modifier, body } => format!("mdf {modifier:?}: {body:?}"),
 			Self::MC(instr) => format!("{instr:?}"),
 		};
 		write!(f, "{text}")

@@ -9,9 +9,7 @@ use crate::common::block::Block;
 use crate::common::condition::Condition;
 use crate::common::function::{CallInterface, FunctionInterface};
 use crate::common::mc::instr::MinecraftInstr;
-use crate::common::mc::modifier::StoreModLocation;
-use crate::common::mc::pos::DoubleCoordinates;
-use crate::common::mc::EntityTarget;
+use crate::common::mc::modifier::MIRModifier;
 use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{DataType, Double};
 use crate::common::val::ArgRetIndex;
@@ -284,25 +282,8 @@ pub enum MIRInstrKind {
 	Comment {
 		comment: String,
 	},
-	// Modifiers
-	As {
-		target: EntityTarget,
-		body: Box<MIRBlock>,
-	},
-	At {
-		target: EntityTarget,
-		body: Box<MIRBlock>,
-	},
-	StoreResult {
-		location: StoreModLocation,
-		body: Box<MIRBlock>,
-	},
-	StoreSuccess {
-		location: StoreModLocation,
-		body: Box<MIRBlock>,
-	},
-	Positioned {
-		position: DoubleCoordinates,
+	Modify {
+		modifier: MIRModifier,
 		body: Box<MIRBlock>,
 	},
 }
@@ -347,11 +328,7 @@ impl Debug for MIRInstrKind {
 			Self::NoOp => "noop".into(),
 			Self::Command { command } => format!("cmd {command}"),
 			Self::Comment { comment } => format!("cmt {comment}"),
-			Self::As { target, body } => format!("as {target:?}: {body:?}"),
-			Self::At { target, body } => format!("at {target:?}: {body:?}"),
-			Self::StoreResult { location, body } => format!("str {location:?}: {body:?}"),
-			Self::StoreSuccess { location, body } => format!("sts {location:?}: {body:?}"),
-			Self::Positioned { position, body } => format!("pos {position:?}: {body:?}"),
+			Self::Modify { modifier, body } => format!("mdf {modifier:?}: {body:?}"),
 			Self::MC(instr) => format!("{instr:?}"),
 		};
 		write!(f, "{text}")

@@ -1,7 +1,7 @@
 "test:main" {
-	str data ent @s[] "foo", int, 0.8:
+	mdf str data ent @s[] "foo", int, 0.8:
 		say "hello";
 	let x: score = val 7s;
-	sts reg x, 1.5:
+	mdf sts reg x, 1.5:
 		get ent "baz" "foo", 4.2;
 }

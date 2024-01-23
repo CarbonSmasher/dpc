@@ -2,7 +2,8 @@ use anyhow::{bail, Context};
 
 use crate::common::function::{FunctionInterface, FunctionSignature};
 use crate::common::mc::modifier::{
-	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreDataType, StoreModLocation,
+	IfModCondition, IfScoreCondition, IfScoreRangeEnd, MIRModifier, Modifier, StoreDataType,
+	StoreModLocation,
 };
 use crate::common::ty::{get_op_tys, DataType, Double, ScoreType, ScoreTypeContents};
 use crate::common::ResourceLocation;
@@ -271,34 +272,28 @@ fn lower_kind(
 			);
 			lir_instrs.push(second);
 		}
-		MIRInstrKind::As { target, body } => {
+		MIRInstrKind::Modify { modifier, body } => {
 			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower as body")?;
 
-			instr.modifiers.insert(0, Modifier::As(target));
-			lir_instrs.push(instr);
-		}
-		MIRInstrKind::At { target, body } => {
-			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower at body")?;
-
-			instr.modifiers.insert(0, Modifier::At(target));
-			lir_instrs.push(instr);
-		}
-		MIRInstrKind::StoreResult { location, body } => {
-			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower str body")?;
-
-			instr.modifiers.insert(0, Modifier::StoreResult(location));
-			lir_instrs.push(instr);
-		}
-		MIRInstrKind::StoreSuccess { location, body } => {
-			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower sts body")?;
-
-			instr.modifiers.insert(0, Modifier::StoreSuccess(location));
-			lir_instrs.push(instr);
-		}
-		MIRInstrKind::Positioned { position, body } => {
-			let mut instr = lower_subblock(*body, lbcx).context("Failed to lower pos body")?;
-
-			instr.modifiers.insert(0, Modifier::Positioned(position));
+			let modi = match modifier {
+				MIRModifier::Align(axes) => Modifier::Align(axes),
+				MIRModifier::Anchored(pos) => Modifier::Anchored(pos),
+				MIRModifier::As(tgt) => Modifier::As(tgt),
+				MIRModifier::At(tgt) => Modifier::At(tgt),
+				MIRModifier::FacingEntity(tgt, loc) => Modifier::FacingEntity(tgt, loc),
+				MIRModifier::FacingPosition(pos) => Modifier::FacingPosition(pos),
+				MIRModifier::In(dim) => Modifier::In(dim),
+				MIRModifier::On(tgt) => Modifier::On(tgt),
+				MIRModifier::Positioned(pos) => Modifier::Positioned(pos),
+				MIRModifier::PositionedAs(tgt) => Modifier::PositionedAs(tgt),
+				MIRModifier::PositionedOver(map) => Modifier::PositionedOver(map),
+				MIRModifier::Rotated(rot) => Modifier::Rotated(rot),
+				MIRModifier::RotatedAs(tgt) => Modifier::RotatedAs(tgt),
+				MIRModifier::StoreResult(loc) => Modifier::StoreResult(loc),
+				MIRModifier::StoreSuccess(loc) => Modifier::StoreSuccess(loc),
+				MIRModifier::Summon(ent) => Modifier::Summon(ent),
+			};
+			instr.modifiers.insert(0, modi);
 			lir_instrs.push(instr);
 		}
 		MIRInstrKind::ReturnRun { body } => {

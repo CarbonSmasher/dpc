@@ -90,6 +90,77 @@ impl Debug for Modifier {
 	}
 }
 
+/// A modifier to the context of a command
+#[derive(Clone, PartialEq)]
+pub enum MIRModifier {
+	StoreResult(StoreModLocation),
+	StoreSuccess(StoreModLocation),
+	Anchored(AnchorLocation),
+	Align(AlignAxes),
+	As(EntityTarget),
+	At(EntityTarget),
+	In(ResourceLocation),
+	On(EntityRelation),
+	Positioned(DoubleCoordinates),
+	PositionedAs(EntityTarget),
+	PositionedOver(Heightmap),
+	Rotated(DoubleCoordinates2D),
+	RotatedAs(EntityTarget),
+	FacingPosition(DoubleCoordinates),
+	FacingEntity(EntityTarget, AnchorLocation),
+	Summon(ResourceLocation),
+}
+
+impl MIRModifier {
+	/// Checks if this modifier has any side effects that aren't applied to
+	/// the command it is modifying
+	pub fn has_extra_side_efects(&self) -> bool {
+		matches!(
+			self,
+			Self::StoreResult(..) | Self::StoreSuccess(..) | Self::Summon(..)
+		)
+	}
+
+	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: &F) {
+		match self {
+			Self::StoreResult(loc) | Self::StoreSuccess(loc) => loc.replace_regs(f),
+			_ => {}
+		}
+	}
+}
+
+impl GetUsedRegs for MIRModifier {
+	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
+		match self {
+			Self::StoreResult(loc) | Self::StoreSuccess(loc) => loc.append_used_regs(regs),
+			_ => {}
+		}
+	}
+}
+
+impl Debug for MIRModifier {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::StoreResult(loc) => write!(f, "str {loc:?}"),
+			Self::StoreSuccess(loc) => write!(f, "sts {loc:?}"),
+			Self::Anchored(loc) => write!(f, "anc {loc:?}"),
+			Self::Align(axes) => write!(f, "aln {axes:?}"),
+			Self::As(target) => write!(f, "as {target:?}"),
+			Self::At(target) => write!(f, "at {target:?}"),
+			Self::In(dim) => write!(f, "in {dim}"),
+			Self::On(rel) => write!(f, "on {rel:?}"),
+			Self::Positioned(coords) => write!(f, "pos {coords:?}"),
+			Self::PositionedAs(target) => write!(f, "pose {target:?}"),
+			Self::PositionedOver(hm) => write!(f, "poso {hm:?}"),
+			Self::Rotated(rot) => write!(f, "rot {rot:?}"),
+			Self::RotatedAs(target) => write!(f, "rote {target:?}"),
+			Self::FacingPosition(coords) => write!(f, "facp {coords:?}"),
+			Self::FacingEntity(target, anchor) => write!(f, "face {target:?} {anchor:?}"),
+			Self::Summon(entity) => write!(f, "summon {entity}"),
+		}
+	}
+}
+
 #[derive(Clone, PartialEq)]
 pub enum StoreModLocation {
 	Reg(Identifier, Double),
@@ -215,7 +286,7 @@ impl Debug for StoreBossbarMode {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum AnchorLocation {
 	Eyes,
 	Feet,
@@ -230,7 +301,7 @@ impl Debug for AnchorLocation {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum EntityRelation {
 	Attacker,
 	Controller,
@@ -242,7 +313,7 @@ pub enum EntityRelation {
 	Vehicle,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct AlignAxes {
 	pub x: bool,
 	pub y: bool,

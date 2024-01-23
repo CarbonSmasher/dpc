@@ -12,7 +12,7 @@ use crate::common::mc::block::{
 use crate::common::mc::entity::{EffectDuration, SelectorParameter, SelectorType, TargetSelector};
 use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::item::ItemData;
-use crate::common::mc::modifier::{StoreDataType, StoreModLocation};
+use crate::common::mc::modifier::{MIRModifier, StoreDataType, StoreModLocation};
 use crate::common::mc::pos::{
 	AbsOrRelCoord, Angle, DoubleCoordinates, DoubleCoordinates2D, IntCoordinates,
 };
@@ -887,47 +887,12 @@ fn parse_instr_impl<'t>(
 				data: SetBlockData { pos, block, mode },
 			}))
 		}
-		"as" => {
-			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
+		"mdf" => {
+			let modi = parse_modifier(toks).context("Failed to parse modifier")?;
 			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
 
-			Ok(InstrKind::As {
-				target,
-				body: Box::new(body),
-			})
-		}
-		"at" => {
-			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
-			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
-			Ok(InstrKind::At {
-				target,
-				body: Box::new(body),
-			})
-		}
-		"str" => {
-			let loc = parse_storage_location(toks).context("Failed to parse storage location")?;
-			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
-
-			Ok(InstrKind::StoreResult {
-				location: loc,
-				body: Box::new(body),
-			})
-		}
-		"sts" => {
-			let loc = parse_storage_location(toks).context("Failed to parse storage location")?;
-			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
-
-			Ok(InstrKind::StoreSuccess {
-				location: loc,
-				body: Box::new(body),
-			})
-		}
-		"pos" => {
-			let pos = parse_double_coords(toks).context("Failed to parse position")?;
-			let body = parse_nested_block(toks).context("Failed to parse instruction body")?;
-
-			Ok(InstrKind::Positioned {
-				position: pos,
+			Ok(InstrKind::Modify {
+				modifier: modi,
 				body: Box::new(body),
 			})
 		}
@@ -1157,7 +1122,6 @@ fn parse_decl_binding<'t>(
 	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
 ) -> anyhow::Result<DeclareBinding> {
 	let kind = consume_extract!(toks, Ident, { bail!("Missing declare binding token") });
-	// TODO: Idx
 	match kind.as_str() {
 		"val" => {
 			let val = parse_val(toks).context("Failed to parse value")?;
@@ -1703,6 +1667,38 @@ fn parse_selector_parameters<'t>(
 	}
 
 	Ok(out)
+}
+
+fn parse_modifier<'t>(
+	toks: &mut impl Iterator<Item = &'t TokenAndPos>,
+) -> anyhow::Result<MIRModifier> {
+	let kind = consume_extract!(toks, Ident, { bail!("Missing modifier token") });
+
+	let modif = match kind.as_str() {
+		"as" => {
+			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
+			MIRModifier::As(target)
+		}
+		"at" => {
+			let target = parse_entity_target(toks).context("Failed to parse entity target")?;
+			MIRModifier::At(target)
+		}
+		"str" => {
+			let loc = parse_storage_location(toks).context("Failed to parse storage location")?;
+			MIRModifier::StoreResult(loc)
+		}
+		"sts" => {
+			let loc = parse_storage_location(toks).context("Failed to parse storage location")?;
+			MIRModifier::StoreSuccess(loc)
+		}
+		"pos" => {
+			let pos = parse_double_coords(toks).context("Failed to parse position")?;
+			MIRModifier::Positioned(pos)
+		}
+		other => bail!("Unknown modifier {other}"),
+	};
+	
+	Ok(modif)
 }
 
 fn parse_if<'t>(toks: &mut impl Iterator<Item = &'t TokenAndPos>) -> anyhow::Result<InstrKind> {

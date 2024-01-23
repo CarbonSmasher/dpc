@@ -109,38 +109,10 @@ fn lower_kind(kind: InstrKind) -> anyhow::Result<Vec<MIRInstruction>> {
 				second: Box::new(second),
 			}
 		}
-		InstrKind::As { target, body } => {
-			let instrs = lower_block(*body).context("Failed to lower as body")?;
-			MIRInstrKind::As {
-				target,
-				body: Box::new(instrs),
-			}
-		}
-		InstrKind::At { target, body } => {
-			let instrs = lower_block(*body).context("Failed to lower at body")?;
-			MIRInstrKind::At {
-				target,
-				body: Box::new(instrs),
-			}
-		}
-		InstrKind::StoreResult { location, body } => {
-			let instrs = lower_block(*body).context("Failed to lower at body")?;
-			MIRInstrKind::StoreResult {
-				location,
-				body: Box::new(instrs),
-			}
-		}
-		InstrKind::StoreSuccess { location, body } => {
-			let instrs = lower_block(*body).context("Failed to lower at body")?;
-			MIRInstrKind::StoreSuccess {
-				location,
-				body: Box::new(instrs),
-			}
-		}
-		InstrKind::Positioned { position, body } => {
-			let instrs = lower_block(*body).context("Failed to lower pos body")?;
-			MIRInstrKind::Positioned {
-				position,
+		InstrKind::Modify { modifier, body } => {
+			let instrs = lower_block(*body).context("Failed to lower mdf body")?;
+			MIRInstrKind::Modify {
+				modifier,
 				body: Box::new(instrs),
 			}
 		}

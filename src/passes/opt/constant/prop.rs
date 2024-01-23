@@ -164,12 +164,7 @@ fn const_prop_instr(instr: &mut MIRInstrKind, an: &mut StoringConstAnalyzer, run
 			right: DeclareBinding::Condition(cond),
 			..
 		} => const_prop_condition(cond, an, run_again),
-		MIRInstrKind::As { body, .. }
-		| MIRInstrKind::At { body, .. }
-		| MIRInstrKind::StoreResult { body, .. }
-		| MIRInstrKind::StoreSuccess { body, .. }
-		| MIRInstrKind::Positioned { body, .. }
-		| MIRInstrKind::ReturnRun { body } => {
+		MIRInstrKind::Modify { body, .. } | MIRInstrKind::ReturnRun { body } => {
 			for instr in &mut body.contents {
 				const_prop_instr(&mut instr.kind, an, run_again);
 			}

@@ -1,8 +1,8 @@
 "test:main" {
-	as @s[]:
+	mdf as @s[]:
 		say "hello";
-	at @s[]:
+	mdf at @s[]:
 		say "hello";
-	pos ~0.0 ~0.0 ~0.0:
+	mdf pos ~0.0 ~0.0 ~0.0:
 		say "hello";
 }

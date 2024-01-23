@@ -8,8 +8,8 @@
 		call run "test:modifier_inline";
 	if pred "test:test":
 		call run "test:modifier_dont_inline";
-	as @s[]:
-		at @s[]:
+	mdf as @s[]:
+		mdf at @s[]:
 			call run "test:modifier_inline";
 }
 

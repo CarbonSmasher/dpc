@@ -1,6 +1,6 @@
 use crate::common::condition::Condition;
 use crate::common::mc::instr::MinecraftInstr;
-use crate::common::mc::modifier::StoreModLocation;
+use crate::common::mc::modifier::{MIRModifier, StoreModLocation};
 use crate::common::ty::{DataTypeContents, NBTTypeContents, ScoreTypeContents};
 use crate::common::val::MutableValue;
 use crate::common::{val::Value, DeclareBinding};
@@ -401,8 +401,8 @@ fn run_iter(
 				}),
 				_ => None,
 			},
-			MIRInstrKind::StoreResult {
-				location: StoreModLocation::Reg(left, left_scale),
+			MIRInstrKind::Modify {
+				modifier: MIRModifier::StoreResult(StoreModLocation::Reg(left, left_scale)),
 				body,
 			} => {
 				match body.contents.only().map(|x| &x.kind) {
@@ -423,8 +423,8 @@ fn run_iter(
 					_ => None,
 				}
 			}
-			MIRInstrKind::StoreSuccess {
-				location: StoreModLocation::Reg(left, left_scale),
+			MIRInstrKind::Modify {
+				modifier: MIRModifier::StoreSuccess(StoreModLocation::Reg(left, left_scale)),
 				body,
 			} if left_scale == &1.0 => {
 				match body.contents.only().map(|x| &x.kind) {

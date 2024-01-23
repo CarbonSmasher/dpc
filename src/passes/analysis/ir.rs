@@ -1,6 +1,6 @@
 use anyhow::{bail, Context};
 
-use crate::common::mc::modifier::StoreModLocation;
+use crate::common::mc::modifier::{MIRModifier, StoreModLocation};
 use crate::common::ty::{get_op_tys, DataType};
 use crate::common::{Register, RegisterList};
 use crate::ir::{Block, IRFunction, InstrKind, IR};
@@ -96,7 +96,10 @@ fn validate_instr_kind(
 			}
 			_ => {}
 		},
-		InstrKind::StoreResult { location, body } => {
+		InstrKind::Modify {
+			modifier: MIRModifier::StoreResult(location),
+			body,
+		} => {
 			validate_block(body, regs, func)?;
 			if let StoreModLocation::Reg(reg, scale) = location {
 				if let DataType::Score(..) = regs.get(reg).context("Register does not exist")?.ty {
@@ -107,12 +110,13 @@ fn validate_instr_kind(
 			}
 		}
 		InstrKind::If { body, .. }
-		| InstrKind::As { body, .. }
-		| InstrKind::At { body, .. }
-		| InstrKind::StoreSuccess { body, .. }
-		| InstrKind::Positioned { body, .. }
+		| InstrKind::Modify { body, .. }
 		| InstrKind::ReturnRun { body, .. } => {
 			validate_block(body, regs, func)?;
+		}
+		InstrKind::IfElse { first, second, .. } => {
+			validate_block(first, regs, func)?;
+			validate_block(second, regs, func)?;
 		}
 		_ => {}
 	}

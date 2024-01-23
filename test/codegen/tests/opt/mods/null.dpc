@@ -2,12 +2,12 @@
 
 "test:main" {
 	let x: score = val 0s;
-	at @s[]:
-		pos ~0.0 ~0.0 ~0.1:
+	mdf at @s[]:
+		mdf pos ~0.0 ~0.0 ~0.1:
 			add %x, 2s;
-	as @e[]:
+	mdf as @e[]:
 		say "hello";
-	as @e[type="zombie"]:
-		as @e[type="wolf"]:
+	mdf as @e[type="zombie"]:
+		mdf as @e[type="wolf"]:
 			cmd "custom command";
 }

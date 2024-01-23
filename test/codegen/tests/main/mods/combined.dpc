@@ -1,7 +1,7 @@
 "test:main" {
 	let x: score = null;
-	as @s[]:
-		at @a[tag="foo"]:
+	mdf as @s[]:
+		mdf at @a[tag="foo"]:
 			if eq %x, sco @s[] "bar":
 				if lt sco "foo" "bar", sco @r[name="Bar"] "risk":
 					let g: score = cast score ent @s[] "name";

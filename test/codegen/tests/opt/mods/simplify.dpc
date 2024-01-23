@@ -34,11 +34,11 @@
 		say "never";
 
 	# Remove the modifiers
-	pos ~0.0 ~0.0 ~0.0:
-		pos ~0.0 ~0.0 ~0.0:
+	mdf pos ~0.0 ~0.0 ~0.0:
+		mdf pos ~0.0 ~0.0 ~0.0:
 			say "hello";
 
-	as @s[]:
-		as @s[]:
+	mdf as @s[]:
+		mdf as @s[]:
 			say "hello";
 }
