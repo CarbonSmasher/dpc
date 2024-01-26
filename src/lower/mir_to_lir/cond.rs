@@ -93,8 +93,13 @@ pub(super) fn lower_condition(
 			let cond = lower_or(vec![lc, rc], &mut prelude, lbcx)?;
 			out.push(cond);
 		}
-		Condition::Xor(..) => {
-			bail!("Xor lowering is not implemented yet");
+		Condition::Xor(l, r) => {
+			let (lp, lc) = lower_condition(*l, lbcx).context("Failed to lower and lhs")?;
+			let (rp, rc) = lower_condition(*r, lbcx).context("Failed to lower and rhs")?;
+			prelude.extend(lp);
+			prelude.extend(rp);
+			let cond = lower_xor(lc, rc, &mut prelude, lbcx)?;
+			out.push(cond);
 		}
 		Condition::GreaterThan(l, r) => {
 			out.push(LoweringCondition::new(IfModCondition::Score(
@@ -281,6 +286,95 @@ fn lower_or_if_function(
 	Ok(LoweringCondition::new(IfModCondition::Function(
 		if_function,
 	)))
+}
+
+pub(super) fn lower_xor(
+	left: Vec<LoweringCondition>,
+	right: Vec<LoweringCondition>,
+	prelude: &mut Vec<LIRInstruction>,
+	lbcx: &mut LowerBlockCx,
+) -> anyhow::Result<LoweringCondition> {
+	let xor_reg = lbcx.new_additional_reg();
+	lbcx.registers.insert(
+		xor_reg.clone(),
+		Register {
+			id: xor_reg.clone(),
+			ty: DataType::Score(ScoreType::Bool),
+		},
+	);
+	lower_let_cond_impl(
+		MutableValue::Reg(xor_reg.clone()),
+		left,
+		prelude,
+		true,
+		lbcx,
+	)?;
+
+	if let Some(LoweringCondition {
+		condition:
+			IfModCondition::Score(
+				IfScoreCondition::Single {
+					left: left2,
+					right: ScoreValue::Constant(val),
+				}
+				| IfScoreCondition::Range {
+					score: left2,
+					left:
+						IfScoreRangeEnd::Fixed {
+							value: ScoreValue::Constant(val),
+							inclusive: true,
+						},
+					right: _,
+				},
+			),
+		negate: false,
+		is_bool_cond: true,
+	}) = right.only()
+	{
+		if val.get_i32() == 1 {
+			prelude.push(LIRInstruction::new(LIRInstrKind::SubScore(
+				MutableScoreValue::Reg(xor_reg.clone()),
+				left2.clone(),
+			)));
+		} else {
+			prelude.push(lower_if_single(
+				right,
+				LIRInstrKind::SubScore(
+					MutableScoreValue::Reg(xor_reg.clone()),
+					ScoreValue::Constant(ScoreTypeContents::Score(1)),
+				),
+			));
+		}
+	} else {
+		prelude.push(lower_if_single(
+			right,
+			LIRInstrKind::SubScore(
+				MutableScoreValue::Reg(xor_reg.clone()),
+				ScoreValue::Constant(ScoreTypeContents::Score(1)),
+			),
+		));
+	}
+
+	// Since this operation will produce -1 to 1, we can just check for not zero
+	let out = IfModCondition::Score(IfScoreCondition::Single {
+		left: ScoreValue::Mutable(MutableScoreValue::Reg(xor_reg.clone())),
+		right: ScoreValue::Constant(ScoreTypeContents::Bool(false)),
+	});
+
+	// This is a bool cond even though it is saturating
+	Ok(LoweringCondition {
+		condition: out,
+		negate: true,
+		is_bool_cond: true,
+	})
+}
+
+fn lower_if_single(conditions: Vec<LoweringCondition>, body: LIRInstrKind) -> LIRInstruction {
+	let mut instr = LIRInstruction::new(body);
+	for condition in conditions {
+		instr.modifiers.insert(0, condition.to_if_mod());
+	}
+	instr
 }
 
 pub(super) fn lower_let_cond(

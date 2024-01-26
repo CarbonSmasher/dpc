@@ -36,3 +36,9 @@
 	if or bool sco @s[] "foo", or bool sco @s[] "bar", eq sco @s[] "foo", 1s:
 		say "Hello5";
 }
+
+@preserve
+"test:xor" {
+	if xor pred "foo:bar", pred "bar:foo":
+		say "Hello";
+}

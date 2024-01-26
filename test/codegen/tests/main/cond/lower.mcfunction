@@ -33,3 +33,8 @@ execute if predicate foo:bar2 if predicate foo:bar3 run return 1
 # === test:or_body_1 === #
 say Hello3
 say Hello4
+
+# === test:xor === #
+execute store success score %rtest_xor.0 _r if predicate foo:bar
+execute if predicate bar:foo run scoreboard players remove %rtest_xor.0 _r 1
+execute unless score %rtest_xor.0 _r matches 0 run say Hello
