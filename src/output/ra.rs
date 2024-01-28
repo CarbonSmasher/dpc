@@ -359,14 +359,14 @@ fn get_used_regs_ra<'r>(
 ) -> Vec<&'r Identifier> {
 	let mut used_regs = instr.get_used_regs();
 	// Get used from the child
-	if let LIRInstrKind::Call(func) = &instr.kind {
+	if let LIRInstrKind::Call(func, _) = &instr.kind {
 		if let Some(child_regs) = child_uses.get(func) {
 			used_regs.extend(child_regs.clone());
 		}
 	}
 	for modi in &instr.modifiers {
 		if let Modifier::If { condition, .. } = modi {
-			if let IfModCondition::Function(func) = condition.as_ref() {
+			if let IfModCondition::Function(func, _) = condition.as_ref() {
 				if let Some(child_regs) = child_uses.get(func) {
 					used_regs.extend(child_regs.clone());
 				}

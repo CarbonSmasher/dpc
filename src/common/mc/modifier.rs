@@ -340,7 +340,7 @@ pub enum IfModCondition {
 	Score(IfScoreCondition),
 	Entity(EntityTarget),
 	Predicate(ResourceLocation),
-	Function(ResourceLocationTag),
+	Function(ResourceLocationTag, Vec<Identifier>),
 	Biome(IntCoordinates, ResourceLocationTag),
 	Dimension(ResourceLocation),
 	Loaded(IntCoordinates),
@@ -365,9 +365,9 @@ impl GetUsedRegs for IfModCondition {
 				}
 			},
 			Self::DataExists(val) | Self::DataEquals(val, ..) => val.append_used_regs(regs),
+			Self::Function(_, regs2) => regs.extend(regs2.iter()),
 			Self::Entity(..)
 			| Self::Predicate(..)
-			| Self::Function(..)
 			| Self::Biome(..)
 			| Self::Dimension(..)
 			| Self::Loaded(..)
@@ -383,7 +383,7 @@ impl Debug for IfModCondition {
 			Self::Score(condition) => write!(f, "sco {condition:?}"),
 			Self::Entity(target) => write!(f, "ent {target:?}"),
 			Self::Predicate(pred) => write!(f, "pred {pred}"),
-			Self::Function(fun) => write!(f, "func {fun}"),
+			Self::Function(fun, ..) => write!(f, "func {fun}"),
 			Self::Biome(pos, biome) => write!(f, "bio {pos:?} {biome}"),
 			Self::Dimension(dim) => write!(f, "dim {dim}"),
 			Self::Loaded(pos) => write!(f, "load {pos:?}"),

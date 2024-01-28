@@ -35,8 +35,8 @@ execute if score %ritems_ground_sweep_main.3 _r matches 1 run tag @s add wither_
 execute if data storage dpc:r ritems_ground_sweep_main_0.Upgrades.ench run tag @s add ench
 execute if data storage dpc:r ritems_ground_sweep_main_0.ench_book run tag @s add ench_book
 execute if data storage dpc:r ritems_ground_sweep_main_0.rarity run function items:ground_sweep/main_body_0
-execute store result score %ritems_ground_sweep_main.4 _r run data get storage dpc:r ritems_ground_sweep_main_0.timer
-execute if score %ritems_ground_sweep_main.4 _r matches 1.. run data modify entity @s PickupDelay set value 32767
+execute store result score %ritems_ground_sweep_main.5 _r run data get storage dpc:r ritems_ground_sweep_main_0.timer
+execute if score %ritems_ground_sweep_main.5 _r matches 1.. run data modify entity @s PickupDelay set value 32767
 execute if data storage dpc:r ritems_ground_sweep_main_0.coindata run function items:ground_sweep/coindata
 tag @s add seent
 
@@ -190,8 +190,8 @@ execute if score %ritems_ground_sweep_main.3 _r matches 1 run tag @s add wither_
 execute if data storage dpc:r ritems_ground_sweep_main_0.Upgrades.ench run tag @s add ench
 execute if data storage dpc:r ritems_ground_sweep_main_0.ench_book run tag @s add ench_book
 execute if data storage dpc:r ritems_ground_sweep_main_0.rarity run function items:ground_sweep/main_body_0
-execute store result score %ritems_ground_sweep_main.4 _r run data get storage dpc:r ritems_ground_sweep_main_0.timer
-execute if score %ritems_ground_sweep_main.4 _r matches 1.. run data modify entity @s PickupDelay set value 32767
+execute store result score %ritems_ground_sweep_main.5 _r run data get storage dpc:r ritems_ground_sweep_main_0.timer
+execute if score %ritems_ground_sweep_main.5 _r matches 1.. run data modify entity @s PickupDelay set value 32767
 execute if data storage dpc:r ritems_ground_sweep_main_0.coindata run function items:ground_sweep/coindata
 tag @s add seent
 

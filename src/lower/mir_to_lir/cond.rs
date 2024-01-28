@@ -171,7 +171,10 @@ pub(super) fn lower_condition(
 			out.push(LoweringCondition::new(IfModCondition::Dimension(dim)));
 		}
 		Condition::Function(func) => {
-			out.push(LoweringCondition::new(IfModCondition::Function(func)));
+			out.push(LoweringCondition::new(IfModCondition::Function(
+				func,
+				Vec::new(),
+			)));
 		}
 	};
 
@@ -282,9 +285,10 @@ fn lower_or_if_function(
 		}
 		func_instrs.push(instr);
 	}
-	let if_function = lower_subblock_impl(func_instrs, lbcx)?;
+	let (if_function, regs) = lower_subblock_impl(func_instrs, lbcx)?;
 	Ok(LoweringCondition::new(IfModCondition::Function(
 		if_function,
+		regs,
 	)))
 }
 

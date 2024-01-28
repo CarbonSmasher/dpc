@@ -173,7 +173,7 @@ pub enum LIRInstrKind {
 	RemoveData(MutableNBTValue),
 	Use(MutableValue),
 	NoOp,
-	Call(ResourceLocation),
+	Call(ResourceLocation, Vec<Identifier>),
 	ReturnValue(i32),
 	ReturnFail,
 	ReturnRun(Box<LIRInstruction>),
@@ -206,7 +206,7 @@ impl Debug for LIRInstrKind {
 			Self::RemoveData(val) => format!("rmd {val:?}"),
 			Self::Use(val) => format!("use {val:?}"),
 			Self::NoOp => "no".into(),
-			Self::Call(fun) => format!("call {fun}"),
+			Self::Call(fun, ..) => format!("call {fun}"),
 			Self::ReturnValue(val) => format!("retv {val}"),
 			Self::ReturnFail => "retf".into(),
 			Self::ReturnRun(cmd) => format!("retr {cmd:?}"),
@@ -251,9 +251,9 @@ impl GetUsedRegs for LIRInstrKind {
 				data.append_used_regs(regs);
 			}
 			LIRInstrKind::Use(val) => val.append_used_regs(regs),
+			LIRInstrKind::Call(_, regs2) => regs.extend(regs2.iter()),
 			LIRInstrKind::NoOp
 			| LIRInstrKind::GetConst(..)
-			| LIRInstrKind::Call(..)
 			| LIRInstrKind::ReturnValue(..)
 			| LIRInstrKind::ReturnFail
 			| LIRInstrKind::Command(..)

@@ -279,7 +279,7 @@ pub fn codegen_instr(
 				rhs
 			)?)
 		}
-		LIRInstrKind::Call(fun) => {
+		LIRInstrKind::Call(fun, _) => {
 			let mut func_id = fun;
 			if let Some(mapping) = &cbcx.ccx.func_mapping {
 				if let Some(new_id) = mapping.0.get(func_id) {

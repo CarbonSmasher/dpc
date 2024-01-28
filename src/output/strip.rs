@@ -33,7 +33,7 @@ fn strip_unstable(lir: &LIR, project: &ProjectSettings) -> FunctionMapping {
 
 	for func in lir.functions.values() {
 		for instr in &func.block.contents {
-			if let LIRInstrKind::Call(func) = &instr.kind {
+			if let LIRInstrKind::Call(func, _) = &instr.kind {
 				let entry = counts.entry(func);
 				*entry.or_insert(0) += 1;
 			}

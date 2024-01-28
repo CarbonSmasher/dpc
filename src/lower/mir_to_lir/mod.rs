@@ -5,6 +5,7 @@ use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, MIRModifier, Modifier, StoreDataType,
 	StoreModLocation,
 };
+use crate::common::reg::GetUsedRegs;
 use crate::common::ty::{get_op_tys, DataType, Double, ScoreType, ScoreTypeContents};
 use crate::common::ResourceLocation;
 use crate::common::{
@@ -213,7 +214,7 @@ fn lower_kind(
 				.context("Failed to lower argument assignment")?;
 				lir_instrs.extend(instrs);
 			}
-			lower!(lir_instrs, Call, call.function.clone());
+			lower!(lir_instrs, Call, call.function.clone(), Vec::new());
 			// Set the return values
 			for (i, ret) in call.ret.iter().enumerate() {
 				let instrs = lower_assign(
@@ -229,7 +230,7 @@ fn lower_kind(
 				lir_instrs.extend(instrs);
 			}
 		}
-		MIRInstrKind::CallExtern { func } => lower!(lir_instrs, Call, func),
+		MIRInstrKind::CallExtern { func } => lower!(lir_instrs, Call, func, Vec::new()),
 		MIRInstrKind::Remove { val } => lir_instrs.push(LIRInstruction::new(lower_rm(val, lbcx)?)),
 		MIRInstrKind::Pow { base, exp } => {
 			lower_pow(base, exp, lir_instrs, lbcx)?;
@@ -798,8 +799,8 @@ fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LI
 			.expect("If len is 1, instr should exist")
 			.clone()
 	} else {
-		let func = lower_subblock_impl(new_lir_instrs, lbcx)?;
-		LIRInstruction::new(LIRInstrKind::Call(func))
+		let (func, regs) = lower_subblock_impl(new_lir_instrs, lbcx)?;
+		LIRInstruction::new(LIRInstrKind::Call(func, regs))
 	};
 
 	Ok(out)
@@ -809,10 +810,11 @@ fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LI
 fn lower_subblock_impl(
 	instrs: Vec<LIRInstruction>,
 	lbcx: &mut LowerBlockCx,
-) -> anyhow::Result<ResourceLocation> {
+) -> anyhow::Result<(ResourceLocation, Vec<Identifier>)> {
 	let mut lir_block = LIRBlock::new(lbcx.registers.clone());
 	lir_block.contents = instrs;
 	let interface = lbcx.new_body_fn();
+	let regs = lir_block.get_used_regs().into_iter().cloned().collect();
 	lbcx.lir.functions.insert(
 		interface.id.clone(),
 		LIRFunction {
@@ -821,5 +823,5 @@ fn lower_subblock_impl(
 			parent: Some(lbcx.func_id.clone()),
 		},
 	);
-	Ok(interface.id)
+	Ok((interface.id, regs))
 }
