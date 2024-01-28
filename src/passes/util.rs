@@ -34,7 +34,7 @@ impl RunAgain {
 
 impl Not for RunAgain {
 	type Output = bool;
-	
+
 	fn not(self) -> Self::Output {
 		!self.0
 	}
