@@ -1,14 +1,12 @@
 use rustc_hash::FxHashMap;
 
 use crate::common::mc::modifier::{Modifier, StoreModLocation};
-use crate::common::reg::GetUsedRegs;
-use crate::common::{val::MutableScoreValue, val::ScoreValue, Identifier};
+use crate::common::reg::{GetUsedLocals, Local};
+use crate::common::{val::MutableScoreValue, val::ScoreValue};
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::project::{OptimizationLevel, ProjectSettings};
 use crate::util::{remove_indices, HashSetEmptyTracker};
-
-use super::super::OptimizableValue;
 
 pub struct DataflowResultPass;
 
@@ -57,50 +55,48 @@ impl LIRPass for DataflowResultPass {
 fn run_iter(
 	block: &mut LIRBlock,
 	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
-	flow_points: &mut FxHashMap<OptimizableValue, SBDataflowPoint>,
+	flow_points: &mut FxHashMap<Local, SBDataflowPoint>,
 	finished_flow_points: &mut Vec<SBDataflowPoint>,
 ) -> bool {
 	let mut run_again = false;
 
-	for (i, instr) in block.contents.iter_mut().enumerate() {
+	for (i, instr) in block.contents.iter().enumerate() {
 		if instrs_to_remove.contains(&i) {
 			continue;
 		}
 		match &instr.kind {
-			LIRInstrKind::SetScore(MutableScoreValue::Reg(left), right) => {
-				if let ScoreValue::Mutable(MutableScoreValue::Reg(right)) = right {
-					if let Some(point) = flow_points.get_mut(&OptimizableValue::Reg(right.clone()))
-					{
-						point.store_regs.push(left.clone());
-						instrs_to_remove.insert(i);
+			LIRInstrKind::SetScore(MutableScoreValue::Local(left), right) => {
+				if let ScoreValue::Mutable(MutableScoreValue::Local(right)) = right {
+					if let Some(point) = flow_points.get_mut(right) {
+						if instr.modifiers.is_empty() {
+							point.store_locs.push(left.clone());
+							instrs_to_remove.insert(i);
+						}
 					} else {
-						finished_flow_points
-							.extend(flow_points.remove(&OptimizableValue::Reg(left.clone())));
+						finished_flow_points.extend(flow_points.remove(left));
 						flow_points.insert(
-							OptimizableValue::Reg(left.clone()),
+							left.clone(),
 							SBDataflowPoint {
 								pos: i,
-								store_regs: Vec::new(),
+								store_locs: Vec::new(),
 							},
 						);
-						finished_flow_points
-							.extend(flow_points.remove(&OptimizableValue::Reg(right.clone())));
+						finished_flow_points.extend(flow_points.remove(right));
 						flow_points.insert(
-							OptimizableValue::Reg(right.clone()),
+							right.clone(),
 							SBDataflowPoint {
 								pos: i,
-								store_regs: Vec::new(),
+								store_locs: Vec::new(),
 							},
 						);
 					}
 				} else {
-					finished_flow_points
-						.extend(flow_points.remove(&OptimizableValue::Reg(left.clone())));
+					finished_flow_points.extend(flow_points.remove(left));
 					flow_points.insert(
-						OptimizableValue::Reg(left.clone()),
+						left.clone(),
 						SBDataflowPoint {
 							pos: i,
-							store_regs: Vec::new(),
+							store_locs: Vec::new(),
 						},
 					);
 				}
@@ -112,40 +108,23 @@ fn run_iter(
 			| LIRInstrKind::ModScore(left, right)
 			| LIRInstrKind::MinScore(left, right)
 			| LIRInstrKind::MaxScore(left, right) => {
-				if let Some(left) = left.to_optimizable_value() {
-					if let ScoreValue::Mutable(right) = right {
-						if let Some(right) = right.to_optimizable_value() {
-							finished_flow_points.extend(flow_points.remove(&right));
-						}
-					}
-
+				if let ScoreValue::Mutable(MutableScoreValue::Local(right)) = right {
+					finished_flow_points.extend(flow_points.remove(right));
+				}
+				if let MutableScoreValue::Local(left) = left {
+					finished_flow_points.extend(flow_points.remove(left));
 					flow_points.insert(
-						left,
+						left.clone(),
 						SBDataflowPoint {
 							pos: i,
-							store_regs: Vec::new(),
+							store_locs: Vec::new(),
 						},
 					);
 				}
 			}
-			LIRInstrKind::SwapScore(left, right) => {
-				if let Some(left) = left.to_optimizable_value() {
-					if let Some(right) = right.to_optimizable_value() {
-						finished_flow_points.extend(flow_points.remove(&left));
-						finished_flow_points.extend(flow_points.remove(&right));
-					}
-				}
-			}
-			LIRInstrKind::Use(val) => {
-				if let Some(val) = val.to_optimizable_value() {
-					finished_flow_points.extend(flow_points.remove(&val));
-				}
-			}
 			_ => {
-				let regs = instr.get_used_regs();
-				for reg in regs {
-					finished_flow_points
-						.extend(flow_points.remove(&OptimizableValue::Reg(reg.clone())));
+				for loc in instr.get_used_locals() {
+					finished_flow_points.extend(flow_points.remove(loc));
 				}
 			}
 		};
@@ -157,15 +136,15 @@ fn run_iter(
 		.chain(finished_flow_points.iter().cloned())
 	{
 		if let Some(instr) = block.contents.get_mut(point.pos) {
-			if !point.store_regs.is_empty() {
+			if !point.store_locs.is_empty() {
 				run_again = true;
 			}
 
 			instr.modifiers.extend(
 				point
-					.store_regs
+					.store_locs
 					.into_iter()
-					.map(|x| Modifier::StoreResult(StoreModLocation::Reg(x, 1.0))),
+					.map(|x| Modifier::StoreResult(StoreModLocation::Local(x, 1.0))),
 			);
 		}
 	}
@@ -176,5 +155,5 @@ fn run_iter(
 #[derive(Debug, Clone)]
 struct SBDataflowPoint {
 	pos: usize,
-	store_regs: Vec<Identifier>,
+	store_locs: Vec<Local>,
 }

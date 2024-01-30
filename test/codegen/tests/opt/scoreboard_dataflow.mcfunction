@@ -9,13 +9,11 @@ scoreboard players set %l10 _l 10
 function test:copy_elision_fn
 
 # === test:copy_elision_add === #
-scoreboard players operation %atest_copy_elision_add.0 _r += %atest_copy_elision_add.1 _r
-scoreboard players operation %Rtest_copy_elision_add.0 _r = %atest_copy_elision_add.0 _r
+execute store result score %Rtest_copy_elision_add.0 _r run scoreboard players operation %atest_copy_elision_add.0 _r += %atest_copy_elision_add.1 _r
 
 # === test:copy_elision_fn === #
 scoreboard players operation %rtest_copy_elision_fn.0 _r = %atest_copy_elision_fn.0 _r
-scoreboard players operation %atest_copy_elision_fn.0 _r *= %l5 _l
-scoreboard players operation %rtest_copy_elision_fn.0 _r = %atest_copy_elision_fn.0 _r
+execute store result score %rtest_copy_elision_fn.1 _r run scoreboard players operation %atest_copy_elision_fn.0 _r *= %l5 _l
 scoreboard players operation %atest_copy_elision_fn.0 _r *= %l10 _l
 
 # === test:copy_prop === #

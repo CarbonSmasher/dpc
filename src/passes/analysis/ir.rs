@@ -1,6 +1,7 @@
 use anyhow::{bail, Context};
 
 use crate::common::mc::modifier::{MIRModifier, StoreModLocation};
+use crate::common::reg::Local;
 use crate::common::ty::{get_op_tys, DataType};
 use crate::common::{Register, RegisterList};
 use crate::ir::{Block, IRFunction, InstrKind, IR};
@@ -101,7 +102,7 @@ fn validate_instr_kind(
 			body,
 		} => {
 			validate_block(body, regs, func)?;
-			if let StoreModLocation::Reg(reg, scale) = location {
+			if let StoreModLocation::Local(Local::Reg(reg), scale) = location {
 				if let DataType::Score(..) = regs.get(reg).context("Register does not exist")?.ty {
 					if *scale != 1.0 {
 						bail!("Scale that is not 1.0 cannot be used for storing to a value of score type");

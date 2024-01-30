@@ -1,5 +1,5 @@
 use crate::common::function::CallInterface;
-use crate::common::val::{ArgRetIndex, MutableScoreValue, MutableValue};
+use crate::common::val::ArgRetIndex;
 use crate::common::Identifier;
 use crate::mir::{MIRBlock, MIRInstrKind};
 
@@ -18,26 +18,6 @@ pub mod ty;
 pub enum OptimizableValue {
 	Reg(Identifier),
 	Arg(ArgRetIndex),
-}
-
-impl MutableValue {
-	pub(self) fn to_optimizable_value(&self) -> Option<OptimizableValue> {
-		match self {
-			Self::Reg(reg) => Some(OptimizableValue::Reg(reg.clone())),
-			Self::Arg(arg) => Some(OptimizableValue::Arg(*arg)),
-			_ => None,
-		}
-	}
-}
-
-impl MutableScoreValue {
-	pub(self) fn to_optimizable_value(&self) -> Option<OptimizableValue> {
-		match self {
-			Self::Reg(reg) => Some(OptimizableValue::Reg(reg.clone())),
-			Self::Arg(arg) => Some(OptimizableValue::Arg(*arg)),
-			_ => None,
-		}
-	}
 }
 
 pub fn get_instr_calls(instr: &MIRInstrKind) -> Vec<&CallInterface> {

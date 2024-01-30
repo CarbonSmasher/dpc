@@ -430,11 +430,7 @@ impl GetSetOwned<Dependency> for ScoreValue {
 impl GetSetOwned<Dependency> for MutableScoreValue {
 	fn append_set(&self, set: &mut FxHashSet<Dependency>) {
 		match self {
-			MutableScoreValue::Arg(..)
-			| MutableScoreValue::Reg(..)
-			| MutableScoreValue::CallArg(..)
-			| MutableScoreValue::CallReturnValue(..)
-			| MutableScoreValue::ReturnValue(..) => {}
+			MutableScoreValue::Local(..) => {}
 			MutableScoreValue::Score(sco) => {
 				sco.holder.append_set(set);
 			}
@@ -454,11 +450,7 @@ impl GetSetOwned<Dependency> for NBTValue {
 impl GetSetOwned<Dependency> for MutableNBTValue {
 	fn append_set(&self, set: &mut FxHashSet<Dependency>) {
 		match self {
-			MutableNBTValue::Arg(..)
-			| MutableNBTValue::Reg(..)
-			| MutableNBTValue::CallArg(..)
-			| MutableNBTValue::CallReturnValue(..)
-			| MutableNBTValue::ReturnValue(..) => {}
+			MutableNBTValue::Local(..) => {}
 			MutableNBTValue::Index(val, ..) | MutableNBTValue::Property(val, ..) => {
 				val.append_set(set);
 			}

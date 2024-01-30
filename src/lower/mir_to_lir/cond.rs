@@ -6,6 +6,7 @@ use crate::common::cost::GetCost;
 use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreModLocation,
 };
+use crate::common::reg::Local;
 use crate::common::ty::{DataType, DataTypeContents, ScoreType, ScoreTypeContents};
 use crate::common::val::{MutableScoreValue, MutableValue, NBTValue, ScoreValue, Value};
 use crate::common::Register;
@@ -253,7 +254,7 @@ fn lower_or_inline_scores(
 	}
 
 	let out = IfModCondition::Score(IfScoreCondition::Range {
-		score: ScoreValue::Mutable(MutableScoreValue::Reg(or_reg)),
+		score: ScoreValue::Mutable(MutableScoreValue::Local(Local::Reg(or_reg))),
 		left: IfScoreRangeEnd::Fixed {
 			value: ScoreValue::Constant(ScoreTypeContents::Score(1)),
 			inclusive: true,
@@ -285,10 +286,10 @@ fn lower_or_if_function(
 		}
 		func_instrs.push(instr);
 	}
-	let (if_function, regs) = lower_subblock_impl(func_instrs, lbcx)?;
+	let (if_function, locs) = lower_subblock_impl(func_instrs, lbcx)?;
 	Ok(LoweringCondition::new(IfModCondition::Function(
 		if_function,
-		regs,
+		locs,
 	)))
 }
 
@@ -337,14 +338,14 @@ pub(super) fn lower_xor(
 	{
 		if val.get_i32() == 1 {
 			prelude.push(LIRInstruction::new(LIRInstrKind::SubScore(
-				MutableScoreValue::Reg(xor_reg.clone()),
+				MutableScoreValue::Local(Local::Reg(xor_reg.clone())),
 				left2.clone(),
 			)));
 		} else {
 			prelude.push(lower_if_single(
 				right,
 				LIRInstrKind::SubScore(
-					MutableScoreValue::Reg(xor_reg.clone()),
+					MutableScoreValue::Local(Local::Reg(xor_reg.clone())),
 					ScoreValue::Constant(ScoreTypeContents::Score(1)),
 				),
 			));
@@ -353,7 +354,7 @@ pub(super) fn lower_xor(
 		prelude.push(lower_if_single(
 			right,
 			LIRInstrKind::SubScore(
-				MutableScoreValue::Reg(xor_reg.clone()),
+				MutableScoreValue::Local(Local::Reg(xor_reg.clone())),
 				ScoreValue::Constant(ScoreTypeContents::Score(1)),
 			),
 		));
@@ -361,7 +362,7 @@ pub(super) fn lower_xor(
 
 	// Since this operation will produce -1 to 1, we can just check for not zero
 	let out = IfModCondition::Score(IfScoreCondition::Single {
-		left: ScoreValue::Mutable(MutableScoreValue::Reg(xor_reg.clone())),
+		left: ScoreValue::Mutable(MutableScoreValue::Local(Local::Reg(xor_reg.clone()))),
 		right: ScoreValue::Constant(ScoreTypeContents::Bool(false)),
 	});
 

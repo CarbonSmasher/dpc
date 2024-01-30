@@ -4,6 +4,7 @@ use intset::GrowSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::block::Block;
+use crate::common::reg::Local;
 use crate::common::val::ScoreValue;
 use crate::common::{val::MutableScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind};
@@ -79,12 +80,12 @@ fn run_iter(
 	for instr in &mut block.contents.iter_mut() {
 		match &instr.kind {
 			LIRInstrKind::SetScore(
-				MutableScoreValue::Reg(l),
-				ScoreValue::Mutable(MutableScoreValue::Arg(r)),
+				MutableScoreValue::Local(Local::Reg(l)),
+				ScoreValue::Mutable(MutableScoreValue::Local(Local::Arg(r))),
 			) => {
 				if instr.modifiers.is_empty() {
 					if !used_args.contains(r) {
-						arg_mapping.insert(l.clone(), MutableScoreValue::Arg(*r));
+						arg_mapping.insert(l.clone(), MutableScoreValue::Local(Local::Arg(*r)));
 						// We don't want to create weird assign arg to self instructions, continue
 						continue;
 					}
@@ -93,8 +94,8 @@ fn run_iter(
 				}
 			}
 			LIRInstrKind::SetScore(
-				MutableScoreValue::Reg(l),
-				ScoreValue::Mutable(r @ MutableScoreValue::CallReturnValue(..)),
+				MutableScoreValue::Local(Local::Reg(l)),
+				ScoreValue::Mutable(r @ MutableScoreValue::Local(Local::CallReturnValue(..))),
 			) => {
 				if instr.modifiers.is_empty() {
 					call_ret_mapping.insert(l.clone(), r.clone());
@@ -106,7 +107,7 @@ fn run_iter(
 			}
 			// Remove any other assignments to regs since now the reg
 			// isn't the arg or ret anymore
-			LIRInstrKind::SetScore(MutableScoreValue::Reg(l), ..) => {
+			LIRInstrKind::SetScore(MutableScoreValue::Local(Local::Reg(l)), ..) => {
 				arg_mapping.remove(l);
 				call_ret_mapping.remove(l);
 			}
@@ -124,7 +125,7 @@ fn run_iter(
 		// with the values themselves
 		let run_again_2 = RefCell::new(false); // Closure thing
 		instr.replace_mut_score_vals(&|val| {
-			if let MutableScoreValue::Reg(reg) = val {
+			if let MutableScoreValue::Local(Local::Reg(reg)) = val {
 				if let Some(arg) = arg_mapping.get(reg) {
 					*val = arg.clone();
 					*run_again_2.borrow_mut() = true;
@@ -147,8 +148,8 @@ fn run_iter(
 
 		match &instr.kind {
 			LIRInstrKind::SetScore(
-				l @ MutableScoreValue::CallArg(..),
-				ScoreValue::Mutable(MutableScoreValue::Reg(r)),
+				l @ MutableScoreValue::Local(Local::CallArg(..)),
+				ScoreValue::Mutable(MutableScoreValue::Local(Local::Reg(r))),
 			) => {
 				if instr.modifiers.is_empty() {
 					call_arg_mapping.insert(r.clone(), l.clone());
@@ -162,8 +163,8 @@ fn run_iter(
 				}
 			}
 			LIRInstrKind::SetScore(
-				l @ MutableScoreValue::ReturnValue(..),
-				ScoreValue::Mutable(MutableScoreValue::Reg(r)),
+				l @ MutableScoreValue::Local(Local::ReturnValue(..)),
+				ScoreValue::Mutable(MutableScoreValue::Local(Local::Reg(r))),
 			) => {
 				if instr.modifiers.is_empty() {
 					ret_mapping.insert(r.clone(), l.clone());
@@ -183,7 +184,7 @@ fn run_iter(
 		// with the values themselves
 		let run_again_2 = RefCell::new(false); // Closure thing
 		instr.replace_mut_score_vals(&|val| {
-			if let MutableScoreValue::Reg(reg) = val {
+			if let MutableScoreValue::Local(Local::Reg(reg)) = val {
 				if let Some(call_arg) = call_arg_mapping.get(reg) {
 					*val = call_arg.clone();
 					*run_again_2.borrow_mut() = true;

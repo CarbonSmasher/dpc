@@ -1,6 +1,6 @@
 use intset::GrowSet;
 
-use super::reg::GetUsedRegs;
+use super::reg::{GetUsedLocals, GetUsedRegs, Local};
 
 /// Trait for the different types of blocks we use at different
 /// stages of IR. Includes some utility methods
@@ -28,6 +28,17 @@ where
 	fn append_used_regs<'this>(&'this self, regs: &mut Vec<&'this super::Identifier>) {
 		for instr in self.contents() {
 			instr.append_used_regs(regs);
+		}
+	}
+}
+
+impl<B: Block> GetUsedLocals for B
+where
+	B::InstrType: GetUsedLocals,
+{
+	fn append_used_locals<'this>(&'this self, locals: &mut Vec<&'this Local>) {
+		for instr in self.contents() {
+			instr.append_used_locals(locals);
 		}
 	}
 }

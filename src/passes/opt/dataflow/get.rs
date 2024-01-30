@@ -1,7 +1,7 @@
 use rustc_hash::FxHashMap;
 
-use crate::common::reg::GetUsedRegs;
-use crate::common::{val::MutableScoreValue, Identifier};
+use crate::common::reg::{GetUsedLocals, Local};
+use crate::common::val::MutableScoreValue;
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::project::{OptimizationLevel, ProjectSettings};
@@ -47,7 +47,7 @@ impl LIRPass for DataflowGetPass {
 fn run_iter(
 	block: &mut LIRBlock,
 	instrs_to_remove: &mut HashSetEmptyTracker<usize>,
-	flow_points: &mut FxHashMap<Identifier, DataflowPoint>,
+	flow_points: &mut FxHashMap<Local, DataflowPoint>,
 ) -> bool {
 	let mut run_again = false;
 
@@ -56,10 +56,10 @@ fn run_iter(
 			continue;
 		}
 
-		// Register to not remove at the end because it was just assigned
-		let mut reg_to_keep = None;
+		// Local to not remove at the end because it was just assigned
+		let mut loc_to_keep = None;
 
-		if let Some(MutableScoreValue::Reg(left)) = instr.kind.get_simple_sb_op_lhs() {
+		if let Some(MutableScoreValue::Local(left)) = instr.kind.get_simple_sb_op_lhs() {
 			flow_points.insert(
 				left.clone(),
 				DataflowPoint {
@@ -67,10 +67,10 @@ fn run_iter(
 					kind: instr.kind.clone(),
 				},
 			);
-			reg_to_keep = Some(left.clone());
+			loc_to_keep = Some(left.clone());
 		}
 
-		if let LIRInstrKind::GetScore(MutableScoreValue::Reg(right)) = &instr.kind {
+		if let LIRInstrKind::GetScore(MutableScoreValue::Local(right)) = &instr.kind {
 			let right = right.clone();
 			if let Some(point) = flow_points.get(&right) {
 				instr.kind = point.kind.clone();
@@ -80,13 +80,13 @@ fn run_iter(
 			flow_points.remove(&right);
 		}
 
-		for reg in instr.get_used_regs() {
-			if let Some(keep) = &reg_to_keep {
-				if keep == reg {
+		for loc in instr.get_used_locals() {
+			if let Some(keep) = &loc_to_keep {
+				if keep == loc {
 					continue;
 				}
 			}
-			flow_points.remove(reg);
+			flow_points.remove(loc);
 		}
 	}
 

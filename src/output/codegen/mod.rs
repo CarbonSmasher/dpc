@@ -7,6 +7,7 @@ use std::collections::HashSet;
 
 use anyhow::{bail, Context};
 
+use crate::common::function::FunctionSignature;
 use crate::common::mc::block::{CloneMaskMode, CloneMode, FillMode, SetBlockMode};
 use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::Modifier;
@@ -72,6 +73,7 @@ pub struct CodegenBlockCx<'ccx, 'proj> {
 	pub regs: RegisterList,
 	pub func_id: String,
 	pub macro_line: bool,
+	pub sig: FunctionSignature,
 }
 
 pub fn codegen_block(
@@ -98,6 +100,7 @@ pub fn codegen_block(
 		regs: block.regs.clone(),
 		func_id: func_id.into(),
 		macro_line: false,
+		sig: func.interface.sig.clone(),
 	};
 
 	let mut out = Vec::new();
@@ -209,7 +212,7 @@ pub fn codegen_instr(
 			// Since we use fake players for registers that only have the
 			// one register objective, we can reset the whole player for
 			// a performance and code size gain
-			if let MutableScoreValue::Reg(..) = val {
+			if let MutableScoreValue::Local(..) = val {
 				let score = get_mut_score_val_score(val, cbcx)?;
 				Some(cgformat!(cbcx, "scoreboard players reset ", score.holder)?)
 			} else {

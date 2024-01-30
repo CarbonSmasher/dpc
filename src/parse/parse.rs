@@ -22,6 +22,7 @@ use crate::common::mc::{
 	DataLocation, DataPath, Difficulty, EntityTarget, FullDataLocation, Location, Score,
 	SoundSource, XPValue,
 };
+use crate::common::reg::Local;
 use crate::common::ty::{
 	ArraySize, DataType, DataTypeContents, Double, NBTArrayType, NBTArrayTypeContents,
 	NBTCompoundType, NBTCompoundTypeContents, NBTType, NBTTypeContents, ScoreType,
@@ -2005,7 +2006,10 @@ fn parse_storage_location<'t>(
 			let reg = consume_extract!(toks, Ident, { bail!("Missing storage register token") });
 			consume_expect!(toks, Token::Comma, { bail!("Missing comma") });
 			let scale = consume_extract!(toks, Decimal, { bail!("Missing scale token") });
-			Ok(StoreModLocation::Reg(reg.clone().into(), *scale))
+			Ok(StoreModLocation::Local(
+				Local::Reg(reg.clone().into()),
+				*scale,
+			))
 		}
 		"data" => {
 			let loc =

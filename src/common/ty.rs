@@ -45,7 +45,7 @@ impl Debug for DataType {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ScoreType {
 	Score,
 	Bool,
@@ -175,7 +175,7 @@ impl Debug for NBTType {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NBTArrayType {
 	Byte(ArraySize),
 	Int(ArraySize),

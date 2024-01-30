@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 
 use crate::common::mc::{DataLocation, DataPath, EntityTarget, FullDataLocation, Score};
+use crate::common::reg::Local;
 use crate::common::val::{MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::lower::cleanup_fn_id;
 use crate::output::text::{
@@ -34,7 +35,15 @@ pub fn get_mut_score_val_score(
 ) -> anyhow::Result<Score> {
 	let out = match val {
 		MutableScoreValue::Score(score) => score.clone(),
-		MutableScoreValue::Reg(reg) => {
+		MutableScoreValue::Local(loc) => get_score_local_score(loc, cbcx)?,
+	};
+
+	Ok(out)
+}
+
+pub fn get_score_local_score(val: &Local, cbcx: &mut CodegenBlockCx) -> anyhow::Result<Score> {
+	let out = match val {
+		Local::Reg(reg) => {
 			let reg = cbcx
 				.ra
 				.regs
@@ -44,27 +53,27 @@ pub fn get_mut_score_val_score(
 				.add_requirement(CodegenRequirement::UseRegObjective);
 			Score::new(EntityTarget::Player(reg.clone()), REG_OBJECTIVE.into())
 		}
-		MutableScoreValue::Arg(arg) => {
+		Local::Arg(arg) => {
 			let arg = format_arg_fake_player(*arg, &cbcx.func_id);
 
 			cbcx.ccx
 				.add_requirement(CodegenRequirement::UseRegObjective);
 			Score::new(EntityTarget::Player(arg), REG_OBJECTIVE.into())
 		}
-		MutableScoreValue::CallArg(arg, func, ..) => {
+		Local::CallArg(arg, func, ..) => {
 			let func_id = cleanup_fn_id(func);
 			let arg = format_arg_fake_player(*arg, &func_id);
 			cbcx.ccx
 				.add_requirement(CodegenRequirement::UseRegObjective);
 			Score::new(EntityTarget::Player(arg), REG_OBJECTIVE.into())
 		}
-		MutableScoreValue::ReturnValue(ret) => {
+		Local::ReturnValue(ret) => {
 			let ret = format_ret_fake_player(*ret, &cbcx.func_id);
 			cbcx.ccx
 				.add_requirement(CodegenRequirement::UseRegObjective);
 			Score::new(EntityTarget::Player(ret), REG_OBJECTIVE.into())
 		}
-		MutableScoreValue::CallReturnValue(ret, func, ..) => {
+		Local::CallReturnValue(ret, func, ..) => {
 			let func_id = cleanup_fn_id(func);
 			let ret = format_ret_fake_player(*ret, &func_id);
 			cbcx.ccx
@@ -82,17 +91,7 @@ pub fn get_mut_nbt_val_loc(
 ) -> anyhow::Result<FullDataLocation> {
 	let out = match val {
 		MutableNBTValue::Data(data) => data.clone(),
-		MutableNBTValue::Reg(reg) => {
-			let reg = cbcx
-				.ra
-				.locals
-				.get(reg)
-				.ok_or(anyhow!("Local register {reg} not allocated"))?;
-			FullDataLocation {
-				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
-				path: DataPath::String(reg.clone()),
-			}
-		}
+		MutableNBTValue::Local(loc) => get_nbt_local_loc(loc, cbcx)?,
 		MutableNBTValue::Property(val, prop) => {
 			let mut loc = get_mut_nbt_val_loc(val, cbcx)?;
 			loc.path = DataPath::Access(Box::new(std::mem::take(&mut loc.path)), prop.clone());
@@ -103,7 +102,28 @@ pub fn get_mut_nbt_val_loc(
 			loc.path = DataPath::Index(Box::new(std::mem::take(&mut loc.path)), *idx);
 			loc
 		}
-		MutableNBTValue::Arg(arg) => {
+	};
+
+	Ok(out)
+}
+
+pub fn get_nbt_local_loc(
+	val: &Local,
+	cbcx: &mut CodegenBlockCx,
+) -> anyhow::Result<FullDataLocation> {
+	let out = match val {
+		Local::Reg(reg) => {
+			let reg = cbcx
+				.ra
+				.locals
+				.get(reg)
+				.ok_or(anyhow!("Local register {reg} not allocated"))?;
+			FullDataLocation {
+				loc: DataLocation::Storage(REG_STORAGE_LOCATION.into()),
+				path: DataPath::String(reg.clone()),
+			}
+		}
+		Local::Arg(arg) => {
 			let arg = format_arg_local_storage_entry(*arg, &cbcx.func_id);
 			cbcx.ccx.add_requirement(CodegenRequirement::UseRegStorage);
 			FullDataLocation {
@@ -111,7 +131,7 @@ pub fn get_mut_nbt_val_loc(
 				path: DataPath::String(arg),
 			}
 		}
-		MutableNBTValue::CallArg(arg, func, ..) => {
+		Local::CallArg(arg, func, ..) => {
 			let func_id = cleanup_fn_id(func);
 			let arg = format_arg_local_storage_entry(*arg, &func_id);
 			cbcx.ccx.add_requirement(CodegenRequirement::UseRegStorage);
@@ -120,7 +140,7 @@ pub fn get_mut_nbt_val_loc(
 				path: DataPath::String(arg),
 			}
 		}
-		MutableNBTValue::ReturnValue(ret) => {
+		Local::ReturnValue(ret) => {
 			let ret = format_ret_local_storage_entry(*ret, &cbcx.func_id);
 			cbcx.ccx.add_requirement(CodegenRequirement::UseRegStorage);
 			FullDataLocation {
@@ -128,7 +148,7 @@ pub fn get_mut_nbt_val_loc(
 				path: DataPath::String(ret),
 			}
 		}
-		MutableNBTValue::CallReturnValue(ret, func, ..) => {
+		Local::CallReturnValue(ret, func, ..) => {
 			let func_id = cleanup_fn_id(func);
 			let ret = format_ret_local_storage_entry(*ret, &func_id);
 			cbcx.ccx.add_requirement(CodegenRequirement::UseRegStorage);

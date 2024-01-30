@@ -6,7 +6,7 @@ use crate::common::mc::DataPath;
 
 use super::function::{FunctionSignature, ReturnType};
 use super::mc::{FullDataLocation, Score};
-use super::reg::GetUsedRegs;
+use super::reg::{GetUsedLocals, GetUsedRegs, Local};
 use super::{ty, Identifier, RegisterList, ResourceLocation};
 
 use super::ty::{ArraySize, DataType, DataTypeContents, NBTTypeContents, ScoreTypeContents};
@@ -163,23 +163,23 @@ impl MutableValue {
 
 	pub fn to_mutable_score_value(self) -> anyhow::Result<MutableScoreValue> {
 		match self {
-			Self::Reg(reg) => Ok(MutableScoreValue::Reg(reg)),
+			Self::Reg(reg) => Ok(MutableScoreValue::Local(Local::Reg(reg))),
 			Self::Score(score) => Ok(MutableScoreValue::Score(score)),
-			Self::Arg(arg) => Ok(MutableScoreValue::Arg(arg)),
+			Self::Arg(arg) => Ok(MutableScoreValue::Local(Local::Arg(arg))),
 			Self::CallArg(arg, func, ty @ DataType::Score(..)) => {
-				Ok(MutableScoreValue::CallArg(arg, func, ty))
+				Ok(MutableScoreValue::Local(Local::CallArg(arg, func, ty)))
 			}
-			Self::ReturnValue(ret) => Ok(MutableScoreValue::ReturnValue(ret)),
-			Self::CallReturnValue(ret, func, ty @ DataType::Score(..)) => {
-				Ok(MutableScoreValue::CallReturnValue(ret, func, ty))
-			}
+			Self::ReturnValue(ret) => Ok(MutableScoreValue::Local(Local::ReturnValue(ret))),
+			Self::CallReturnValue(ret, func, ty @ DataType::Score(..)) => Ok(
+				MutableScoreValue::Local(Local::CallReturnValue(ret, func, ty)),
+			),
 			_ => bail!("Value cannot be converted to a score value"),
 		}
 	}
 
 	pub fn to_mutable_nbt_value(self) -> anyhow::Result<MutableNBTValue> {
 		match self {
-			Self::Reg(reg) => Ok(MutableNBTValue::Reg(reg)),
+			Self::Reg(reg) => Ok(MutableNBTValue::Local(Local::Reg(reg))),
 			Self::Data(data) => Ok(MutableNBTValue::Data(data)),
 			Self::Property(val, prop) => Ok(MutableNBTValue::Property(
 				Box::new(val.to_mutable_nbt_value()?),
@@ -189,15 +189,28 @@ impl MutableValue {
 				Box::new(val.to_mutable_nbt_value()?),
 				idx,
 			)),
-			Self::Arg(arg) => Ok(MutableNBTValue::Arg(arg)),
+			Self::Arg(arg) => Ok(MutableNBTValue::Local(Local::Arg(arg))),
 			Self::CallArg(arg, func, ty @ DataType::NBT(..)) => {
-				Ok(MutableNBTValue::CallArg(arg, func, ty))
+				Ok(MutableNBTValue::Local(Local::CallArg(arg, func, ty)))
 			}
-			Self::ReturnValue(ret) => Ok(MutableNBTValue::ReturnValue(ret)),
-			Self::CallReturnValue(ret, func, ty @ DataType::NBT(..)) => {
-				Ok(MutableNBTValue::CallReturnValue(ret, func, ty))
-			}
+			Self::ReturnValue(ret) => Ok(MutableNBTValue::Local(Local::ReturnValue(ret))),
+			Self::CallReturnValue(ret, func, ty @ DataType::NBT(..)) => Ok(MutableNBTValue::Local(
+				Local::CallReturnValue(ret, func, ty),
+			)),
 			_ => bail!("Value cannot be converted to a NBT value"),
+		}
+	}
+
+	pub fn to_local(self) -> anyhow::Result<Local> {
+		match self {
+			Self::Reg(reg) => Ok(Local::Reg(reg)),
+			Self::Arg(arg) => Ok(Local::Arg(arg)),
+			Self::CallArg(arg, func, ty @ DataType::NBT(..)) => Ok(Local::CallArg(arg, func, ty)),
+			Self::ReturnValue(ret) => Ok(Local::ReturnValue(ret)),
+			Self::CallReturnValue(ret, func, ty @ DataType::NBT(..)) => {
+				Ok(Local::CallReturnValue(ret, func, ty))
+			}
+			_ => bail!("Value cannot be converted to a local"),
 		}
 	}
 }
@@ -258,6 +271,15 @@ impl GetUsedRegs for ScoreValue {
 	}
 }
 
+impl GetUsedLocals for ScoreValue {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			Self::Constant(..) => {}
+			Self::Mutable(val) => val.append_used_locals(locals),
+		}
+	}
+}
+
 impl Debug for ScoreValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
@@ -271,56 +293,47 @@ impl Debug for ScoreValue {
 #[derive(Clone)]
 pub enum MutableScoreValue {
 	Score(Score),
-	Reg(Identifier),
-
-	Arg(ArgRetIndex),
-	CallArg(ArgRetIndex, ResourceLocation, DataType),
-	ReturnValue(ArgRetIndex),
-	CallReturnValue(ArgRetIndex, ResourceLocation, DataType),
+	Local(Local),
 }
 
 impl MutableScoreValue {
 	pub fn get_used_regs_mut(&mut self) -> Vec<&mut Identifier> {
 		match self {
 			Self::Score(..) => Vec::new(),
-			Self::Reg(reg) => vec![reg],
-			Self::Arg(..)
-			| Self::CallArg(..)
-			| Self::ReturnValue(..)
-			| Self::CallReturnValue(..) => Vec::new(),
+			Self::Local(loc) => loc.get_used_regs_mut(),
 		}
 	}
 
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Score(l), Self::Score(r)) if l.is_value_eq(r))
-			|| matches!((self, other), (Self::Reg(l), Self::Reg(r)) if l == r)
+			|| matches!((self, other), (Self::Local(l), Self::Local(r)) if l == r)
 	}
 }
 
 impl GetUsedRegs for MutableScoreValue {
 	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
 		match self {
-			Self::Reg(reg) => regs.push(reg),
-			Self::Score(..)
-			| Self::Arg(..)
-			| Self::CallArg(..)
-			| Self::ReturnValue(..)
-			| Self::CallReturnValue(..) => {}
+			Self::Local(loc) => loc.append_used_regs(regs),
+			Self::Score(..) => {}
+		}
+	}
+}
+
+impl GetUsedLocals for MutableScoreValue {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			Self::Local(loc) => locals.push(loc),
+			Self::Score(..) => {}
 		}
 	}
 }
 
 impl Debug for MutableScoreValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let text = match self {
-			Self::Score(score) => format!("{score:?}"),
-			Self::Reg(reg) => format!("%{reg}"),
-			Self::Arg(idx) => format!("&{idx}"),
-			Self::CallArg(idx, ..) => format!("&&{idx}"),
-			Self::ReturnValue(idx) => format!("*{idx}"),
-			Self::CallReturnValue(idx, ..) => format!("**{idx}"),
-		};
-		write!(f, "{text}")
+		match self {
+			Self::Score(score) => write!(f, "{score:?}"),
+			Self::Local(loc) => loc.fmt(f),
+		}
 	}
 }
 
@@ -346,6 +359,15 @@ impl GetUsedRegs for NBTValue {
 	}
 }
 
+impl GetUsedLocals for NBTValue {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			Self::Constant(..) => {}
+			Self::Mutable(val) => val.append_used_locals(locals),
+		}
+	}
+}
+
 impl Debug for NBTValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
@@ -359,19 +381,15 @@ impl Debug for NBTValue {
 #[derive(Clone)]
 pub enum MutableNBTValue {
 	Data(FullDataLocation),
-	Reg(Identifier),
 	Property(Box<MutableNBTValue>, String),
 	Index(Box<MutableNBTValue>, ArraySize),
-	Arg(ArgRetIndex),
-	CallArg(ArgRetIndex, ResourceLocation, DataType),
-	ReturnValue(ArgRetIndex),
-	CallReturnValue(ArgRetIndex, ResourceLocation, DataType),
+	Local(Local),
 }
 
 impl MutableNBTValue {
 	pub fn is_value_eq(&self, other: &Self) -> bool {
 		matches!((self, other), (Self::Data(l), Self::Data(r)) if l.is_value_eq(r))
-			|| matches!((self, other), (Self::Reg(l), Self::Reg(r)) if l == r)
+			|| matches!((self, other), (Self::Local(l), Self::Local(r)) if l == r)
 	}
 
 	pub fn is_root(&self) -> bool {
@@ -389,12 +407,18 @@ impl GetUsedRegs for MutableNBTValue {
 	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
 		match self {
 			Self::Property(val, ..) | Self::Index(val, ..) => val.append_used_regs(regs),
-			Self::Reg(reg) => regs.push(reg),
-			Self::Arg(..)
-			| Self::CallArg(..)
-			| Self::ReturnValue(..)
-			| Self::CallReturnValue(..)
-			| Self::Data(..) => {}
+			Self::Data(..) => {}
+			Self::Local(loc) => loc.append_used_regs(regs),
+		}
+	}
+}
+
+impl GetUsedLocals for MutableNBTValue {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			Self::Property(val, ..) | Self::Index(val, ..) => val.append_used_locals(locals),
+			Self::Local(loc) => locals.push(loc),
+			Self::Data(..) => {}
 		}
 	}
 }
@@ -403,13 +427,9 @@ impl Debug for MutableNBTValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let text = match self {
 			Self::Data(data) => format!("{data:?}"),
-			Self::Reg(reg) => format!("${reg}"),
+			Self::Local(loc) => format!("{loc:?}"),
 			Self::Property(val, prop) => format!("{val:?}.{prop}"),
 			Self::Index(val, idx) => format!("{val:?}[{idx}]"),
-			Self::Arg(idx) => format!("&{idx}"),
-			Self::CallArg(idx, ..) => format!("&&{idx}"),
-			Self::ReturnValue(idx) => format!("*{idx}"),
-			Self::CallReturnValue(idx, ..) => format!("**{idx}"),
 		};
 		write!(f, "{text}")
 	}

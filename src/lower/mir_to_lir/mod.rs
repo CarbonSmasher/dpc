@@ -5,7 +5,7 @@ use crate::common::mc::modifier::{
 	IfModCondition, IfScoreCondition, IfScoreRangeEnd, MIRModifier, Modifier, StoreDataType,
 	StoreModLocation,
 };
-use crate::common::reg::GetUsedRegs;
+use crate::common::reg::{GetUsedLocals, Local};
 use crate::common::ty::{get_op_tys, DataType, Double, ScoreType, ScoreTypeContents};
 use crate::common::ResourceLocation;
 use crate::common::{
@@ -197,7 +197,7 @@ fn lower_kind(
 				lbcx,
 			)?));
 		}
-		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val),
+		MIRInstrKind::Use { val } => lower!(lir_instrs, Use, val.to_local()?),
 		MIRInstrKind::GetConst { value } => lower!(lir_instrs, GetConst, value),
 		MIRInstrKind::Call { call } => {
 			// Set the arguments
@@ -564,7 +564,7 @@ fn lower_swap(
 			let left = left.clone().to_mutable_nbt_value()?;
 			let right = right.clone().to_mutable_nbt_value()?;
 			out.push(LIRInstruction::new(LIRInstrKind::SetData(
-				MutableNBTValue::Reg(temp_reg.clone()),
+				MutableNBTValue::Local(Local::Reg(temp_reg.clone())),
 				NBTValue::Mutable(left.clone()),
 			)));
 			out.push(LIRInstruction::new(LIRInstrKind::SetData(
@@ -573,7 +573,7 @@ fn lower_swap(
 			)));
 			out.push(LIRInstruction::new(LIRInstrKind::SetData(
 				right.clone(),
-				NBTValue::Mutable(MutableNBTValue::Reg(temp_reg.clone())),
+				NBTValue::Mutable(MutableNBTValue::Local(Local::Reg(temp_reg.clone()))),
 			)));
 		}
 		_ => bail!("Instruction does not allow this type"),
@@ -749,7 +749,7 @@ fn lower_pow(
 				return Ok(());
 			}
 			let new_reg_id = lbcx.new_additional_reg();
-			let new_reg = MutableScoreValue::Reg(new_reg_id.clone());
+			let new_reg = MutableScoreValue::Local(Local::Reg(new_reg_id.clone()));
 			// Declare the temp reg as the base
 			lbcx.registers.insert(
 				new_reg_id.clone(),
@@ -799,8 +799,8 @@ fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LI
 			.expect("If len is 1, instr should exist")
 			.clone()
 	} else {
-		let (func, regs) = lower_subblock_impl(new_lir_instrs, lbcx)?;
-		LIRInstruction::new(LIRInstrKind::Call(func, regs))
+		let (func, locs) = lower_subblock_impl(new_lir_instrs, lbcx)?;
+		LIRInstruction::new(LIRInstrKind::Call(func, locs))
 	};
 
 	Ok(out)
@@ -810,11 +810,11 @@ fn lower_subblock(block: MIRBlock, lbcx: &mut LowerBlockCx) -> anyhow::Result<LI
 fn lower_subblock_impl(
 	instrs: Vec<LIRInstruction>,
 	lbcx: &mut LowerBlockCx,
-) -> anyhow::Result<(ResourceLocation, Vec<Identifier>)> {
+) -> anyhow::Result<(ResourceLocation, Vec<Local>)> {
 	let mut lir_block = LIRBlock::new(lbcx.registers.clone());
 	lir_block.contents = instrs;
 	let interface = lbcx.new_body_fn();
-	let regs = lir_block.get_used_regs().into_iter().cloned().collect();
+	let locs = lir_block.get_used_locals().into_iter().cloned().collect();
 	lbcx.lir.functions.insert(
 		interface.id.clone(),
 		LIRFunction {
@@ -823,5 +823,5 @@ fn lower_subblock_impl(
 			parent: Some(lbcx.func_id.clone()),
 		},
 	);
-	Ok((interface.id, regs))
+	Ok((interface.id, locs))
 }

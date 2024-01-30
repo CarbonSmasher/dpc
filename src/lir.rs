@@ -7,11 +7,9 @@ use crate::common::block::Block;
 use crate::common::function::FunctionInterface;
 use crate::common::mc::instr::MinecraftInstr;
 use crate::common::mc::modifier::{IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier};
-use crate::common::reg::GetUsedRegs;
+use crate::common::reg::{GetUsedLocals, GetUsedRegs, Local};
 use crate::common::ty::Double;
-use crate::common::val::{
-	ArgRetIndex, MutableNBTValue, MutableScoreValue, MutableValue, NBTValue, ScoreValue,
-};
+use crate::common::val::{ArgRetIndex, MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::common::{FunctionTrait, IRType, Identifier, RegisterList, ResourceLocation};
 
 #[derive(Debug, Clone)]
@@ -134,6 +132,15 @@ impl GetUsedRegs for LIRInstruction {
 	}
 }
 
+impl GetUsedLocals for LIRInstruction {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		self.kind.append_used_locals(locals);
+		for modi in &self.modifiers {
+			modi.append_used_locals(locals);
+		}
+	}
+}
+
 impl Debug for LIRInstruction {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		if !self.modifiers.is_empty() {
@@ -171,9 +178,9 @@ pub enum LIRInstrKind {
 	PushFrontData(MutableNBTValue, NBTValue),
 	InsertData(MutableNBTValue, NBTValue, i32),
 	RemoveData(MutableNBTValue),
-	Use(MutableValue),
+	Use(Local),
 	NoOp,
-	Call(ResourceLocation, Vec<Identifier>),
+	Call(ResourceLocation, Vec<Local>),
 	ReturnValue(i32),
 	ReturnFail,
 	ReturnRun(Box<LIRInstruction>),
@@ -251,7 +258,11 @@ impl GetUsedRegs for LIRInstrKind {
 				data.append_used_regs(regs);
 			}
 			LIRInstrKind::Use(val) => val.append_used_regs(regs),
-			LIRInstrKind::Call(_, regs2) => regs.extend(regs2.iter()),
+			LIRInstrKind::Call(_, locals) => {
+				for loc in locals {
+					loc.append_used_regs(regs);
+				}
+			}
 			LIRInstrKind::NoOp
 			| LIRInstrKind::GetConst(..)
 			| LIRInstrKind::ReturnValue(..)
@@ -260,6 +271,54 @@ impl GetUsedRegs for LIRInstrKind {
 			| LIRInstrKind::Comment(..)
 			| LIRInstrKind::MC(..) => {}
 			LIRInstrKind::ReturnRun(body) => body.append_used_regs(regs),
+		}
+	}
+}
+
+impl GetUsedLocals for LIRInstrKind {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			LIRInstrKind::SetScore(left, right)
+			| LIRInstrKind::AddScore(left, right)
+			| LIRInstrKind::SubScore(left, right)
+			| LIRInstrKind::MulScore(left, right)
+			| LIRInstrKind::DivScore(left, right)
+			| LIRInstrKind::ModScore(left, right)
+			| LIRInstrKind::MinScore(left, right)
+			| LIRInstrKind::MaxScore(left, right) => {
+				left.append_used_locals(locals);
+				right.append_used_locals(locals);
+			}
+			LIRInstrKind::SetData(left, right)
+			| LIRInstrKind::MergeData(left, right)
+			| LIRInstrKind::PushData(left, right)
+			| LIRInstrKind::PushFrontData(left, right)
+			| LIRInstrKind::InsertData(left, right, ..) => {
+				left.append_used_locals(locals);
+				right.append_used_locals(locals);
+			}
+			LIRInstrKind::SwapScore(left, right) => {
+				left.append_used_locals(locals);
+				right.append_used_locals(locals);
+			}
+			LIRInstrKind::GetScore(score) | LIRInstrKind::ResetScore(score) => {
+				score.append_used_locals(locals);
+			}
+			LIRInstrKind::GetData(data, ..) | LIRInstrKind::RemoveData(data) => {
+				data.append_used_locals(locals);
+			}
+			LIRInstrKind::Use(val) => locals.push(val),
+			LIRInstrKind::Call(_, locs) => {
+				locals.extend(locs);
+			}
+			LIRInstrKind::NoOp
+			| LIRInstrKind::GetConst(..)
+			| LIRInstrKind::ReturnValue(..)
+			| LIRInstrKind::ReturnFail
+			| LIRInstrKind::Command(..)
+			| LIRInstrKind::Comment(..)
+			| LIRInstrKind::MC(..) => {}
+			LIRInstrKind::ReturnRun(body) => body.append_used_locals(locals),
 		}
 	}
 }
@@ -279,21 +338,23 @@ impl LIRInstrKind {
 		}
 	}
 
-	pub fn get_op_rhs_reg_mut(&mut self) -> Option<&mut Identifier> {
+	pub fn get_op_rhs_mut(&mut self) -> Option<&mut Local> {
 		match self {
-			LIRInstrKind::SetScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
-			| LIRInstrKind::AddScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
-			| LIRInstrKind::SubScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
-			| LIRInstrKind::MulScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
-			| LIRInstrKind::DivScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
-			| LIRInstrKind::ModScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
-			| LIRInstrKind::MinScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right)))
-			| LIRInstrKind::MaxScore(_, ScoreValue::Mutable(MutableScoreValue::Reg(right))) => Some(right),
-			LIRInstrKind::SetData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)))
-			| LIRInstrKind::MergeData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)))
-			| LIRInstrKind::InsertData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)), ..)
-			| LIRInstrKind::PushData(_, NBTValue::Mutable(MutableNBTValue::Reg(right)))
-			| LIRInstrKind::PushFrontData(_, NBTValue::Mutable(MutableNBTValue::Reg(right))) => Some(right),
+			LIRInstrKind::SetScore(_, ScoreValue::Mutable(MutableScoreValue::Local(right)))
+			| LIRInstrKind::AddScore(_, ScoreValue::Mutable(MutableScoreValue::Local(right)))
+			| LIRInstrKind::SubScore(_, ScoreValue::Mutable(MutableScoreValue::Local(right)))
+			| LIRInstrKind::MulScore(_, ScoreValue::Mutable(MutableScoreValue::Local(right)))
+			| LIRInstrKind::DivScore(_, ScoreValue::Mutable(MutableScoreValue::Local(right)))
+			| LIRInstrKind::ModScore(_, ScoreValue::Mutable(MutableScoreValue::Local(right)))
+			| LIRInstrKind::MinScore(_, ScoreValue::Mutable(MutableScoreValue::Local(right)))
+			| LIRInstrKind::MaxScore(_, ScoreValue::Mutable(MutableScoreValue::Local(right))) => Some(right),
+			LIRInstrKind::SetData(_, NBTValue::Mutable(MutableNBTValue::Local(right)))
+			| LIRInstrKind::MergeData(_, NBTValue::Mutable(MutableNBTValue::Local(right)))
+			| LIRInstrKind::InsertData(_, NBTValue::Mutable(MutableNBTValue::Local(right)), ..)
+			| LIRInstrKind::PushData(_, NBTValue::Mutable(MutableNBTValue::Local(right)))
+			| LIRInstrKind::PushFrontData(_, NBTValue::Mutable(MutableNBTValue::Local(right))) => {
+				Some(right)
+			}
 			_ => None,
 		}
 	}
@@ -330,13 +391,13 @@ impl LIRInstrKind {
 			| LIRInstrKind::ModScore(_, right)
 			| LIRInstrKind::MinScore(_, right)
 			| LIRInstrKind::MaxScore(_, right) => {
-				if let ScoreValue::Mutable(MutableScoreValue::Arg(arg)) = right {
+				if let ScoreValue::Mutable(MutableScoreValue::Local(Local::Arg(arg))) = right {
 					Some(arg)
 				} else {
 					None
 				}
 			}
-			LIRInstrKind::ResetScore(MutableScoreValue::Arg(arg)) => Some(arg),
+			LIRInstrKind::ResetScore(MutableScoreValue::Local(Local::Arg(arg))) => Some(arg),
 			_ => None,
 		}
 	}

@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use crate::common::reg::GetUsedRegs;
+use crate::common::reg::{GetUsedRegs, Local};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue};
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::mir::{MIRBlock, MIRInstrKind};
@@ -141,8 +141,8 @@ fn run_lir_iter(block: &mut LIRBlock, instrs_to_remove: &mut HashSetEmptyTracker
 	let mut dead_stores = Vec::new();
 
 	for (i, instr) in block.contents.iter().enumerate() {
-		if let LIRInstrKind::SetScore(MutableScoreValue::Reg(id), ..)
-		| LIRInstrKind::SetData(MutableNBTValue::Reg(id), ..) = &instr.kind
+		if let LIRInstrKind::SetScore(MutableScoreValue::Local(Local::Reg(id)), ..)
+		| LIRInstrKind::SetData(MutableNBTValue::Local(Local::Reg(id)), ..) = &instr.kind
 		{
 			if !instrs_to_remove.contains(&i) {
 				if instr.modifiers.is_empty() {

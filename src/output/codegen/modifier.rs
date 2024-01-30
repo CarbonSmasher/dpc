@@ -1,16 +1,17 @@
-use anyhow::{anyhow, bail, Context};
+use anyhow::{bail, Context};
 
 use crate::common::mc::modifier::{
 	EntityRelation, IfModCondition, IfScoreCondition, IfScoreRangeEnd, Modifier, StoreDataType,
 	StoreModLocation,
 };
 use crate::common::ty::{DataType, ScoreTypeContents};
-use crate::common::val::{MutableNBTValue, ScoreValue};
+use crate::common::val::ScoreValue;
 use crate::output::codegen::util::FloatCG;
-use crate::output::text::REG_OBJECTIVE;
 
 use super::t::macros::cgformat;
-use super::util::{create_lit_score, get_mut_score_val_score};
+use super::util::{
+	create_lit_score, get_mut_score_val_score, get_nbt_local_loc, get_score_local_score,
+};
 use super::{Codegen, CodegenBlockCx};
 
 pub fn codegen_modifier(
@@ -280,24 +281,15 @@ fn codegen_score_lt(inclusive: bool) -> &'static str {
 impl StoreModLocation {
 	fn codegen(self, cbcx: &mut CodegenBlockCx) -> anyhow::Result<String> {
 		match self {
-			Self::Reg(reg, scale) => {
-				let ty = cbcx
-					.regs
-					.get(&reg)
-					.context("Register does not exist")?
-					.ty
-					.clone();
+			Self::Local(loc, scale) => {
+				let ty = loc.get_ty(&cbcx.regs, &cbcx.sig)?;
 				match ty {
 					DataType::Score(..) => {
-						let reg = cbcx
-							.ra
-							.regs
-							.get(&reg)
-							.ok_or(anyhow!("Register {reg} not allocated"))?;
-						Ok(format!("score {reg} {REG_OBJECTIVE}"))
+						let loc = get_score_local_score(&loc, cbcx)?;
+						cgformat!(cbcx, "score ", loc)
 					}
 					DataType::NBT(ty) => {
-						let loc = MutableNBTValue::Reg(reg.clone()).gen_str(cbcx)?;
+						let loc = get_nbt_local_loc(&loc, cbcx)?;
 						let ty = StoreDataType::from_nbt_ty(&ty)
 							.context("Type is not a valid storage type")?;
 						cgformat!(cbcx, loc, " ", ty, " ", FloatCG(scale, false, true, true))
@@ -320,6 +312,7 @@ mod tests {
 
 	use super::*;
 
+	use crate::common::function::FunctionSignature;
 	use crate::common::mc::{EntityTarget, Score};
 	use crate::common::RegisterList;
 	use crate::common::{ty::ScoreTypeContents, val::MutableScoreValue};
@@ -340,6 +333,7 @@ mod tests {
 			regs: RegisterList::default(),
 			func_id: "foo".into(),
 			macro_line: false,
+			sig: FunctionSignature::new(),
 		};
 
 		let modifier = Modifier::If {

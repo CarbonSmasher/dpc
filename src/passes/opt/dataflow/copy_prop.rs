@@ -1,8 +1,8 @@
 use rustc_hash::FxHashMap;
 
-use crate::common::reg::GetUsedRegs;
+use crate::common::reg::{GetUsedLocals, Local};
+use crate::common::val::MutableScoreValue;
 use crate::common::val::{MutableNBTValue, NBTValue, ScoreValue};
-use crate::common::{val::MutableScoreValue, Identifier};
 use crate::lir::{LIRBlock, LIRInstrKind};
 use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::project::{OptimizationLevel, ProjectSettings};
@@ -21,14 +21,14 @@ impl Pass for CopyPropPass {
 
 impl LIRPass for CopyPropPass {
 	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
-		let mut reg_mapping = FxHashMap::default();
+		let mut loc_mapping = FxHashMap::default();
 
 		for func in data.lir.functions.values_mut() {
 			let block = &mut func.block;
 
 			loop {
-				reg_mapping.clear();
-				let run_again = run_iter(block, &mut reg_mapping);
+				loc_mapping.clear();
+				let run_again = run_iter(block, &mut loc_mapping);
 				if !run_again {
 					break;
 				}
@@ -39,45 +39,48 @@ impl LIRPass for CopyPropPass {
 	}
 }
 
-fn run_iter(block: &mut LIRBlock, reg_mapping: &mut FxHashMap<Identifier, Identifier>) -> bool {
+fn run_iter(block: &mut LIRBlock, loc_mapping: &mut FxHashMap<Local, Local>) -> bool {
 	let mut run_again = false;
 
 	for instr in &mut block.contents {
 		let mut dont_remove = Vec::new();
 
 		if let LIRInstrKind::SetScore(
-			MutableScoreValue::Reg(l),
-			ScoreValue::Mutable(MutableScoreValue::Reg(r)),
+			MutableScoreValue::Local(l),
+			ScoreValue::Mutable(MutableScoreValue::Local(r)),
 		)
 		| LIRInstrKind::SetData(
-			MutableNBTValue::Reg(l),
-			NBTValue::Mutable(MutableNBTValue::Reg(r)),
+			MutableNBTValue::Local(l),
+			NBTValue::Mutable(MutableNBTValue::Local(r)),
 		) = &mut instr.kind
 		{
 			// We can copy prop these too
-			if let Some(reg) = reg_mapping.get(r) {
-				*r = reg.clone();
+			if let Some(loc) = loc_mapping.get(r) {
+				*r = loc.clone();
 				run_again = true;
 			}
 
-			reg_mapping.insert(l.clone(), r.clone());
-			dont_remove.push(l.clone());
-			dont_remove.push(r.clone());
+			// We can't prop into call args or return values
+			if !matches!(l, Local::CallArg(..) | Local::ReturnValue(..)) {
+				loc_mapping.insert(l.clone(), r.clone());
+				dont_remove.push(l.clone());
+				dont_remove.push(r.clone());
+			}
 		}
 
-		if let Some(right) = instr.kind.get_op_rhs_reg_mut() {
-			if let Some(reg) = reg_mapping.get(right) {
-				*right = reg.clone();
+		if let Some(right) = instr.kind.get_op_rhs_mut() {
+			if let Some(loc) = loc_mapping.get(right) {
+				*right = loc.clone();
 				run_again = true;
 			}
 		}
 
-		for reg in instr.get_used_regs() {
-			if dont_remove.contains(reg) {
+		for loc in instr.get_used_locals() {
+			if dont_remove.contains(loc) {
 				continue;
 			}
-			reg_mapping.remove(reg);
-			reg_mapping.retain(|_, x| x != reg);
+			loc_mapping.remove(loc);
+			loc_mapping.retain(|_, x| x != loc);
 		}
 	}
 

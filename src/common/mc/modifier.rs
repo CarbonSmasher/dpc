@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use anyhow::{bail, Context};
 
 use crate::common::function::FunctionSignature;
-use crate::common::reg::GetUsedRegs;
+use crate::common::reg::{GetUsedLocals, GetUsedRegs, Local};
 use crate::common::ty::{DataType, Double, NBTType, NBTTypeContents};
 use crate::common::val::{MutableNBTValue, MutableScoreValue, MutableValue, ScoreValue};
 use crate::common::{RegisterList, ResourceLocationTag};
@@ -55,6 +55,18 @@ impl GetUsedRegs for Modifier {
 		match self {
 			Modifier::StoreResult(loc) | Modifier::StoreSuccess(loc) => loc.append_used_regs(regs),
 			Modifier::If { condition, .. } => condition.append_used_regs(regs),
+			_ => {}
+		}
+	}
+}
+
+impl GetUsedLocals for Modifier {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			Modifier::StoreResult(loc) | Modifier::StoreSuccess(loc) => {
+				loc.append_used_locals(locals)
+			}
+			Modifier::If { condition, .. } => condition.append_used_locals(locals),
 			_ => {}
 		}
 	}
@@ -163,7 +175,7 @@ impl Debug for MIRModifier {
 
 #[derive(Clone, PartialEq)]
 pub enum StoreModLocation {
-	Reg(Identifier, Double),
+	Local(Local, Double),
 	Score(Score),
 	Data(FullDataLocation, StoreDataType, Double),
 	Bossbar(ResourceLocation, StoreBossbarMode),
@@ -184,22 +196,21 @@ impl StoreModLocation {
 			_ => bail!("Unsupported type"),
 		}
 	}
-	// TODO: Support storing in args
 	pub fn from_mut_score_val(val: &MutableScoreValue) -> anyhow::Result<Self> {
 		match val {
-			MutableScoreValue::Reg(reg) => Ok(Self::Reg(reg.clone(), 1.0)),
+			MutableScoreValue::Local(loc) => Ok(Self::Local(loc.clone(), 1.0)),
 			MutableScoreValue::Score(score) => Ok(Self::Score(score.clone())),
-			_ => bail!("Unsupported storage location"),
 		}
 	}
 
+	// TODO: Support storing in idx and prop
 	pub fn from_mut_nbt_val(
 		val: &MutableNBTValue,
 		ty: StoreDataType,
 		scale: Double,
 	) -> anyhow::Result<Self> {
 		match val {
-			MutableNBTValue::Reg(reg) => Ok(Self::Reg(reg.clone(), scale)),
+			MutableNBTValue::Local(loc) => Ok(Self::Local(loc.clone(), scale)),
 			MutableNBTValue::Data(data) => Ok(Self::Data(data.clone(), ty, scale)),
 			_ => bail!("Unsupported storage location"),
 		}
@@ -207,7 +218,11 @@ impl StoreModLocation {
 
 	pub fn replace_regs<F: Fn(&mut Identifier)>(&mut self, f: F) {
 		match self {
-			Self::Reg(reg, ..) => f(reg),
+			Self::Local(loc, ..) => {
+				for reg in loc.get_used_regs_mut() {
+					f(reg);
+				}
+			}
 			_ => {}
 		}
 	}
@@ -216,7 +231,16 @@ impl StoreModLocation {
 impl GetUsedRegs for StoreModLocation {
 	fn append_used_regs<'a>(&'a self, regs: &mut Vec<&'a Identifier>) {
 		match self {
-			Self::Reg(reg, ..) => regs.push(reg),
+			Self::Local(loc, ..) => loc.append_used_regs(regs),
+			Self::Score(..) | Self::Data(..) | Self::Bossbar(..) => {}
+		}
+	}
+}
+
+impl GetUsedLocals for StoreModLocation {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			Self::Local(loc, ..) => locals.push(loc),
 			Self::Score(..) | Self::Data(..) | Self::Bossbar(..) => {}
 		}
 	}
@@ -225,8 +249,7 @@ impl GetUsedRegs for StoreModLocation {
 impl Debug for StoreModLocation {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Reg(reg, scale) => write!(f, "{reg} {scale}"),
-			// Self::LocalReg(reg, scale) => write!(f, "{reg} {scale}"),
+			Self::Local(loc, scale) => write!(f, "{loc:?} {scale}"),
 			Self::Score(score) => write!(f, "{score:?}"),
 			Self::Data(data, ty, scale) => write!(f, "{data:?} {ty:?} {scale}"),
 			Self::Bossbar(bar, mode) => write!(f, "bb {bar} {mode:?}"),
@@ -340,7 +363,7 @@ pub enum IfModCondition {
 	Score(IfScoreCondition),
 	Entity(EntityTarget),
 	Predicate(ResourceLocation),
-	Function(ResourceLocationTag, Vec<Identifier>),
+	Function(ResourceLocationTag, Vec<Local>),
 	Biome(IntCoordinates, ResourceLocationTag),
 	Dimension(ResourceLocation),
 	Loaded(IntCoordinates),
@@ -365,7 +388,38 @@ impl GetUsedRegs for IfModCondition {
 				}
 			},
 			Self::DataExists(val) | Self::DataEquals(val, ..) => val.append_used_regs(regs),
-			Self::Function(_, regs2) => regs.extend(regs2.iter()),
+			Self::Function(_, locals) => {
+				for loc in locals {
+					loc.append_used_regs(regs);
+				}
+			}
+			Self::Entity(..)
+			| Self::Predicate(..)
+			| Self::Biome(..)
+			| Self::Dimension(..)
+			| Self::Loaded(..)
+			| Self::Block(..)
+			| Self::Const(..) => {}
+		}
+	}
+}
+
+impl GetUsedLocals for IfModCondition {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			Self::Score(cond) => match cond {
+				IfScoreCondition::Single { left, right } => {
+					left.append_used_locals(locals);
+					right.append_used_locals(locals);
+				}
+				IfScoreCondition::Range { score, left, right } => {
+					score.append_used_locals(locals);
+					left.append_used_locals(locals);
+					right.append_used_locals(locals);
+				}
+			},
+			Self::DataExists(val) | Self::DataEquals(val, ..) => val.append_used_locals(locals),
+			Self::Function(_, locs) => locals.extend(locs),
 			Self::Entity(..)
 			| Self::Predicate(..)
 			| Self::Biome(..)
@@ -428,6 +482,15 @@ impl GetUsedRegs for IfScoreRangeEnd {
 		match self {
 			Self::Infinite => {}
 			Self::Fixed { value, .. } => value.append_used_regs(regs),
+		}
+	}
+}
+
+impl GetUsedLocals for IfScoreRangeEnd {
+	fn append_used_locals<'a>(&'a self, locals: &mut Vec<&'a Local>) {
+		match self {
+			Self::Infinite => {}
+			Self::Fixed { value, .. } => value.append_used_locals(locals),
 		}
 	}
 }
