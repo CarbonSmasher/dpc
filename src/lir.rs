@@ -11,6 +11,7 @@ use crate::common::reg::{GetUsedLocals, GetUsedRegs, Local};
 use crate::common::ty::Double;
 use crate::common::val::{ArgRetIndex, MutableNBTValue, MutableScoreValue, NBTValue, ScoreValue};
 use crate::common::{FunctionTrait, IRType, Identifier, RegisterList, ResourceLocation};
+use crate::passes::util::AnalysisResult;
 
 #[derive(Debug, Clone)]
 pub struct LIR {
@@ -399,6 +400,46 @@ impl LIRInstrKind {
 			}
 			LIRInstrKind::ResetScore(MutableScoreValue::Local(Local::Arg(arg))) => Some(arg),
 			_ => None,
+		}
+	}
+
+	pub fn get_modified_locs(&self) -> AnalysisResult<&Local> {
+		match self {
+			LIRInstrKind::SetScore(left, _)
+			| LIRInstrKind::AddScore(left, _)
+			| LIRInstrKind::SubScore(left, _)
+			| LIRInstrKind::MulScore(left, _)
+			| LIRInstrKind::DivScore(left, _)
+			| LIRInstrKind::ModScore(left, _)
+			| LIRInstrKind::MinScore(left, _)
+			| LIRInstrKind::MaxScore(left, _)
+			| LIRInstrKind::ResetScore(left) => {
+				if let MutableScoreValue::Local(loc) = left {
+					AnalysisResult::known(loc)
+				} else {
+					AnalysisResult::known_empty()
+				}
+			}
+			LIRInstrKind::SwapScore(l, r) => {
+				let mut out = Vec::new();
+				if let MutableScoreValue::Local(l) = l {
+					out.push(l);
+				}
+				if let MutableScoreValue::Local(r) = r {
+					out.push(r);
+				}
+				AnalysisResult::Known(out)
+			}
+			LIRInstrKind::SetData(left, _) | LIRInstrKind::RemoveData(left) => {
+				if let MutableNBTValue::Local(loc) = left {
+					AnalysisResult::known(loc)
+				} else {
+					AnalysisResult::known_empty()
+				}
+			}
+			LIRInstrKind::Use(loc) => AnalysisResult::known(loc),
+			LIRInstrKind::Call(..) => AnalysisResult::Unknown,
+			_ => AnalysisResult::known_empty(),
 		}
 	}
 }

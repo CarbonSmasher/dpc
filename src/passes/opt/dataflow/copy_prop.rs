@@ -1,9 +1,11 @@
-use rustc_hash::FxHashMap;
+use intset::GrowSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::common::reg::{GetUsedLocals, Local};
 use crate::common::val::MutableScoreValue;
 use crate::common::val::{MutableNBTValue, NBTValue, ScoreValue};
 use crate::lir::{LIRBlock, LIRInstrKind};
+use crate::passes::util::usage_analysis::analyze_write_after_copy;
 use crate::passes::{LIRPass, LIRPassData, Pass};
 use crate::project::{OptimizationLevel, ProjectSettings};
 
@@ -22,13 +24,21 @@ impl Pass for CopyPropPass {
 impl LIRPass for CopyPropPass {
 	fn run_pass(&mut self, data: &mut LIRPassData) -> anyhow::Result<()> {
 		let mut loc_mapping = FxHashMap::default();
+		let mut blacklist = FxHashSet::default();
 
 		for func in data.lir.functions.values_mut() {
 			let block = &mut func.block;
 
+			let writes_after_copies = analyze_write_after_copy(block);
+
 			loop {
 				loc_mapping.clear();
-				let run_again = run_iter(block, &mut loc_mapping);
+				let run_again = run_iter(
+					block,
+					&mut loc_mapping,
+					&mut blacklist,
+					&writes_after_copies,
+				);
 				if !run_again {
 					break;
 				}
@@ -39,10 +49,15 @@ impl LIRPass for CopyPropPass {
 	}
 }
 
-fn run_iter(block: &mut LIRBlock, loc_mapping: &mut FxHashMap<Local, Local>) -> bool {
+fn run_iter(
+	block: &mut LIRBlock,
+	loc_mapping: &mut FxHashMap<Local, Local>,
+	blacklist: &mut FxHashSet<Local>,
+	writes_after_copies: &GrowSet,
+) -> bool {
 	let mut run_again = false;
 
-	for instr in &mut block.contents {
+	for (i, instr) in block.contents.iter_mut().enumerate() {
 		let mut dont_remove = Vec::new();
 
 		if let LIRInstrKind::SetScore(
@@ -62,9 +77,16 @@ fn run_iter(block: &mut LIRBlock, loc_mapping: &mut FxHashMap<Local, Local>) -> 
 
 			// We can't prop into call args or return values
 			if !matches!(l, Local::CallArg(..) | Local::ReturnValue(..)) {
-				loc_mapping.insert(l.clone(), r.clone());
-				dont_remove.push(l.clone());
-				dont_remove.push(r.clone());
+				// Don't add blacklisted props
+				if !blacklist.contains(l) {
+					// Add this to the blacklist if it modifies the value
+					if writes_after_copies.contains(i) {
+						blacklist.insert(l.clone());
+					}
+					loc_mapping.insert(l.clone(), r.clone());
+					dont_remove.push(l.clone());
+					dont_remove.push(r.clone());
+				}
 			}
 		}
 

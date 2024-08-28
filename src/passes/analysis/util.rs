@@ -1,7 +1,5 @@
-use crate::{
-	common::IRType,
-	passes::{MIRPass, MIRPassData, Pass},
-};
+use crate::common::IRType;
+use crate::passes::{MIRPass, MIRPassData, Pass};
 
 pub struct PrintBlocksPass;
 

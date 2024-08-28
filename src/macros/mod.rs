@@ -17,3 +17,12 @@ macro_rules! push_instrs {
 		)*
 	};
 }
+
+#[macro_export]
+macro_rules! push_lir_instrs {
+	($block:expr, $($instr:expr);* $(;)?) => {
+		$(
+			$block.contents.push($crate::lir::LIRInstruction::new($instr));
+		)*
+	};
+}

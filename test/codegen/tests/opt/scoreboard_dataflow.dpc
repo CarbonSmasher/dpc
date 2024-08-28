@@ -22,6 +22,22 @@
 	use %z;
 }
 
+# Test that a copy of the original location
+# is created so that a modified propagation
+# isn't reused when the original value is expected
+"test:copy_prop_multiple" {
+	let a: score = val sco @s[] "foo";
+	let b: score = val %a;
+	mul %b, 10s;
+	let c: score = val %a;
+	div %c, 3s;
+	let d: score = val %a;
+	add %d, 100s;
+	use %b;
+	use %c;
+	use %d;
+}
+
 "test:copy_elision" {
 	call run "test:copy_elision_fn";
 }

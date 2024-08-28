@@ -58,7 +58,7 @@ fn main() {
 	})];
 
 	for test in tests {
-		let name = test.name.clone();
+		let name = test.name;
 		catch_unwind(|| {
 			println!("     - Running parse test '{name}'");
 			run_test(test).expect("Test failed");
