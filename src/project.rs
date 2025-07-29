@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use crate::output::strip::StripMode;
 
 /// Settings for a generated project
@@ -16,6 +17,11 @@ impl ProjectSettings {
 			op_level: OptimizationLevel::Basic,
 		}
 	}
+    
+    pub fn with_op_level(mut self, level: OptimizationLevel) -> Self {
+        self.op_level = level;
+        self
+    }
 }
 
 pub struct ProjectSettingsBuilder {
@@ -45,7 +51,7 @@ impl ProjectSettingsBuilder {
 }
 
 /// Different optimization levels that can be used
-#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord, ValueEnum)]
 pub enum OptimizationLevel {
 	/// No optimizations will occur. The only transformations that will
 	/// happen to the IR will be necessary ones to make it correct.
