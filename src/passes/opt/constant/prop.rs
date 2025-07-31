@@ -43,8 +43,7 @@ impl Pass for ConstPropPass {
 impl MIRPass for ConstPropPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut an = StoringConstAnalyzer::new();
-		for func in data.mir.functions.values_mut() {
-			let block = &mut func.block;
+		data.mir.for_all_blocks_mut(&mut |block| {
 			an.reset();
 			loop {
 				let run_again = run_const_prop_iter(block, &mut an)?;
@@ -54,7 +53,9 @@ impl MIRPass for ConstPropPass {
 					break;
 				}
 			}
-		}
+
+			Ok(())
+		})?;
 
 		Ok(())
 	}

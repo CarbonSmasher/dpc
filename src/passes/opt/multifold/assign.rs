@@ -25,9 +25,7 @@ impl Pass for MultifoldAssignPass {
 
 impl MIRPass for MultifoldAssignPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		for func in data.mir.functions.values_mut() {
-			let block = &mut func.block;
-
+		data.mir.for_all_blocks_mut(&mut |block| {
 			let mut removed = HashSetEmptyTracker::new();
 			let mut replaced = Vec::new();
 			loop {
@@ -37,7 +35,9 @@ impl MIRPass for MultifoldAssignPass {
 				}
 			}
 			remove_indices(&mut block.contents, &removed);
-		}
+
+			Ok(())
+		})?;
 
 		Ok(())
 	}
