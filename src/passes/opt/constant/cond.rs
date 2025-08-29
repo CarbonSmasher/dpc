@@ -38,9 +38,7 @@ impl Pass for ConstConditionPass {
 
 impl MIRPass for ConstConditionPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
-		for func in data.mir.functions.values_mut() {
-			let block = &mut func.block;
-
+		data.mir.for_all_blocks_mut(&mut |block| {
 			let mut instrs_to_remove = GrowSet::with_capacity(block.contents.len());
 			let mut instrs_to_replace = Vec::new();
 			loop {
@@ -56,7 +54,9 @@ impl MIRPass for ConstConditionPass {
 				block.contents =
 					replace_and_expand_indices(block.contents.clone(), &instrs_to_replace);
 			}
-		}
+
+			Ok(())
+		})?;
 
 		Ok(())
 	}

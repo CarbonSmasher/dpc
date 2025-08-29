@@ -36,6 +36,18 @@ impl MIR {
 			),
 		}
 	}
+
+	pub fn for_all_blocks_mut<T: FnMut(&mut MIRBlock) -> anyhow::Result<()>>(
+		&mut self,
+		for_each: &mut T,
+	) -> anyhow::Result<()> {
+		for (_, function) in self.functions.iter_mut() {
+			for_each(&mut function.block)?;
+			function.block.child_blocks_mut(&mut *for_each)?;
+		}
+
+		Ok(())
+	}
 }
 
 impl IRType for MIR {
@@ -106,6 +118,61 @@ impl MIRBlock {
 		for instr in &mut self.contents {
 			instr.kind.replace_mut_vals(f);
 		}
+	}
+
+	pub fn child_blocks_mut<T: FnMut(&mut MIRBlock) -> anyhow::Result<()>>(
+		&mut self,
+		for_each: &mut T,
+	) -> anyhow::Result<()> {
+		for instr in self.contents.iter_mut() {
+			match &mut instr.kind {
+				MIRInstrKind::If { body, .. } => {
+					for_each(body.as_mut())?;
+				}
+				MIRInstrKind::IfElse { first, second, .. } => {
+					for_each(first.as_mut())?;
+					for_each(second.as_mut())?;
+				}
+				MIRInstrKind::Modify { body, .. } => {
+					for_each(body.as_mut())?;
+				}
+				MIRInstrKind::Declare { .. } => {}
+				MIRInstrKind::Assign { .. } => {}
+				MIRInstrKind::Add { .. } => {}
+				MIRInstrKind::Sub { .. } => {}
+				MIRInstrKind::Mul { .. } => {}
+				MIRInstrKind::Div { .. } => {}
+				MIRInstrKind::Mod { .. } => {}
+				MIRInstrKind::Min { .. } => {}
+				MIRInstrKind::Max { .. } => {}
+				MIRInstrKind::Swap { .. } => {}
+				MIRInstrKind::Remove { .. } => {}
+				MIRInstrKind::Abs { .. } => {}
+				MIRInstrKind::Pow { .. } => {}
+				MIRInstrKind::Get { .. } => {}
+				MIRInstrKind::GetConst { .. } => {}
+				MIRInstrKind::Merge { .. } => {}
+				MIRInstrKind::Push { .. } => {}
+				MIRInstrKind::PushFront { .. } => {}
+				MIRInstrKind::Insert { .. } => {}
+				MIRInstrKind::Not { .. } => {}
+				MIRInstrKind::And { .. } => {}
+				MIRInstrKind::Or { .. } => {}
+				MIRInstrKind::Xor { .. } => {}
+				MIRInstrKind::Use { .. } => {}
+				MIRInstrKind::Call { .. } => {}
+				MIRInstrKind::CallExtern { .. } => {}
+				MIRInstrKind::MC(_) => {}
+				MIRInstrKind::ReturnValue { .. } => {}
+				MIRInstrKind::Return { .. } => {}
+				MIRInstrKind::ReturnRun { .. } => {}
+				MIRInstrKind::NoOp => {}
+				MIRInstrKind::Command { .. } => {}
+				MIRInstrKind::Comment { .. } => {}
+			}
+		}
+
+		Ok(())
 	}
 }
 

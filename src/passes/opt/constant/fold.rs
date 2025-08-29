@@ -47,9 +47,7 @@ impl MIRPass for ConstFoldPass {
 	fn run_pass(&mut self, data: &mut MIRPassData) -> anyhow::Result<()> {
 		let mut fold_points = FxHashMap::default();
 		let mut an = ConstAnalyzer::new();
-		for func in data.mir.functions.values_mut() {
-			let block = &mut func.block;
-
+		data.mir.for_all_blocks_mut(&mut |block| {
 			fold_points.clear();
 			an.reset();
 
@@ -64,7 +62,9 @@ impl MIRPass for ConstFoldPass {
 				}
 			}
 			remove_indices(&mut block.contents, &instrs_to_remove);
-		}
+
+			Ok(())
+		})?;
 
 		Ok(())
 	}
@@ -100,50 +100,50 @@ fn run_const_fold_iter(
 						match right {
 							DataTypeContents::Score(right) => {
 								let FoldValue::Score(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
+									bail!("Incorrect types");
+								};
 								*value = Some(right.get_i32());
 							}
 							DataTypeContents::NBT(NBTTypeContents::Byte(right)) => {
 								let FoldValue::Byte(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
+									bail!("Incorrect types");
+								};
 								*value = Some(*right);
 							}
 							DataTypeContents::NBT(NBTTypeContents::Short(right)) => {
 								let FoldValue::Short(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
+									bail!("Incorrect types");
+								};
 								*value = Some(*right);
 							}
 							DataTypeContents::NBT(NBTTypeContents::Int(right)) => {
 								let FoldValue::Int(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
+									bail!("Incorrect types");
+								};
 								*value = Some(*right);
 							}
 							DataTypeContents::NBT(NBTTypeContents::Long(right)) => {
 								let FoldValue::Long(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
+									bail!("Incorrect types");
+								};
 								*value = Some(*right);
 							}
 							DataTypeContents::NBT(NBTTypeContents::Float(right)) => {
 								let FoldValue::Float(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
+									bail!("Incorrect types");
+								};
 								*value = Some(*right);
 							}
 							DataTypeContents::NBT(NBTTypeContents::Double(right)) => {
 								let FoldValue::Double(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
+									bail!("Incorrect types");
+								};
 								*value = Some(*right);
 							}
 							DataTypeContents::NBT(NBTTypeContents::String(right)) => {
 								let FoldValue::String(value) = &mut left.value else {
-										bail!("Incorrect types");
-									};
+									bail!("Incorrect types");
+								};
 								*value = Some(right.to_string());
 							}
 							_ => continue,
