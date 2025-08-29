@@ -4,6 +4,7 @@ use std::process::ExitCode;
 
 use anyhow::Context;
 use clap::Parser;
+use dpc::project::OptimizationLevel;
 use dpc::{codegen_ir, project::ProjectSettings, CodegenIRSettings};
 
 fn main() -> ExitCode {
@@ -40,9 +41,9 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 	let settings = CodegenIRSettings {
 		debug: false,
 		debug_functions: false,
-		ir_passes: false,
-		mir_passes: false,
-		lir_passes: false,
+		ir_passes: cli.run_passes,
+		mir_passes: cli.run_passes,
+		lir_passes: cli.run_passes,
 	};
 	let name = if let Some(name) = cli.name {
 		name.clone()
@@ -50,9 +51,11 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 		"dpc".into()
 	};
 
+	let project_settings =
+		ProjectSettings::new(name).with_op_level(cli.opt.unwrap_or(OptimizationLevel::None));
+
 	// Run the codegen
-	let datapack =
-		codegen_ir(ir, &ProjectSettings::new(name), settings).expect("Failed to codegen input");
+	let datapack = codegen_ir(ir, &project_settings, settings).expect("Failed to codegen input");
 	datapack
 		.output(&PathBuf::from(cli.out))
 		.context("Failed to output datapack")?;
@@ -73,5 +76,12 @@ pub struct Cli {
 	#[arg(short, long)]
 	name: Option<String>,
 	/// The file to read from
+	#[arg(short, long)]
 	file: Option<String>,
+	/// The optimisation level
+	#[arg(short, long)]
+	opt: Option<OptimizationLevel>,
+	/// Whether to run passes on the IR/MIR/LIR
+	#[arg(short, long)]
+	run_passes: bool,
 }
